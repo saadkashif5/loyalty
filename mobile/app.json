@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "TapTapSell Loyalty",
+    "slug": "taptapsell-loyalty",
+    "scheme": "taptapsell",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "pk.taptapsell.loyalty",
+      "infoPlist": {
+        "NFCReaderUsageDescription": "Used to read the loyalty stamper at the counter so you can collect a stamp."
+      }
+    },
+    "android": {
+      "package": "pk.taptapsell.loyalty",
+      "permissions": ["NFC", "CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Used to scan the QR code on the loyalty stamper."
+        }
+      ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Used to read the loyalty stamper at the counter so you can collect a stamp."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000/api/v1"
+    }
+  }
+}

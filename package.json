@@ -1,0 +1,22 @@
+{
+  "name": "taptapsell-loyalty",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TapTapSell Loyalty — NFC-first digital loyalty platform",
+  "workspaces": [
+    "api",
+    "web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=api",
+    "dev:web": "npm run dev --workspace=web",
+    "build:api": "npm run build --workspace=api",
+    "build:web": "npm run build --workspace=web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
