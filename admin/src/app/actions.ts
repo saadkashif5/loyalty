@@ -456,3 +456,115 @@ export async function recordPaymentAction(
     return { error: messageFrom(error, "Could not record the payment.") };
   }
 }
+
+// ---- Invoices, receipts and billing settings -------------------------------------
+
+export async function issueInvoiceAction(businessId: string): Promise<void> {
+  await apiFetch(`/admin/businesses/${businessId}/invoices`, {
+    method: "POST",
+    body: { periods: 1 },
+  });
+  refreshBilling(businessId);
+}
+
+export async function voidInvoiceAction(
+  businessId: string,
+  invoiceId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/invoices/${invoiceId}/void`, {
+      method: "POST",
+      body: { reason: text(formData, "reason") },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not void the invoice.") };
+  }
+}
+
+export async function setDiscountAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/subscription/discount`, {
+      method: "PATCH",
+      body: { discountPercent: Number(formData.get("discountPercent")) },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not set the discount.") };
+  }
+}
+
+export async function approveProofAction(proofId: string, _prev: FormState): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/payment-proofs/${proofId}/approve`, { method: "POST" });
+    revalidatePath("/payments");
+    revalidatePath("/finance");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not approve the receipt.") };
+  }
+}
+
+export async function rejectProofAction(
+  proofId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/payment-proofs/${proofId}/reject`, {
+      method: "POST",
+      body: { reason: text(formData, "reason") },
+    });
+    revalidatePath("/payments");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not reject the receipt.") };
+  }
+}
+
+export async function saveBillingSettingsAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  // Up to three bank accounts; blank rows are ignored.
+  const bankAccounts = [0, 1, 2]
+    .map((i) => ({
+      bankName: text(formData, `bankName${i}`),
+      accountTitle: text(formData, `accountTitle${i}`),
+      accountNumber: text(formData, `accountNumber${i}`),
+      iban: text(formData, `iban${i}`),
+    }))
+    .filter((a) => a.bankName || a.accountTitle || a.accountNumber);
+
+  try {
+    await apiFetch("/admin/settings/billing", {
+      method: "PUT",
+      body: {
+        companyName: text(formData, "companyName"),
+        address: text(formData, "address"),
+        ntn: text(formData, "ntn"),
+        strn: text(formData, "strn"),
+        email: text(formData, "email"),
+        phone: text(formData, "phone"),
+        taxLabel: text(formData, "taxLabel") ?? "Sales tax",
+        taxRatePercent: Number(formData.get("taxRatePercent") ?? 0),
+        invoicePrefix: text(formData, "invoicePrefix"),
+        bankAccounts,
+        raastId: text(formData, "raastId"),
+        paymentInstructions: text(formData, "paymentInstructions"),
+      },
+    });
+    revalidatePath("/billing-settings");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not save the settings.") };
+  }
+}

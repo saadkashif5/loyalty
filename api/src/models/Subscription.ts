@@ -39,6 +39,8 @@ const subscriptionSchema = new Schema(
       default: SUBSCRIPTION_STATUS.TRIALING,
     },
     trialDays: { type: Number, default: 30 },
+    // Applied to every invoice; 100 makes the account complimentary.
+    discountPercent: { type: Number, default: 0, min: 0, max: 100 },
     // Set when the owner accepts the invitation: the trial starts then.
     trialEndsAt: { type: Date, default: null },
     currentPeriodStart: { type: Date, default: null },

@@ -10,7 +10,13 @@ const NAV: Array<{ href: string; label: string; permission?: PlatformPermission 
   { href: "/devices", label: "Stampers", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
   { href: "/alerts", label: "Alerts", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
   { href: "/finance", label: "Finance", permission: PLATFORM_PERMISSIONS.BILLING_VIEW },
+  { href: "/payments", label: "Receipts", permission: PLATFORM_PERMISSIONS.BILLING_VIEW },
   { href: "/plans", label: "Plans", permission: PLATFORM_PERMISSIONS.BILLING_VIEW },
+  {
+    href: "/billing-settings",
+    label: "Billing settings",
+    permission: PLATFORM_PERMISSIONS.BILLING_VIEW,
+  },
   { href: "/users", label: "Users", permission: PLATFORM_PERMISSIONS.USER_VIEW },
   { href: "/audit", label: "Audit log", permission: PLATFORM_PERMISSIONS.AUDIT_VIEW },
   { href: "/team", label: "Team", permission: PLATFORM_PERMISSIONS.TEAM_MANAGE },

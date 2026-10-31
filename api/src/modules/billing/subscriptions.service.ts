@@ -1,5 +1,13 @@
 import type { ClientSession } from "mongoose";
-import { Business, BusinessMember, Payment, Subscription, User, type PlanDocument } from "@/models";
+import {
+  Business,
+  BusinessMember,
+  Payment,
+  PaymentProof,
+  Subscription,
+  User,
+  type PlanDocument,
+} from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
@@ -19,6 +27,15 @@ import type {
 import { findActivePlan, listPlans } from "./plans.service";
 import { countUsage } from "./entitlements.service";
 import { DAY_MS, GRACE_DAYS, addPeriods, monthlyValue } from "./billing.config";
+import {
+  findOpenInvoice,
+  getInvoice,
+  issueInvoice,
+  listInvoices,
+  periodPrice,
+  settleInvoice,
+} from "./invoices.service";
+import { getPaymentDetails } from "./settings.service";
 
 function snapshot(plan: PlanDocument) {
   return {
@@ -140,20 +157,44 @@ export async function extendTrial(
   return subscription;
 }
 
-/** What one period costs on the current plan and cycle. */
-export function periodPrice(subscription: {
-  plan: { priceMonthlyPkr: number; priceAnnualPkr: number };
-  billingCycle: string;
-}) {
-  return subscription.billingCycle === "ANNUAL"
-    ? subscription.plan.priceAnnualPkr
-    : subscription.plan.priceMonthlyPkr;
+export { periodPrice };
+
+/** Applied to every invoice from now on; 100 makes the account complimentary. */
+export async function setDiscount(
+  actorUserId: string,
+  businessId: string,
+  discountPercent: number,
+) {
+  const subscription = await getSubscriptionOrThrow(businessId);
+  subscription.discountPercent = discountPercent;
+  await subscription.save();
+
+  await recordAudit({
+    actorUserId,
+    businessId,
+    action: AUDIT_ACTIONS.SUBSCRIPTION_DISCOUNT_SET,
+    resourceType: "Subscription",
+    resourceId: subscription._id,
+    metadata: { discountPercent },
+  });
+  return subscription;
+}
+
+/** Bills the next period(s) now (normally the scheduled job does this). */
+export async function issueInvoiceFor(actorUserId: string | null, businessId: string, periods = 1) {
+  const subscription = await getSubscriptionOrThrow(businessId);
+  return issueInvoice(subscription, { periods, actorUserId });
+}
+
+function dayText(d: Date) {
+  return d.toLocaleDateString("en-PK", { timeZone: "Asia/Karachi" });
 }
 
 /**
- * Money received (bank transfer, Raast, cash, cheque). Paid time starts where
- * the business stands now: after any remaining trial or paid period, or today
- * if it is overdue — paying early never loses days.
+ * Money received (bank transfer, Raast, cash, cheque) settles an invoice: the
+ * one named, else the open one, else a new one for the requested periods.
+ * Paying after a billing suspension starts the period today, so the business
+ * does not pay for days it could not stamp.
  */
 export async function recordPayment(
   actorUserId: string | null,
@@ -163,35 +204,43 @@ export async function recordPayment(
   const subscription = await getSubscriptionOrThrow(businessId);
   const now = new Date();
 
-  const paidUntil = subscription.currentPeriodEnd ?? null;
-  const trialUntil =
-    subscription.status === SUBSCRIPTION_STATUS.TRIALING ? subscription.trialEndsAt : null;
-  const startFrom = [paidUntil, trialUntil, now]
-    .filter((d): d is Date => Boolean(d))
-    .reduce((latest, d) => (d > latest ? d : latest));
+  const invoice = input.invoiceId
+    ? await getInvoice(input.invoiceId, businessId)
+    : ((await findOpenInvoice(subscription._id)) ??
+      (await issueInvoice(subscription, { periods: input.periods, actorUserId })));
 
-  const periodEnd = addPeriods(startFrom, subscription.billingCycle as BillingCycle, input.periods);
-  const continuing = paidUntil !== null && paidUntil > now;
+  if (invoice.status !== "ISSUED") {
+    throw ApiError.conflict(`Invoice ${invoice.number} is not open for payment`);
+  }
+  if (input.amountPkr < invoice.totalPkr) {
+    throw new ApiError(
+      400,
+      "PAYMENT_TOO_LOW",
+      `Invoice ${invoice.number} is for PKR ${invoice.totalPkr.toLocaleString("en-PK")}. Part payments are not supported.`,
+    );
+  }
 
-  subscription.status = SUBSCRIPTION_STATUS.ACTIVE;
-  subscription.currentPeriodStart = continuing ? subscription.currentPeriodStart : startFrom;
-  subscription.currentPeriodEnd = periodEnd;
-  subscription.graceEndsAt = null;
-  subscription.suspendedAt = null;
-  subscription.cancelledAt = null;
-  subscription.lastReminderKey = null;
-  await subscription.save();
+  const business = await Business.findById(businessId).select("status suspension");
+  if (business?.suspension?.kind === "BILLING" && invoice.periodStart < now) {
+    invoice.periodStart = now;
+    invoice.periodEnd = addPeriods(now, invoice.billingCycle as BillingCycle, invoice.periods);
+  }
+
+  if (!(await settleInvoice(invoice, subscription, now))) {
+    throw ApiError.conflict(`Invoice ${invoice.number} was settled or voided just now`);
+  }
 
   const payment = await Payment.create({
     businessId,
     subscriptionId: subscription._id,
+    invoiceId: invoice._id,
     amountPkr: input.amountPkr,
     method: input.method,
     reference: input.reference,
     note: input.note,
-    periods: input.periods,
-    periodStart: startFrom,
-    periodEnd,
+    periods: invoice.periods,
+    periodStart: invoice.periodStart,
+    periodEnd: invoice.periodEnd,
     recordedBy: actorUserId,
   });
 
@@ -203,17 +252,18 @@ export async function recordPayment(
     action: AUDIT_ACTIONS.PAYMENT_RECORDED,
     resourceType: "Payment",
     resourceId: payment._id,
-    metadata: { amountPkr: input.amountPkr, method: input.method, periods: input.periods },
+    metadata: { invoice: invoice.number, amountPkr: input.amountPkr, method: input.method },
   });
 
-  const until = periodEnd.toLocaleDateString("en-PK", { timeZone: "Asia/Karachi" });
   await emailOwners(
     businessId,
-    "Payment received — thank you",
-    `We received PKR ${input.amountPkr.toLocaleString("en-PK")} for your TapTapSell subscription. You are paid up until ${until}.`,
+    `Payment received for invoice ${invoice.number}`,
+    `We received PKR ${input.amountPkr.toLocaleString("en-PK")} for invoice ${invoice.number}. ` +
+      `You are paid up until ${dayText(invoice.periodEnd)}. Thank you!`,
   );
 
-  return { subscription, payment };
+  const updated = await Subscription.findById(subscription._id);
+  return { subscription: updated, invoice, payment };
 }
 
 /** Sends a message to every active owner of the business. Best effort. */
@@ -234,15 +284,23 @@ export async function emailOwners(businessId: string, subject: string, text: str
 /** Everything the owner's Billing page shows. */
 export async function getBillingSummary(businessId: string) {
   const subscription = await Subscription.findOne({ businessId });
-  const [usage, payments, plans] = await Promise.all([
+  const [usage, payments, plans, invoices, proofs, paymentDetails] = await Promise.all([
     countUsage(businessId),
     Payment.find({ businessId }).sort({ createdAt: -1 }).limit(24),
     listPlans({ publicOnly: true }),
+    listInvoices(businessId),
+    PaymentProof.find({ businessId }).sort({ createdAt: -1 }).limit(10),
+    getPaymentDetails(),
   ]);
+  const openInvoice = invoices.find((i) => i.status === "ISSUED") ?? null;
 
   return {
     subscription,
-    nextPaymentPkr: subscription ? periodPrice(subscription) : null,
+    nextPaymentPkr: openInvoice?.totalPkr ?? (subscription ? periodPrice(subscription) : null),
+    openInvoice,
+    invoices,
+    proofs,
+    paymentDetails,
     usage,
     payments,
     plans,

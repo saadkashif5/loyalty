@@ -31,6 +31,13 @@ import {
 } from "@/modules/counter/counter.controller";
 import fraudRoutes from "@/modules/fraud/fraud.routes";
 import { getBillingSummary } from "@/modules/billing/subscriptions.service";
+import { getInvoice } from "@/modules/billing/invoices.service";
+import { renderInvoicePdf } from "@/modules/billing/invoicePdf.service";
+import { MAX_PROOF_BYTES, uploadProof } from "@/modules/billing/proofs.service";
+import { singleUpload } from "@/middleware/upload";
+import { createRateLimiter } from "@/middleware/rateLimit";
+import { ApiError } from "@/utils/ApiError";
+import { uploadProofSchema } from "@taptapsell/validation";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
 import {
@@ -161,6 +168,43 @@ router.get(
   }),
 );
 
+router.get(
+  "/invoices/:invoiceId/pdf",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.BUSINESS_MANAGE_BILLING }),
+  asyncHandler(async (req, res) => {
+    const invoice = await getInvoice(req.params.invoiceId, req.businessId!);
+    const pdf = await renderInvoicePdf(invoice);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${invoice.number}.pdf"`);
+    res.send(pdf);
+  }),
+);
+
+// A bank or Raast receipt for an open invoice. Allowed while suspended for
+// non-payment: paying is how the owner gets out of that suspension.
+const proofLimiter = createRateLimiter({ name: "payment-proof", windowMs: 60 * 60_000, max: 10 });
+router.post(
+  "/invoices/:invoiceId/proofs",
+  proofLimiter,
+  requireBusinessRole({
+    permission: BUSINESS_PERMISSIONS.BUSINESS_MANAGE_BILLING,
+    billingSuspension: "pay",
+  }),
+  singleUpload("file", MAX_PROOF_BYTES),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw ApiError.badRequest("Attach a photo or PDF of the receipt");
+    const input = uploadProofSchema.parse(req.body);
+    const proof = await uploadProof({
+      businessId: req.businessId!,
+      invoiceId: req.params.invoiceId,
+      userId: req.userId!,
+      file: req.file.buffer,
+      input,
+    });
+    sendSuccess(res, proof, { status: 201 });
+  }),
+);
+
 // Alerts about suspicious stamping.
 router.use("/fraud-flags", fraudRoutes);
 
@@ -211,7 +255,7 @@ router.post(
   "/redemptions/validate",
   requireBusinessRole({
     permission: BUSINESS_PERMISSIONS.REDEMPTION_VALIDATE,
-    allowDuringBillingSuspension: true,
+    billingSuspension: "redeem",
   }),
   validateRedemptionHandler,
 );

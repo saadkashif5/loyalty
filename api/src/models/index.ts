@@ -20,3 +20,7 @@ export * from "./FraudFlag";
 export * from "./Plan";
 export * from "./Subscription";
 export * from "./Payment";
+export * from "./PlatformSetting";
+export * from "./Counter";
+export * from "./Invoice";
+export * from "./PaymentProof";

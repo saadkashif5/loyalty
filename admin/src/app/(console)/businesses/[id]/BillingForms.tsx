@@ -6,6 +6,8 @@ import {
   changeSubscriptionPlanAction,
   extendTrialAction,
   recordPaymentAction,
+  setDiscountAction,
+  voidInvoiceAction,
 } from "@/app/actions";
 import { PAYMENT_METHODS, type Plan } from "@/lib/billing";
 import { ErrorText, Field, Input, SecondaryButton, Select } from "@/components/ui";
@@ -125,6 +127,50 @@ export function RecordPaymentForm({
       </div>
       <ErrorText>{state.error}</ErrorText>
       <Submit label="Record payment" />
+    </form>
+  );
+}
+
+export function DiscountForm({ businessId, current }: { businessId: string; current: number }) {
+  const [state, action] = useActionState(setDiscountAction.bind(null, businessId), {});
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <Field label="Discount on future invoices (%)">
+        <Input
+          name="discountPercent"
+          type="number"
+          min={0}
+          max={100}
+          defaultValue={current}
+          className="w-24"
+        />
+      </Field>
+      <Submit label="Set discount" />
+      <ErrorText>{state.error}</ErrorText>
+      <Done show={state.done} text="Saved. 100% makes the account complimentary." />
+    </form>
+  );
+}
+
+export function VoidInvoiceForm({
+  businessId,
+  invoiceId,
+}: {
+  businessId: string;
+  invoiceId: string;
+}) {
+  const [state, action] = useActionState(voidInvoiceAction.bind(null, businessId, invoiceId), {});
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <Input
+        name="reason"
+        required
+        minLength={3}
+        placeholder="Reason for voiding"
+        className="w-56"
+      />
+      <SecondaryButton type="submit">Void</SecondaryButton>
+      <ErrorText>{state.error}</ErrorText>
     </form>
   );
 }

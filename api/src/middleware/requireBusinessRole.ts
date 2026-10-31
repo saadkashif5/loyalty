@@ -31,10 +31,11 @@ interface Options {
   /** Route param holding the business id. Defaults to "businessId". */
   paramName?: string;
   /**
-   * Keeps this action available for a while when the business is suspended
-   * for non-payment, so customers can still use rewards they already earned.
+   * Keeps this action available while the business is suspended for
+   * non-payment: "redeem" for 30 days (customers use rewards they earned),
+   * "pay" for as long as it lasts (the owner must be able to pay).
    */
-  allowDuringBillingSuspension?: boolean;
+  billingSuspension?: "redeem" | "pay";
 }
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -80,12 +81,14 @@ export function requireBusinessRole(options: Options = {}) {
     }
 
     // A suspended business keeps read access to its data but can change nothing (§60).
+    const unpaid = business.suspension?.kind === "BILLING";
     const billingGrace =
-      options.allowDuringBillingSuspension &&
-      business.suspension?.kind === "BILLING" &&
-      business.suspension.at &&
-      Date.now() - business.suspension.at.getTime() <
-        REDEEM_DURING_BILLING_SUSPENSION_DAYS * 86_400_000;
+      unpaid &&
+      (options.billingSuspension === "pay" ||
+        (options.billingSuspension === "redeem" &&
+          business.suspension?.at &&
+          Date.now() - business.suspension.at.getTime() <
+            REDEEM_DURING_BILLING_SUSPENSION_DAYS * 86_400_000));
 
     if (
       business.status === BUSINESS_STATUS.SUSPENDED &&

@@ -7,7 +7,12 @@ import { sendSuccess } from "@/utils/response";
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
 import {
   addTeamMemberSchema,
+  billingSettingsSchema,
   changeSubscriptionPlanSchema,
+  issueInvoiceSchema,
+  rejectProofSchema,
+  setDiscountSchema,
+  voidInvoiceSchema,
   createBusinessWithOwnerSchema,
   createPlanSchema,
   extendTrialSchema,
@@ -22,6 +27,11 @@ import * as leads from "@/modules/leads/leads.service";
 import * as fraud from "@/modules/fraud/fraud.service";
 import * as plans from "@/modules/billing/plans.service";
 import * as billing from "@/modules/billing/subscriptions.service";
+import * as invoices from "@/modules/billing/invoices.service";
+import * as proofs from "@/modules/billing/proofs.service";
+import { renderInvoicePdf } from "@/modules/billing/invoicePdf.service";
+import { invoicesCsv } from "@/modules/billing/export.service";
+import { getBillingSettings, updateBillingSettings } from "@/modules/billing/settings.service";
 import { registerDevicesHandler, assignDeviceHandler } from "@/modules/devices/devices.controller";
 
 // Mounted at /api/v1/admin. Every route names the platform permission it needs;
@@ -214,6 +224,129 @@ router.post(
     sendSuccess(res, await billing.recordPayment(req.userId!, req.params.businessId, input), {
       status: 201,
     });
+  }),
+);
+
+router.get(
+  "/settings/billing",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await getBillingSettings());
+  }),
+);
+
+router.put(
+  "/settings/billing",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = billingSettingsSchema.parse(req.body);
+    sendSuccess(res, await updateBillingSettings(req.userId!, input));
+  }),
+);
+
+router.patch(
+  "/businesses/:businessId/subscription/discount",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { discountPercent } = setDiscountSchema.parse(req.body);
+    sendSuccess(
+      res,
+      await billing.setDiscount(req.userId!, req.params.businessId, discountPercent),
+    );
+  }),
+);
+
+router.post(
+  "/businesses/:businessId/invoices",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { periods } = issueInvoiceSchema.parse(req.body ?? {});
+    sendSuccess(res, await billing.issueInvoiceFor(req.userId!, req.params.businessId, periods), {
+      status: 201,
+    });
+  }),
+);
+
+router.get(
+  "/invoices/:invoiceId/pdf",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const invoice = await invoices.getInvoice(req.params.invoiceId);
+    const pdf = await renderInvoicePdf(invoice);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${invoice.number}.pdf"`);
+    res.send(pdf);
+  }),
+);
+
+router.post(
+  "/invoices/:invoiceId/void",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { reason } = voidInvoiceSchema.parse(req.body);
+    sendSuccess(res, await invoices.voidInvoice(req.userId!, req.params.invoiceId, reason));
+  }),
+);
+
+router.get(
+  "/payment-proofs",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : "PENDING";
+    sendSuccess(res, await proofs.listProofs(status));
+  }),
+);
+
+router.get(
+  "/payment-proofs/:proofId/file",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const { stream, mimeType } = await proofs.openProofFile(req.params.proofId);
+    res.setHeader("Content-Type", mimeType);
+    // Shown in the browser, never run: no sniffing, and a sandbox for PDFs.
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Security-Policy", "sandbox");
+    stream.on("error", () => res.status(404).end());
+    stream.pipe(res);
+  }),
+);
+
+router.post(
+  "/payment-proofs/:proofId/approve",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await proofs.approveProof(req.userId!, req.params.proofId));
+  }),
+);
+
+router.post(
+  "/payment-proofs/:proofId/reject",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { reason } = rejectProofSchema.parse(req.body);
+    sendSuccess(res, await proofs.rejectProof(req.userId!, req.params.proofId, reason));
+  }),
+);
+
+router.get(
+  "/billing/export.csv",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const parse = (v: unknown, fallback: Date) => {
+      const d = typeof v === "string" ? new Date(v) : fallback;
+      return Number.isNaN(d.getTime()) ? fallback : d;
+    };
+    const now = new Date();
+    const from = parse(
+      req.query.from,
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+    );
+    const to = parse(req.query.to, now);
+    const csv = await invoicesCsv(from, new Date(to.getTime() + 86_400_000));
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="invoices.csv"');
+    // Byte-order mark so Excel opens the file as UTF-8.
+    res.send(`\uFEFF${csv}`);
   }),
 );
 

@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { apiFetch, ApiRequestError } from "@/lib/api";
+import { API_BASE_URL, apiFetch, ApiRequestError } from "@/lib/api";
+import { clientHeaders } from "@/lib/forwarding";
+import { getAccessToken } from "@/lib/session";
 
 export interface FormState {
   error?: string;
@@ -403,4 +405,51 @@ export async function updateStaffCapAction(
       body: { staffDailyStampCap: Number(formData.get("staffDailyStampCap")) },
     }),
   );
+}
+
+// ---- Billing ------------------------------------------------------------------
+
+const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
+
+/** Sends a bank or Raast receipt for an open invoice; Finance reviews it. */
+export async function uploadReceiptAction(
+  businessId: string,
+  invoiceId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Attach a photo or PDF of the receipt." };
+  }
+  if (file.size > MAX_RECEIPT_BYTES) return { error: "The file must be 5 MB or smaller." };
+
+  const body = new FormData();
+  body.set("file", file, file.name);
+  for (const name of ["method", "amountPkr", "reference", "note"]) {
+    const value = text(formData, name);
+    if (value) body.set(name, value);
+  }
+
+  const token = await getAccessToken();
+  const response = await fetch(
+    `${API_BASE_URL}/businesses/${businessId}/invoices/${invoiceId}/proofs`,
+    {
+      method: "POST",
+      headers: {
+        ...(await clientHeaders()),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body,
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    return { error: payload?.error?.message ?? "Could not upload the receipt." };
+  }
+  refresh(businessId);
+  return { saved: true };
 }

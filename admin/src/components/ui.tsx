@@ -153,6 +153,9 @@ const STATUS_STYLES: Record<string, string> = {
   PAST_DUE: "bg-amber-50 text-amber-700",
   CANCELLED: "bg-slate-100 text-slate-600",
   HIDDEN: "bg-slate-100 text-slate-600",
+  PAID: "bg-emerald-50 text-emerald-700",
+  VOID: "bg-slate-100 text-slate-600",
+  APPROVED: "bg-emerald-50 text-emerald-700",
   REPLACED: "bg-slate-100 text-slate-600",
   DISABLED: "bg-slate-100 text-slate-600",
 };

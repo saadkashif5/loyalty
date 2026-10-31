@@ -12,6 +12,9 @@ export const CANCEL_AFTER_SUSPENDED_DAYS = 90;
 /** Customers can still redeem rewards they earned for this long after a billing suspension. */
 export const REDEEM_DURING_BILLING_SUSPENSION_DAYS = 30;
 
+/** The next invoice is issued this many days before a trial or period ends. */
+export const INVOICE_LEAD_DAYS = 7;
+
 /** Owners are reminded this many days before a trial or period ends. */
 export const REMIND_BEFORE_DAYS = 3;
 

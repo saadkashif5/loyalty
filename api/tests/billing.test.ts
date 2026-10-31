@@ -199,7 +199,7 @@ describe("plans and subscriptions", () => {
     await api()
       .post(`/api/v1/admin/businesses/${businessId}/payments`)
       .set(bearer(root.token))
-      .send({ amountPkr: 2999, method: "RAAST", periods: 2 });
+      .send({ amountPkr: 5998, method: "RAAST", periods: 2 });
 
     const sub = await Subscription.findOne({ businessId });
     expect(sub!.currentPeriodEnd!.getTime()).toBe(addPeriods(trialEnd, "MONTHLY", 2).getTime());

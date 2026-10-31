@@ -1,6 +1,13 @@
 import { LIMIT_LABELS, type BillingSummary, type Plan } from "@/lib/billing";
-import { Card, StatusBadge, formatDate, formatPkr } from "@/components/ui";
-import { ChangePlanForm, ExtendTrialForm, RecordPaymentForm } from "./BillingForms";
+import { Card, SecondaryButton, StatusBadge, formatDate, formatPkr } from "@/components/ui";
+import {
+  ChangePlanForm,
+  DiscountForm,
+  ExtendTrialForm,
+  RecordPaymentForm,
+  VoidInvoiceForm,
+} from "./BillingForms";
+import { issueInvoiceAction } from "@/app/actions";
 
 export function SubscriptionCard({
   businessId,
@@ -70,13 +77,62 @@ export function SubscriptionCard({
               cycle={sub.billingCycle}
             />
             {!sub.currentPeriodEnd ? <ExtendTrialForm businessId={businessId} /> : null}
+            <DiscountForm businessId={businessId} current={sub.discountPercent ?? 0} />
           </div>
           <div>
-            <h3 className="mb-2 text-sm font-semibold">Record a payment</h3>
-            <RecordPaymentForm businessId={businessId} suggestedAmount={billing.nextPaymentPkr} />
+            <h3 className="mb-2 text-sm font-semibold">
+              Record a payment
+              {billing.openInvoice ? ` against ${billing.openInvoice.number}` : ""}
+            </h3>
+            <RecordPaymentForm
+              businessId={businessId}
+              suggestedAmount={billing.openInvoice?.totalPkr ?? billing.nextPaymentPkr}
+            />
           </div>
         </div>
       ) : null}
+
+      <div className="border-t border-slate-100 pt-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">Invoices</h3>
+          {canManage && !billing.openInvoice ? (
+            <form action={issueInvoiceAction.bind(null, businessId)}>
+              <SecondaryButton type="submit">Issue invoice now</SecondaryButton>
+            </form>
+          ) : null}
+        </div>
+        {billing.invoices.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            None yet. The next one is issued automatically a week before the trial or period ends.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100 text-sm">
+            {billing.invoices.map((inv) => (
+              <li key={inv._id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                <span className="flex items-center gap-2">
+                  <a
+                    href={`/files/invoices/${inv._id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-brand-600 hover:underline"
+                  >
+                    {inv.number}
+                  </a>
+                  <StatusBadge status={inv.status === "ISSUED" ? "PENDING" : inv.status} />
+                  <span className="text-slate-500">
+                    {formatPkr(inv.totalPkr)} · due {formatDate(inv.dueDate)}
+                  </span>
+                </span>
+                {canManage && inv.status === "ISSUED" ? (
+                  <VoidInvoiceForm businessId={businessId} invoiceId={inv._id} />
+                ) : inv.voidReason ? (
+                  <span className="text-xs text-slate-500">Void: {inv.voidReason}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {billing.payments.length > 0 ? (
         <div className="border-t border-slate-100 pt-4">

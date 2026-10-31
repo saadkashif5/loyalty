@@ -48,6 +48,13 @@ export const AUDIT_ACTIONS = {
   SUBSCRIPTION_TRIAL_EXTENDED: "subscription.trial_extended",
   SUBSCRIPTION_STATUS_CHANGED: "subscription.status_changed",
   PAYMENT_RECORDED: "payment.recorded",
+  BILLING_SETTINGS_UPDATED: "billing.settings_updated",
+  INVOICE_ISSUED: "invoice.issued",
+  INVOICE_VOIDED: "invoice.voided",
+  SUBSCRIPTION_DISCOUNT_SET: "subscription.discount_set",
+  PAYMENT_PROOF_UPLOADED: "payment_proof.uploaded",
+  PAYMENT_PROOF_APPROVED: "payment_proof.approved",
+  PAYMENT_PROOF_REJECTED: "payment_proof.rejected",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

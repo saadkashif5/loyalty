@@ -46,6 +46,11 @@ export const extendTrialSchema = z.object({
 export type ExtendTrialInput = z.infer<typeof extendTrialSchema>;
 
 export const recordPaymentSchema = z.object({
+  /** The invoice this settles; without it, the open invoice is used (or one is issued). */
+  invoiceId: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
   amountPkr: z.number().int().min(1).max(100_000_000),
   method: z.enum(["BANK_TRANSFER", "RAAST", "CASH", "CHEQUE", "CARD", "OTHER"]),
   reference: z.string().trim().max(120).optional(),
@@ -54,3 +59,69 @@ export const recordPaymentSchema = z.object({
   note: z.string().max(500).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
+
+// ---- Invoices, settings and payment proofs -----------------------------------------
+
+export const billingSettingsSchema = z.object({
+  companyName: z.string().trim().min(1).max(160),
+  address: z.string().trim().max(500).optional(),
+  ntn: z.string().trim().max(20).optional(),
+  strn: z.string().trim().max(20).optional(),
+  email: z.email().optional(),
+  phone: z.string().trim().max(30).optional(),
+  taxLabel: z.string().trim().min(1).max(40).default("Sales tax"),
+  taxRatePercent: z.number().min(0).max(50).default(0),
+  invoicePrefix: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{2,10}$/, "2–10 letters or digits"),
+  bankAccounts: z
+    .array(
+      z.object({
+        bankName: z.string().trim().min(1).max(80),
+        accountTitle: z.string().trim().min(1).max(120),
+        accountNumber: z.string().trim().min(4).max(40),
+        iban: z
+          .string()
+          .trim()
+          .toUpperCase()
+          .regex(/^PK\d{2}[A-Z]{4}\d{16}$/, "A Pakistani IBAN looks like PK36SCBL0000001123456702")
+          .optional(),
+      }),
+    )
+    .max(5)
+    .default([]),
+  raastId: z.string().trim().max(40).optional(),
+  paymentInstructions: z.string().trim().max(1000).optional(),
+});
+export type BillingSettingsInput = z.infer<typeof billingSettingsSchema>;
+
+export const issueInvoiceSchema = z.object({
+  periods: z.number().int().min(1).max(24).default(1),
+});
+export type IssueInvoiceInput = z.infer<typeof issueInvoiceSchema>;
+
+export const voidInvoiceSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+});
+export type VoidInvoiceInput = z.infer<typeof voidInvoiceSchema>;
+
+export const setDiscountSchema = z.object({
+  discountPercent: z.number().int().min(0).max(100),
+});
+export type SetDiscountInput = z.infer<typeof setDiscountSchema>;
+
+/** Sent as multipart fields next to the uploaded file. */
+export const uploadProofSchema = z.object({
+  method: z.enum(["BANK_TRANSFER", "RAAST", "CHEQUE", "OTHER"]),
+  amountPkr: z.coerce.number().int().min(1).max(100_000_000),
+  reference: z.string().trim().max(120).optional(),
+  note: z.string().trim().max(500).optional(),
+});
+export type UploadProofInput = z.infer<typeof uploadProofSchema>;
+
+export const rejectProofSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+});
+export type RejectProofInput = z.infer<typeof rejectProofSchema>;

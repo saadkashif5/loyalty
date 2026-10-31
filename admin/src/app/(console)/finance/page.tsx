@@ -64,6 +64,28 @@ export default async function FinancePage() {
         <Stat label="Cancelled" value={data.counts.CANCELLED} />
       </div>
 
+      <Card>
+        <h2 className="mb-3 font-semibold">Export invoices for the accountant</h2>
+        <form action="/files/export" className="flex flex-wrap items-end gap-3 text-sm">
+          <label className="block">
+            <span className="mb-1 block text-slate-600">From</span>
+            <input
+              type="date"
+              name="from"
+              className="rounded-md border border-slate-300 px-3 py-2"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-slate-600">To</span>
+            <input type="date" name="to" className="rounded-md border border-slate-300 px-3 py-2" />
+          </label>
+          <button className="rounded-md border border-slate-300 px-4 py-2 font-medium hover:bg-slate-50">
+            Download CSV
+          </button>
+        </form>
+        <p className="mt-2 text-xs text-slate-500">Leave blank for this month so far.</p>
+      </Card>
+
       <section>
         <h2 className="mb-3 font-semibold">Overdue</h2>
         {data.overdue.length === 0 ? (

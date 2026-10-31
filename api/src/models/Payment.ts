@@ -7,6 +7,8 @@ const paymentSchema = new Schema(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true },
     subscriptionId: { type: Schema.Types.ObjectId, ref: "Subscription", required: true },
+    // Every payment settles an invoice, so the books always match.
+    invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice" },
     amountPkr: { type: Number, required: true, min: 1 },
     method: { type: String, enum: Object.values(PAYMENT_METHOD), required: true },
     reference: { type: String, maxlength: 120 },

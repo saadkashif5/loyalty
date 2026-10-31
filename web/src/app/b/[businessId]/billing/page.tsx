@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import { Card, PageHeader, StatusBadge, formatDate } from "@/components/ui";
+import { UploadReceiptForm } from "./UploadReceiptForm";
 
 interface Limits {
   branches: number | null;
@@ -7,6 +8,17 @@ interface Limits {
   stampers: number | null;
   staff: number | null;
   customers: number | null;
+}
+
+interface Invoice {
+  _id: string;
+  number: string;
+  status: "ISSUED" | "PAID" | "VOID";
+  issuedAt: string;
+  dueDate: string;
+  periodStart: string;
+  periodEnd: string;
+  totalPkr: number;
 }
 
 interface Billing {
@@ -25,6 +37,29 @@ interface Billing {
     graceEndsAt: string | null;
   } | null;
   nextPaymentPkr: number | null;
+  openInvoice: Invoice | null;
+  invoices: Invoice[];
+  proofs: Array<{
+    _id: string;
+    invoiceId: string;
+    status: "PENDING" | "APPROVED" | "REJECTED";
+    amountPkr: number;
+    createdAt: string;
+    rejectionReason?: string;
+  }>;
+  paymentDetails: {
+    companyName: string;
+    bankAccounts: Array<{
+      bankName: string;
+      accountTitle: string;
+      accountNumber: string;
+      iban?: string;
+    }>;
+    raastId: string | null;
+    instructions: string | null;
+    email: string | null;
+    phone: string | null;
+  };
   usage: Record<keyof Limits, number>;
   payments: Array<{
     _id: string;
@@ -81,6 +116,10 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
   }
 
   const annual = sub.billingCycle === "ANNUAL";
+  const open = billing.openInvoice;
+  const pendingProof = open
+    ? billing.proofs.find((p) => p.invoiceId === open._id && p.status === "PENDING")
+    : undefined;
   const dueBy =
     sub.status === "TRIALING"
       ? sub.trialEndsAt
@@ -138,19 +177,101 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
         </div>
       </Card>
 
-      <Card className="space-y-2">
+      <Card className="space-y-4">
         <h2 className="font-semibold">How to pay</h2>
-        <p className="text-sm text-slate-600">
-          {billing.nextPaymentPkr
-            ? `Your next payment is ${pkr(billing.nextPaymentPkr)} plus tax. `
-            : ""}
-          Pay by bank transfer or Raast, then send the receipt to the TapTapSell team on WhatsApp or
-          email. Your account is updated as soon as we record it.
-        </p>
-        <p className="text-xs text-slate-500">
-          Bank details and online card payment will appear here soon.
-        </p>
+        {open ? (
+          <p className="text-sm">
+            Invoice{" "}
+            <a
+              href={`/b/${businessId}/billing/invoices/${open._id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-brand-600 hover:underline"
+            >
+              {open.number}
+            </a>{" "}
+            for <strong>{pkr(open.totalPkr)}</strong> (tax included) is due on{" "}
+            {formatDate(open.dueDate)}.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-600">
+            {billing.nextPaymentPkr
+              ? `Your next payment is ${pkr(billing.nextPaymentPkr)} plus tax. `
+              : ""}
+            We email an invoice a week before it is due.
+          </p>
+        )}
+
+        <PaymentDetails details={billing.paymentDetails} reference={open?.number} />
+
+        {open ? (
+          pendingProof ? (
+            <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              We received your receipt for {pkr(pendingProof.amountPkr)} on{" "}
+              {formatDate(pendingProof.createdAt)} and are checking it.
+            </p>
+          ) : (
+            <div className="border-t border-slate-100 pt-4">
+              <h3 className="mb-1 text-sm font-semibold">Already paid? Send us the receipt</h3>
+              <p className="mb-3 text-xs text-slate-500">
+                A screenshot from your banking app is fine. We match it to our bank statement.
+              </p>
+              <UploadReceiptForm
+                businessId={businessId}
+                invoiceId={open._id}
+                amountPkr={open.totalPkr}
+              />
+            </div>
+          )
+        ) : null}
       </Card>
+
+      {billing.proofs.length > 0 ? (
+        <Card>
+          <h2 className="mb-2 font-semibold">Receipts you sent</h2>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {billing.proofs.map((proof) => (
+              <li key={proof._id} className="space-y-1 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span>
+                    {pkr(proof.amountPkr)} · sent {formatDate(proof.createdAt)}
+                  </span>
+                  <StatusBadge status={proof.status} />
+                </div>
+                {proof.rejectionReason ? (
+                  <p className="text-xs text-red-700">Not accepted: {proof.rejectionReason}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
+      {billing.invoices.length > 0 ? (
+        <Card>
+          <h2 className="mb-2 font-semibold">Invoices</h2>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {billing.invoices.map((inv) => (
+              <li key={inv._id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                <span className="flex items-center gap-2">
+                  <a
+                    href={`/b/${businessId}/billing/invoices/${inv._id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-brand-600 hover:underline"
+                  >
+                    {inv.number}
+                  </a>
+                  <StatusBadge status={inv.status} />
+                </span>
+                <span className="text-slate-500">
+                  {pkr(inv.totalPkr)} · {formatDate(inv.periodStart)} – {formatDate(inv.periodEnd)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       <section>
         <h2 className="mb-3 font-semibold">Plans</h2>
@@ -202,6 +323,53 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
             ))}
           </ul>
         </Card>
+      ) : null}
+    </div>
+  );
+}
+
+function PaymentDetails({
+  details,
+  reference,
+}: {
+  details: Billing["paymentDetails"];
+  reference?: string;
+}) {
+  if (details.bankAccounts.length === 0 && !details.raastId) {
+    return (
+      <p className="text-sm text-slate-600">
+        Contact the TapTapSell team
+        {details.phone ? ` on ${details.phone}` : details.email ? ` at ${details.email}` : ""} for
+        payment details.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {details.bankAccounts.map((account) => (
+          <div key={account.accountNumber} className="rounded-md bg-slate-50 px-3 py-2">
+            <p className="font-medium">{account.bankName}</p>
+            <p className="text-slate-600">{account.accountTitle}</p>
+            <p className="font-mono text-xs">{account.accountNumber}</p>
+            {account.iban ? <p className="font-mono text-xs">{account.iban}</p> : null}
+          </div>
+        ))}
+        {details.raastId ? (
+          <div className="rounded-md bg-slate-50 px-3 py-2">
+            <p className="font-medium">Raast</p>
+            <p className="font-mono text-xs">{details.raastId}</p>
+          </div>
+        ) : null}
+      </div>
+      {reference ? (
+        <p className="text-slate-600">
+          Write <span className="font-mono">{reference}</span> in the transfer description so we can
+          match your payment.
+        </p>
+      ) : null}
+      {details.instructions ? (
+        <p className="whitespace-pre-line text-slate-600">{details.instructions}</p>
       ) : null}
     </div>
   );

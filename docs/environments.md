@@ -42,6 +42,15 @@ it they use the last `X-Forwarded-For` entry, which is only right when exactly
 one trusted proxy sits in front of them. Never use the first entry: the
 browser controls it.
 
+## Uploaded files
+
+Payment receipts that owners upload are saved under `STORAGE_DIR` (default
+`./storage`, ignored by git). Until object storage (S3 or R2) is set up, staging
+and production must point it at a persistent, backed-up disk that only the API
+can read. Each API server needs the same disk, so run a single API instance or
+use shared storage. Invoice PDFs are not stored: they are generated each time
+from the invoice record.
+
 ## Secrets
 
 - Never commit real secrets. Only `.env.example` files are tracked; CI scans

@@ -1,4 +1,5 @@
-import { Business, Subscription } from "@/models";
+import { Business, Invoice, Subscription } from "@/models";
+import { INVOICE_STATUS } from "@/models/Invoice";
 import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { applyBusinessStatus } from "@/modules/businesses/businesses.service";
@@ -7,8 +8,11 @@ import {
   CANCEL_AFTER_SUSPENDED_DAYS,
   DAY_MS,
   GRACE_DAYS,
+  INVOICE_LEAD_DAYS,
   REMIND_BEFORE_DAYS,
 } from "@/modules/billing/billing.config";
+import { findOpenInvoice, issueInvoice } from "@/modules/billing/invoices.service";
+import { getPaymentDetails } from "@/modules/billing/settings.service";
 import { SUBSCRIPTION_STATUS } from "@taptapsell/constants";
 
 const BATCH = 500;
@@ -26,8 +30,30 @@ function day(d: Date) {
  * the current status, and each reminder is sent once (lastReminderKey).
  */
 export async function runSubscriptionJob(now: Date = new Date()) {
-  const result = { pastDue: 0, suspended: 0, cancelled: 0, reminded: 0 };
+  const result = { invoiced: 0, pastDue: 0, suspended: 0, cancelled: 0, reminded: 0 };
   const soon = new Date(now.getTime() + REMIND_BEFORE_DAYS * DAY_MS);
+
+  // 0. Invoices: a week before a trial or period ends, and for anyone overdue without one.
+  const billBy = new Date(now.getTime() + INVOICE_LEAD_DAYS * DAY_MS);
+  const toBill = await Subscription.find({
+    $or: [
+      { status: SUBSCRIPTION_STATUS.TRIALING, trialEndsAt: { $ne: null, $lte: billBy } },
+      { status: SUBSCRIPTION_STATUS.ACTIVE, currentPeriodEnd: { $ne: null, $lte: billBy } },
+      { status: { $in: [SUBSCRIPTION_STATUS.PAST_DUE, SUBSCRIPTION_STATUS.SUSPENDED] } },
+    ],
+  }).limit(BATCH);
+  for (const sub of toBill) {
+    if (await findOpenInvoice(sub._id)) continue;
+    const invoice = await issueInvoice(sub);
+    result.invoiced += 1;
+    if (invoice.status === INVOICE_STATUS.ISSUED) {
+      await emailOwners(
+        String(sub.businessId),
+        `Invoice ${invoice.number} from TapTapSell`,
+        await invoiceEmail(invoice.number, invoice.totalPkr, invoice.dueDate),
+      );
+    }
+  }
 
   // 1. Reminders before a trial or a paid period ends.
   const ending = await Subscription.find({
@@ -136,6 +162,12 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     );
     if (moved.modifiedCount !== 1) continue;
     result.cancelled += 1;
+    await Invoice.updateMany(
+      { subscriptionId: sub._id, status: INVOICE_STATUS.ISSUED },
+      {
+        $set: { status: INVOICE_STATUS.VOID, voidedAt: now, voidReason: "Subscription cancelled" },
+      },
+    );
     await audit(
       sub.businessId,
       sub._id,
@@ -145,6 +177,26 @@ export async function runSubscriptionJob(now: Date = new Date()) {
   }
 
   return result;
+}
+
+async function invoiceEmail(number: string, totalPkr: number, dueDate: Date): Promise<string> {
+  const pay = await getPaymentDetails();
+  const accounts = pay.bankAccounts
+    .map(
+      (a) =>
+        `${a.bankName} — ${a.accountTitle}, account ${a.accountNumber}${a.iban ? `, IBAN ${a.iban}` : ""}`,
+    )
+    .join("\n");
+  return [
+    `Invoice ${number} for PKR ${totalPkr.toLocaleString("en-PK")} is due on ${day(dueDate)}.`,
+    "",
+    accounts ? `Pay by bank transfer to:\n${accounts}` : "",
+    pay.raastId ? `Or by Raast to: ${pay.raastId}` : "",
+    "",
+    "Then upload the receipt from Billing in your dashboard. The invoice PDF is there too.",
+  ]
+    .filter((line, i, all) => line !== "" || all[i - 1] !== "")
+    .join("\n");
 }
 
 /** Marks a reminder as sent; false if this exact reminder already went out. */

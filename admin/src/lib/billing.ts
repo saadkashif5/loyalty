@@ -48,9 +48,24 @@ export interface PaymentInfo {
   createdAt: string;
 }
 
+export interface InvoiceInfo {
+  _id: string;
+  number: string;
+  status: "ISSUED" | "PAID" | "VOID";
+  issuedAt: string;
+  dueDate: string;
+  periodStart: string;
+  periodEnd: string;
+  totalPkr: number;
+  discountPercent: number;
+  voidReason?: string;
+}
+
 export interface BillingSummary {
-  subscription: SubscriptionInfo | null;
+  subscription: (SubscriptionInfo & { discountPercent?: number }) | null;
   nextPaymentPkr: number | null;
+  openInvoice: InvoiceInfo | null;
+  invoices: InvoiceInfo[];
   usage: Record<keyof PlanLimits, number>;
   payments: PaymentInfo[];
   plans: Plan[];

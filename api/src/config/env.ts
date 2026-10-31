@@ -32,6 +32,9 @@ const envSchema = z
     SMTP_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
     EMAIL_FROM: z.string().default("TapTapSell <no-reply@taptapsell.local>"),
 
+    // Where private uploads (payment receipts) are kept until cloud storage is chosen.
+    STORAGE_DIR: z.string().default("./storage"),
+
     // Business dashboard origin, used to build invitation links.
     DASHBOARD_URL: z.url().default("http://localhost:3000"),
 
