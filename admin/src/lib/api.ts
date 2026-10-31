@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ApiResponse, ApiSuccess } from "@taptapsell/types";
 import { getAccessToken } from "./session";
+import { clientHeaders } from "./forwarding";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000/api/v1";
 
@@ -25,7 +26,10 @@ export interface Page<T> {
 }
 
 async function request<T>(path: string, options: RequestOptions): Promise<ApiSuccess<T>> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(await clientHeaders()),
+  };
   const token = await getAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 

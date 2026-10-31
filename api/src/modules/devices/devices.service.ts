@@ -1,9 +1,11 @@
+import { Types } from "mongoose";
 import { Branch, Business, NfcDevice } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { generateActivationCode, generateDeviceIdentifier } from "@/utils/codes";
 import { BUSINESS_STATUS, DEVICE_STATUS, type TagType } from "@taptapsell/constants";
 import type {
+  ReportDeviceProblemInput,
   ActivateDeviceInput,
   AssignDeviceInput,
   RegisterDeviceInput,
@@ -113,8 +115,10 @@ export async function activateDevice(
   return device;
 }
 
-export async function listDevices(businessId: string) {
-  return NfcDevice.find({ businessId }).populate("branchId", "name").sort({ createdAt: -1 });
+export async function listDevices(businessId: string, branchIds: string[] = []) {
+  const filter: Record<string, unknown> = { businessId };
+  if (branchIds.length) filter.branchId = { $in: branchIds };
+  return NfcDevice.find(filter).populate("branchId", "name").sort({ createdAt: -1 });
 }
 
 export async function revokeDevice(
@@ -209,4 +213,46 @@ export async function resolveDeviceForStamping(deviceIdentifier: string): Promis
     branchId: device.branchId.toString(),
     tagType: device.tagType as TagType,
   };
+}
+
+/**
+ * Any staff member can report a stamper problem. A lost stamper is revoked
+ * immediately (someone else may be holding it); damage or faults are recorded
+ * for the owner or manager to act on.
+ */
+export async function reportDeviceProblem(
+  businessId: string,
+  deviceId: string,
+  actorUserId: string,
+  input: ReportDeviceProblemInput,
+  branchScope: string[] = [],
+) {
+  const filter: Record<string, unknown> = { _id: deviceId, businessId };
+  if (branchScope.length) filter.branchId = { $in: branchScope };
+
+  const device = await NfcDevice.findOne(filter);
+  if (!device) throw ApiError.notFound("Device not found");
+
+  device.lastProblem = {
+    reason: input.reason,
+    note: input.note,
+    reportedBy: new Types.ObjectId(actorUserId),
+    at: new Date(),
+  };
+  if (input.reason === "LOST" && device.status !== DEVICE_STATUS.REPLACED) {
+    device.status = DEVICE_STATUS.REVOKED;
+    device.revokedAt = new Date();
+  }
+  await device.save();
+
+  await recordAudit({
+    actorUserId,
+    businessId,
+    action: AUDIT_ACTIONS.DEVICE_PROBLEM_REPORTED,
+    resourceType: "NfcDevice",
+    resourceId: device._id,
+    metadata: { reason: input.reason, note: input.note, revoked: input.reason === "LOST" },
+  });
+
+  return device;
 }

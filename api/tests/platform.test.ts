@@ -453,3 +453,37 @@ describe("admin console data", () => {
     expect(supportMint.status).toBe(403);
   });
 });
+
+describe("client address forwarding", () => {
+  const SECRET = "test-internal-secret-that-is-long-enough";
+
+  it("trusts the forwarded address only with the shared secret", async () => {
+    await registerUser("forwarded@example.com");
+    const loginWith = (headers: Record<string, string>) =>
+      api()
+        .post("/api/v1/auth/login")
+        .set(headers)
+        .send({ email: "forwarded@example.com", password: PASSWORD });
+
+    const trusted = await loginWith({
+      "X-Internal-Secret": SECRET,
+      "X-Client-IP": "203.0.113.7",
+      "X-Client-User-Agent": "Mozilla/5.0 (Linux; Android 14)",
+    });
+    const spoofed = await loginWith({
+      "X-Internal-Secret": "wrong",
+      "X-Client-IP": "198.51.100.9",
+    });
+
+    const sessions = await api()
+      .get("/api/v1/auth/sessions")
+      .set(bearer(trusted.body.data.accessToken));
+    const ips = sessions.body.data.map((s: { ip: string }) => s.ip);
+    const agents = sessions.body.data.map((s: { userAgent: string | null }) => s.userAgent);
+
+    expect(ips).toContain("203.0.113.7");
+    expect(ips).not.toContain("198.51.100.9");
+    expect(agents).toContain("Mozilla/5.0 (Linux; Android 14)");
+    expect(spoofed.status).toBe(200);
+  });
+});

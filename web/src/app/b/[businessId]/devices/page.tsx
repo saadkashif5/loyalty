@@ -1,5 +1,8 @@
+import { BUSINESS_PERMISSIONS } from "@taptapsell/constants";
 import { apiFetch } from "@/lib/api";
-import { Card, EmptyState, PageHeader, StatusBadge } from "@/components/ui";
+import { can, getMembership } from "@/lib/membership";
+import { Card, EmptyState, PageHeader, StatusBadge, formatDate } from "@/components/ui";
+import { ReportProblemForm } from "./ReportProblemForm";
 import { ActivateDeviceForm } from "./ActivateDeviceForm";
 import { RevokeDeviceButton } from "./RevokeDeviceButton";
 
@@ -9,7 +12,14 @@ interface Device {
   deviceType: string;
   status: string;
   branchId?: { _id: string; name: string } | null;
+  lastProblem?: { reason?: string; note?: string; at?: string } | null;
 }
+
+const PROBLEM_LABEL: Record<string, string> = {
+  LOST: "reported lost",
+  DAMAGED: "reported damaged",
+  NOT_WORKING: "reported not working",
+};
 
 interface Branch {
   _id: string;
@@ -18,6 +28,8 @@ interface Branch {
 
 export default async function DevicesPage({ params }: { params: Promise<{ businessId: string }> }) {
   const { businessId } = await params;
+  const { role } = await getMembership(businessId);
+  const canManage = can(role, BUSINESS_PERMISSIONS.DEVICE_MANAGE);
   const [devices, branches] = await Promise.all([
     apiFetch<Device[]>(`/businesses/${businessId}/devices`),
     apiFetch<Branch[]>(`/businesses/${businessId}/branches`),
@@ -30,7 +42,7 @@ export default async function DevicesPage({ params }: { params: Promise<{ busine
         description="Each physical stamper must be activated before it can issue stamps."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className={`grid gap-6 ${canManage ? "lg:grid-cols-[2fr_1fr]" : ""}`}>
         <div className="space-y-3">
           {devices.length === 0 ? (
             <EmptyState>
@@ -49,7 +61,7 @@ export default async function DevicesPage({ params }: { params: Promise<{ busine
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusBadge status={device.status} />
-                    {device.status === "ACTIVE" ? (
+                    {canManage && device.status === "ACTIVE" ? (
                       <RevokeDeviceButton
                         businessId={businessId}
                         deviceId={device._id}
@@ -58,12 +70,21 @@ export default async function DevicesPage({ params }: { params: Promise<{ busine
                     ) : null}
                   </div>
                 </div>
+                {device.lastProblem?.reason ? (
+                  <p className="mt-2 text-sm text-amber-700">
+                    {PROBLEM_LABEL[device.lastProblem.reason]} {formatDate(device.lastProblem.at)}
+                    {device.lastProblem.note ? ` — ${device.lastProblem.note}` : ""}
+                  </p>
+                ) : null}
+                {device.status === "ACTIVE" ? (
+                  <ReportProblemForm businessId={businessId} deviceId={device._id} />
+                ) : null}
               </Card>
             ))
           )}
         </div>
 
-        <ActivateDeviceForm businessId={businessId} branches={branches} />
+        {canManage ? <ActivateDeviceForm businessId={businessId} branches={branches} /> : null}
       </div>
     </>
   );

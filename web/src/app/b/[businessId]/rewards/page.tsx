@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { Card, EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { CreateRewardForm } from "./CreateRewardForm";
@@ -48,7 +49,15 @@ export default async function RewardsPage({ params }: { params: Promise<{ busine
                       {reward.type} · unlocks at {reward.requiredStamps} stamps
                     </p>
                   </div>
-                  <StatusBadge status={reward.status} />
+                  <div className="flex flex-col items-end gap-2">
+                    <StatusBadge status={reward.status} />
+                    <Link
+                      href={`/b/${businessId}/rewards/${reward._id}`}
+                      className="text-sm text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </div>
                 </div>
               </Card>
             ))

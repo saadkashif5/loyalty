@@ -7,6 +7,7 @@ process.env.JWT_ACCESS_SECRET = "test-access-secret-that-is-long-enough-1234";
 process.env.JWT_REFRESH_SECRET = "test-refresh-secret-that-is-long-enough-1234";
 process.env.CORS_ORIGINS = "http://localhost:3000";
 process.env.RATE_LIMIT_MAX = "10000";
+process.env.INTERNAL_API_SECRET = "test-internal-secret-that-is-long-enough";
 
 // Tests need a replica set, because the stamp flow uses multi-document
 // transactions. `docker compose up -d` from the repo root provides one.

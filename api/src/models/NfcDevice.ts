@@ -24,6 +24,13 @@ const nfcDeviceSchema = new Schema(
     // stamper URL cannot be used again.
     lastTapCounter: { type: Number, default: null },
     lastTapAt: { type: Date, default: null },
+    // Latest problem reported by business staff (lost, damaged, not working).
+    lastProblem: {
+      reason: { type: String, enum: ["LOST", "DAMAGED", "NOT_WORKING"] },
+      note: { type: String, maxlength: 500 },
+      reportedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      at: { type: Date },
+    },
     activationCode: { type: String, select: false }, // one-time code used to activate; never the security credential itself
     replacedByDeviceId: { type: Schema.Types.ObjectId, ref: "NfcDevice", default: null },
     revokedAt: { type: Date, default: null },

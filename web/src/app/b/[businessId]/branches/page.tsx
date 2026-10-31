@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { Card, EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { CreateBranchForm } from "./CreateBranchForm";
@@ -35,7 +36,15 @@ export default async function BranchesPage({
                       <p className="mt-1 text-sm text-slate-500">{branch.address}</p>
                     ) : null}
                   </div>
-                  <StatusBadge status={branch.status} />
+                  <div className="flex flex-col items-end gap-2">
+                    <StatusBadge status={branch.status} />
+                    <Link
+                      href={`/b/${businessId}/branches/${branch._id}`}
+                      className="text-sm text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </div>
                 </div>
               </Card>
             ))

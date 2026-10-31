@@ -1,3 +1,4 @@
+import type { Request } from "express";
 import rateLimit, { type Store } from "express-rate-limit";
 import { RedisStore, type RedisReply } from "rate-limit-redis";
 import { env, isTest } from "@/config/env";
@@ -24,13 +25,22 @@ export const globalRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: storeFor("global"),
+  keyGenerator: (req) => req.clientIp,
   // If Redis is unreachable the baseline lets traffic through rather than
   // taking the whole API down; the stricter route limits below fail closed.
   passOnStoreError: true,
   handler: (_req, _res, next) => next(ApiError.tooManyRequests()),
 });
 
-export function createRateLimiter(options: { name: string; windowMs: number; max: number }) {
+export function createRateLimiter(options: {
+  name: string;
+  windowMs: number;
+  max: number;
+  /** What to count against; the client's IP by default. */
+  key?: (req: Request) => string;
+  /** Count only failed requests (status 400 and above). */
+  failuresOnly?: boolean;
+}) {
   return rateLimit({
     windowMs: options.windowMs,
     max: options.max,
@@ -39,6 +49,8 @@ export function createRateLimiter(options: { name: string; windowMs: number; max
     standardHeaders: true,
     legacyHeaders: false,
     store: storeFor(options.name),
+    keyGenerator: options.key ?? ((req) => req.clientIp),
+    skipSuccessfulRequests: options.failuresOnly ?? false,
     handler: (_req, _res, next) => next(ApiError.tooManyRequests()),
   });
 }

@@ -1,10 +1,12 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
+import { assertBranchInScope } from "@/middleware/requireBusinessRole";
 import {
   activateDeviceSchema,
   assignDeviceSchema,
   registerDeviceSchema,
+  reportDeviceProblemSchema,
   revokeDeviceSchema,
 } from "@taptapsell/validation";
 import * as service from "./devices.service";
@@ -22,11 +24,12 @@ export const assignDeviceHandler = asyncHandler(async (req: Request, res: Respon
 
 // Business-scoped
 export const listDevicesHandler = asyncHandler(async (req: Request, res: Response) => {
-  sendSuccess(res, await service.listDevices(req.businessId!));
+  sendSuccess(res, await service.listDevices(req.businessId!, req.branchScope));
 });
 
 export const activateDeviceHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = activateDeviceSchema.parse(req.body);
+  assertBranchInScope(req, input.branchId);
   sendSuccess(res, await service.activateDevice(req.businessId!, req.userId!, input));
 });
 
@@ -42,4 +45,18 @@ export const replaceDeviceHandler = asyncHandler(async (req: Request, res: Respo
   sendSuccess(res, await service.replaceDevice(req.businessId!, req.params.deviceId, req.userId!), {
     status: 201,
   });
+});
+
+export const reportDeviceProblemHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = reportDeviceProblemSchema.parse(req.body);
+  sendSuccess(
+    res,
+    await service.reportDeviceProblem(
+      req.businessId!,
+      req.params.deviceId,
+      req.userId!,
+      input,
+      req.branchScope,
+    ),
+  );
 });

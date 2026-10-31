@@ -20,6 +20,12 @@ const envSchema = z
     JWT_REFRESH_TTL: z.string().default("30d"),
 
     CORS_ORIGINS: z.string().default(""),
+    // Shared with the dashboard and admin servers so they can pass on the
+    // user's real IP (see middleware/clientIp.ts). Required in staging and production.
+    INTERNAL_API_SECRET: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.string().min(32, "Must be at least 32 characters").optional(),
+    ),
     // Business dashboard origin, used to build invitation links.
     DASHBOARD_URL: z.url().default("http://localhost:3000"),
 
@@ -51,6 +57,13 @@ const envSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["CORS_ORIGINS"],
+        message: "Required in staging and production",
+      });
+    }
+    if (!e.INTERNAL_API_SECRET) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["INTERNAL_API_SECRET"],
         message: "Required in staging and production",
       });
     }

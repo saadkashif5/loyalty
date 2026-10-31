@@ -21,7 +21,10 @@ import {
   activateDeviceHandler,
   revokeDeviceHandler,
   replaceDeviceHandler,
+  reportDeviceProblemHandler,
 } from "@/modules/devices/devices.controller";
+import { getCustomerHandler, listCustomersHandler } from "@/modules/customers/customers.controller";
+import { onboardingHandler } from "@/modules/businesses/businesses.controller";
 import {
   createManualStampHandler,
   listBusinessStampsHandler,
@@ -87,10 +90,18 @@ router.patch(
 );
 
 // NFC devices
+// Staff can see their stampers so they can report a problem with one.
 router.get(
   "/devices",
-  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }),
+  requireBusinessRole({
+    permission: [BUSINESS_PERMISSIONS.DEVICE_MANAGE, BUSINESS_PERMISSIONS.DEVICE_REPORT_PROBLEM],
+  }),
   listDevicesHandler,
+);
+router.post(
+  "/devices/:deviceId/report",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_REPORT_PROBLEM }),
+  reportDeviceProblemHandler,
 );
 router.post(
   "/devices/activate",
@@ -106,6 +117,25 @@ router.post(
   "/devices/:deviceId/replace",
   requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }),
   replaceDeviceHandler,
+);
+
+// Customers: names with masked contact details, and their history here only.
+router.get(
+  "/customers",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.CUSTOMER_VIEW }),
+  listCustomersHandler,
+);
+router.get(
+  "/customers/:customerId",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.CUSTOMER_VIEW }),
+  getCustomerHandler,
+);
+
+// Setup checklist for the onboarding wizard.
+router.get(
+  "/onboarding",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.CUSTOMER_VIEW }),
+  onboardingHandler,
 );
 
 // Loyalty activity

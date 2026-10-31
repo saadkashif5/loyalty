@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { API_BASE_URL, ApiRequestError, apiFetch } from "@/lib/api";
+import { clientHeaders } from "@/lib/forwarding";
 import {
   clearSessionCookies,
   getAccessToken,
@@ -22,6 +23,7 @@ async function postAuth(path: string, body: Record<string, unknown>, token?: str
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(await clientHeaders()),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),

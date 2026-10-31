@@ -5,6 +5,7 @@ import {
   REFRESH_COOKIE_OPTIONS,
   REFRESH_TOKEN_COOKIE,
 } from "@/lib/cookies";
+import { clientHeadersFrom } from "@/lib/forwarding";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000/api/v1";
 
@@ -26,10 +27,7 @@ export async function proxy(request: NextRequest) {
 
   const refreshed = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": request.headers.get("user-agent") ?? "",
-    },
+    headers: { "Content-Type": "application/json", ...clientHeadersFrom(request.headers) },
     body: JSON.stringify({ refreshToken }),
     cache: "no-store",
   }).catch(() => null);

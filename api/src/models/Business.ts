@@ -22,6 +22,11 @@ const businessSchema = new Schema(
       enum: Object.values(BUSINESS_STATUS),
       default: BUSINESS_STATUS.PENDING,
     },
+    // Why the platform suspended the business; shown on its read-only dashboard.
+    suspension: {
+      reason: { type: String, maxlength: 500 },
+      at: { type: Date },
+    },
     settings: { type: Schema.Types.Mixed, default: {} },
   },
   { timestamps: true },

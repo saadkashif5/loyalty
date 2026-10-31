@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { requestId } from "@/middleware/requestId";
+import { clientIp } from "@/middleware/clientIp";
 import { globalRateLimiter } from "@/middleware/rateLimit";
 import { errorHandler, notFoundHandler } from "@/middleware/errorHandler";
 import apiRoutes from "@/routes";
@@ -29,6 +30,7 @@ export function createApp(): Express {
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
   app.use(requestId);
+  app.use(clientIp);
   app.use(
     pinoHttp({
       logger,

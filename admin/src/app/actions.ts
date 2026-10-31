@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { API_BASE_URL, ApiRequestError, apiFetch } from "@/lib/api";
+import { clientHeaders } from "@/lib/forwarding";
 import { clearSessionCookies, getRefreshToken, setSessionCookies } from "@/lib/session";
 
 export interface FormState {
@@ -29,7 +30,7 @@ export interface LoginState extends FormState {
 async function postAuth(path: string, body: Record<string, unknown>) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await clientHeaders()) },
     body: JSON.stringify(body),
     cache: "no-store",
   });

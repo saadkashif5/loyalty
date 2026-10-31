@@ -1,29 +1,17 @@
 import { cookies } from "next/headers";
+import {
+  ACCESS_COOKIE_OPTIONS,
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_COOKIE_OPTIONS,
+  REFRESH_TOKEN_COOKIE,
+} from "./cookies";
 
-export const ACCESS_TOKEN_COOKIE = "tts_access";
-export const REFRESH_TOKEN_COOKIE = "tts_refresh";
+export { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE };
 
-// Tokens live in httpOnly cookies rather than localStorage so page scripts —
-// and anything injected into them — cannot read them (§30, §31).
 export async function setSessionCookies(tokens: { accessToken: string; refreshToken: string }) {
   const store = await cookies();
-  const secure = process.env.NODE_ENV === "production";
-
-  store.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    maxAge: 60 * 15,
-  });
-
-  store.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  store.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, ACCESS_COOKIE_OPTIONS);
+  store.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, REFRESH_COOKIE_OPTIONS);
 }
 
 export async function clearSessionCookies() {

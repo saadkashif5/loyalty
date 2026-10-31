@@ -27,8 +27,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const input = acceptInvitationSchema.parse(req.body ?? {});
     const result = await service.acceptInvitation(req.params.token, input, req.userId, {
-      userAgent: req.header("user-agent"),
-      ip: req.ip,
+      userAgent: req.clientUserAgent,
+      ip: req.clientIp,
     });
     sendSuccess(res, result, { status: 201 });
   }),

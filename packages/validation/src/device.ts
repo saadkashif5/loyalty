@@ -36,3 +36,11 @@ export const revokeDeviceSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 export type RevokeDeviceInput = z.infer<typeof revokeDeviceSchema>;
+
+// Staff report a problem with a stamper. LOST revokes it at once: a stamper in
+// someone else's hands must not keep issuing stamps.
+export const reportDeviceProblemSchema = z.object({
+  reason: z.enum(["LOST", "DAMAGED", "NOT_WORKING"]),
+  note: z.string().max(500).optional(),
+});
+export type ReportDeviceProblemInput = z.infer<typeof reportDeviceProblemSchema>;

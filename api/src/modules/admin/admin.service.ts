@@ -55,6 +55,8 @@ export async function setBusinessStatus(
   if (!business) throw ApiError.notFound("Business not found");
 
   business.status = status;
+  business.suspension =
+    status === BUSINESS_STATUS.SUSPENDED ? { reason, at: new Date() } : undefined;
   await business.save();
 
   // Suspension must also stop the hardware: an active stamper at a suspended

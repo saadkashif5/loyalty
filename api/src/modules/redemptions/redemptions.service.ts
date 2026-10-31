@@ -138,16 +138,19 @@ export async function validateRedemption(params: {
 
 export async function listBusinessRedemptions(
   businessId: string,
-  options: { page: number; limit: number },
+  options: { page: number; limit: number; branchIds?: string[] },
 ) {
+  const filter: Record<string, unknown> = { businessId };
+  if (options.branchIds?.length) filter.branchId = { $in: options.branchIds };
+
   const [items, total] = await Promise.all([
-    Redemption.find({ businessId })
+    Redemption.find(filter)
       .sort({ createdAt: -1 })
       .skip((options.page - 1) * options.limit)
       .limit(options.limit)
       .populate("rewardId", "name")
       .populate("customerId", "name email"),
-    Redemption.countDocuments({ businessId }),
+    Redemption.countDocuments(filter),
   ]);
 
   return { items, total };

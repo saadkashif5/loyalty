@@ -18,13 +18,39 @@ import {
 
 const router = Router();
 
-// Stricter limits on credential-guessing-prone routes (§14, §30).
-const authRateLimiter = createRateLimiter({ name: "auth", windowMs: 60_000, max: 10 });
+// Credential-guessing protection (§14, §30) is mainly per account and per
+// sign-in challenge. Per-address limits stay generous: Pakistani mobile
+// networks put very many customers behind one carrier-grade NAT address.
+const authRateLimiter = createRateLimiter({ name: "auth", windowMs: 60_000, max: 30 });
+const refreshRateLimiter = createRateLimiter({ name: "refresh", windowMs: 60_000, max: 120 });
+
+// Failed passwords per account, from any number of addresses. Someone can
+// still lock an account for 15 minutes on purpose; that is the usual trade-off.
+const loginAccountLimiter = createRateLimiter({
+  name: "login-account",
+  windowMs: 15 * 60_000,
+  max: 10,
+  failuresOnly: true,
+  key: (req) =>
+    String(req.body?.email ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 254),
+});
+
+// Five code attempts per sign-in challenge; after that, start again with the password.
+const mfaChallengeLimiter = createRateLimiter({
+  name: "mfa-challenge",
+  windowMs: 5 * 60_000,
+  max: 5,
+  failuresOnly: true,
+  key: (req) => String(req.body?.mfaToken ?? "").slice(-64),
+});
 
 router.post("/register", authRateLimiter, registerHandler);
-router.post("/login", authRateLimiter, loginHandler);
-router.post("/login/mfa", authRateLimiter, mfaLoginHandler);
-router.post("/refresh", authRateLimiter, refreshHandler);
+router.post("/login", authRateLimiter, loginAccountLimiter, loginHandler);
+router.post("/login/mfa", authRateLimiter, mfaChallengeLimiter, mfaLoginHandler);
+router.post("/refresh", refreshRateLimiter, refreshHandler);
 router.post("/logout", logoutHandler);
 
 // Two-step verification for the signed-in user.

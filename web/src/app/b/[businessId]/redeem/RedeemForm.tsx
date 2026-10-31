@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { validateRedemptionAction } from "@/app/actions/business";
-import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
+import { Button, Card, ErrorText, Field, Input, Select } from "@/components/ui";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -14,7 +14,13 @@ function SubmitButton() {
   );
 }
 
-export function RedeemForm({ businessId }: { businessId: string }) {
+export function RedeemForm({
+  businessId,
+  branches,
+}: {
+  businessId: string;
+  branches: Array<{ _id: string; name: string }>;
+}) {
   const action = validateRedemptionAction.bind(null, businessId);
   const [state, formAction] = useActionState(action, {});
 
@@ -31,6 +37,20 @@ export function RedeemForm({ businessId }: { businessId: string }) {
             className="text-center text-lg uppercase tracking-widest"
           />
         </Field>
+
+        {branches.length > 1 ? (
+          <Field label="Branch">
+            <Select name="branchId" required>
+              {branches.map((b) => (
+                <option key={b._id} value={b._id}>
+                  {b.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : branches.length === 1 ? (
+          <input type="hidden" name="branchId" value={branches[0]._id} />
+        ) : null}
 
         <ErrorText>{state.error}</ErrorText>
         {state.success ? (

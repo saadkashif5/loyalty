@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
+import { assertBranchInScope } from "@/middleware/requireBusinessRole";
 import { createManualStampSchema, createStampSchema } from "@taptapsell/validation";
 import * as service from "./stamps.service";
 
@@ -24,6 +25,7 @@ export const createStampHandler = asyncHandler(async (req: Request, res: Respons
 
 export const createManualStampHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = createManualStampSchema.parse(req.body);
+  assertBranchInScope(req, input.branchId);
 
   const result = await service.createManualStamp({
     businessId: req.businessId!,
@@ -44,11 +46,12 @@ export const listBusinessStampsHandler = asyncHandler(async (req: Request, res: 
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
   const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+  if (branchId) assertBranchInScope(req, branchId);
 
   const { items, total } = await service.listBusinessStamps(req.businessId!, {
     page,
     limit,
-    branchId,
+    branchIds: branchId ? [branchId] : req.branchScope,
   });
 
   sendSuccess(res, items, { meta: { page, limit, total } });

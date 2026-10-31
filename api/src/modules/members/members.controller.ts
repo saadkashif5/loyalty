@@ -29,3 +29,8 @@ export const acceptInviteHandler = asyncHandler(async (req: Request, res: Respon
   const member = await service.acceptInvite(req.params.businessId, req.userId!);
   sendSuccess(res, member);
 });
+
+export const declineInviteHandler = asyncHandler(async (req: Request, res: Response) => {
+  await service.declineInvite(req.params.businessId, req.userId!);
+  sendSuccess(res, { declined: true });
+});

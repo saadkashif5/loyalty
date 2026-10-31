@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { Card, EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { CreateProgramForm } from "./CreateProgramForm";
@@ -46,7 +47,15 @@ export default async function ProgramsPage({
                         : null}
                     </p>
                   </div>
-                  <StatusBadge status={program.status} />
+                  <div className="flex flex-col items-end gap-2">
+                    <StatusBadge status={program.status} />
+                    <Link
+                      href={`/b/${businessId}/programs/${program._id}`}
+                      className="text-sm text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </div>
                 </div>
               </Card>
             ))

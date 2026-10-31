@@ -7,6 +7,7 @@ import {
   inviteMemberHandler,
   updateMemberHandler,
   acceptInviteHandler,
+  declineInviteHandler,
 } from "./members.controller";
 
 // Mounted at /api/v1/businesses/:businessId/members
@@ -17,6 +18,7 @@ router.use(requireAuth);
 // Accepting an invite happens before membership is ACTIVE, so it cannot sit
 // behind requireBusinessRole.
 router.post("/accept", acceptInviteHandler);
+router.post("/decline", declineInviteHandler);
 
 router.get(
   "/",

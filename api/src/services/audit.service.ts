@@ -21,6 +21,8 @@ export const AUDIT_ACTIONS = {
   DEVICE_ACTIVATED: "device.activated",
   DEVICE_REVOKED: "device.revoked",
   DEVICE_REPLACED: "device.replaced",
+  DEVICE_PROBLEM_REPORTED: "device.problem_reported",
+  MEMBER_JOINED: "member.joined",
   REWARD_CREATED: "reward.created",
   REWARD_UPDATED: "reward.updated",
   REDEMPTION_CREATED: "redemption.created",

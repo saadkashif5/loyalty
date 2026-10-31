@@ -92,5 +92,22 @@ export async function acceptInvite(businessId: string, userId: string) {
 
   member.status = MEMBER_STATUS.ACTIVE;
   await member.save();
+
+  await recordAudit({
+    actorUserId: userId,
+    businessId,
+    action: AUDIT_ACTIONS.MEMBER_JOINED,
+    resourceType: "BusinessMember",
+    resourceId: member._id,
+  });
   return member;
+}
+
+export async function declineInvite(businessId: string, userId: string) {
+  const result = await BusinessMember.deleteOne({
+    businessId,
+    userId,
+    status: MEMBER_STATUS.INVITED,
+  });
+  if (result.deletedCount !== 1) throw ApiError.notFound("No pending invitation found");
 }

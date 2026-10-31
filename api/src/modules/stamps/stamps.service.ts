@@ -400,10 +400,10 @@ export async function listCustomerStamps(customerId: string, limit = 50) {
 
 export async function listBusinessStamps(
   businessId: string,
-  options: { page: number; limit: number; branchId?: string },
+  options: { page: number; limit: number; branchIds?: string[] },
 ) {
   const filter: Record<string, unknown> = { businessId };
-  if (options.branchId) filter.branchId = options.branchId;
+  if (options.branchIds?.length) filter.branchId = { $in: options.branchIds };
 
   const [items, total] = await Promise.all([
     Stamp.find(filter)

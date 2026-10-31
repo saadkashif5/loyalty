@@ -19,3 +19,11 @@ export const updateBusinessHandler = asyncHandler(async (req: Request, res: Resp
   const business = await service.updateBusiness(req.businessId!, req.userId!, input);
   sendSuccess(res, business);
 });
+
+export const myInvitationsHandler = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await service.listMyPendingInvitations(req.userId!));
+});
+
+export const onboardingHandler = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await service.getOnboardingStatus(req.businessId!));
+});

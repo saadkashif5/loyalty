@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
-import { BusinessMember } from "@/models";
+import { Business, BusinessMember } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { mfaSetupRequired } from "@/middleware/auth";
 import {
   BUSINESS_ROLE_HIERARCHY,
   BUSINESS_ROLES,
+  BUSINESS_STATUS,
   DEFAULT_ROLE_PERMISSIONS,
   MEMBER_STATUS,
   type BusinessPermission,
@@ -16,23 +17,32 @@ declare module "express-serve-static-core" {
     businessId?: string;
     businessRole?: BusinessRole;
     businessPermissions?: BusinessPermission[];
+    /** Branches this member may act at; empty means every branch. */
+    branchScope?: string[];
   }
 }
 
 interface Options {
   /** Minimum role in the hierarchy (OWNER > MANAGER > STAFF). */
   minRole?: BusinessRole;
-  /** Specific permission required, checked against role defaults + member overrides. */
-  permission?: BusinessPermission;
+  /** Permission required (or any one of several), checked against role defaults + member overrides. */
+  permission?: BusinessPermission | BusinessPermission[];
   /** Route param holding the business id. Defaults to "businessId". */
   paramName?: string;
 }
+
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 // Full server-side authorization chain per PRD §29:
 // authenticated user -> business membership -> role -> permission -> resource scope.
 // Every business-scoped route must apply this after requireAuth.
 export function requireBusinessRole(options: Options = {}) {
   const paramName = options.paramName ?? "businessId";
+  const required = options.permission
+    ? Array.isArray(options.permission)
+      ? options.permission
+      : [options.permission]
+    : [];
 
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     if (!req.userId) {
@@ -46,9 +56,12 @@ export function requireBusinessRole(options: Options = {}) {
       return;
     }
 
-    const member = await BusinessMember.findOne({ userId: req.userId, businessId });
+    const [member, business] = await Promise.all([
+      BusinessMember.findOne({ userId: req.userId, businessId }),
+      Business.findById(businessId).select("status suspension"),
+    ]);
 
-    if (!member || member.status !== MEMBER_STATUS.ACTIVE) {
+    if (!member || member.status !== MEMBER_STATUS.ACTIVE || !business) {
       // Same error for "not a member" and "disabled member" — avoids leaking membership existence.
       next(ApiError.forbidden("You do not have access to this business"));
       return;
@@ -57,6 +70,19 @@ export function requireBusinessRole(options: Options = {}) {
     // Owners control the whole tenant, so they must use two-step verification.
     if (member.role === BUSINESS_ROLES.OWNER && !req.mfaEnabled) {
       next(mfaSetupRequired());
+      return;
+    }
+
+    // A suspended business keeps read access to its data but can change nothing (§60).
+    if (business.status === BUSINESS_STATUS.SUSPENDED && !READ_METHODS.has(req.method)) {
+      const reason = business.suspension?.reason;
+      next(
+        new ApiError(
+          403,
+          "BUSINESS_SUSPENDED",
+          `This business is suspended${reason ? `: ${reason}` : ""}. Contact TapTapSell to restore it.`,
+        ),
+      );
       return;
     }
 
@@ -74,7 +100,7 @@ export function requireBusinessRole(options: Options = {}) {
       ...(member.permissions as BusinessPermission[]),
     ]);
 
-    if (options.permission && !effectivePermissions.has(options.permission)) {
+    if (required.length > 0 && !required.some((p) => effectivePermissions.has(p))) {
       next(ApiError.forbidden());
       return;
     }
@@ -82,6 +108,21 @@ export function requireBusinessRole(options: Options = {}) {
     req.businessId = businessId;
     req.businessRole = member.role as BusinessRole;
     req.businessPermissions = Array.from(effectivePermissions);
+    // Owners always see every branch; others are limited to their assigned branches, if any.
+    req.branchScope =
+      member.role === BUSINESS_ROLES.OWNER ? [] : member.branchIds.map((id) => id.toString());
     next();
   };
+}
+
+/** Rejects acting at a branch outside the member's assigned branches. */
+export function assertBranchInScope(req: Request, branchId: string | undefined): void {
+  const scope = req.branchScope ?? [];
+  if (scope.length === 0) return;
+  if (!branchId) {
+    throw ApiError.badRequest("Choose the branch you are working at");
+  }
+  if (!scope.includes(branchId)) {
+    throw ApiError.forbidden("You can only do this at the branches you are assigned to");
+  }
 }

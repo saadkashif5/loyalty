@@ -4,6 +4,7 @@ import { requireBusinessRole } from "@/middleware/requireBusinessRole";
 import { BUSINESS_PERMISSIONS } from "@taptapsell/constants";
 import {
   listMyBusinessesHandler,
+  myInvitationsHandler,
   getBusinessHandler,
   updateBusinessHandler,
 } from "./businesses.controller";
@@ -15,6 +16,8 @@ router.use(requireAuth);
 // No create route: businesses are created by the platform and owners join by
 // invitation (POST /admin/businesses, then /invitations/:token/accept).
 router.get("/", listMyBusinessesHandler);
+// Staff invitations for the signed-in user (before "/:businessId", which would match it).
+router.get("/invitations", myInvitationsHandler);
 
 router.get(
   "/:businessId",

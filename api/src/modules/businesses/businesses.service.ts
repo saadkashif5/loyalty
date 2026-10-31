@@ -1,9 +1,14 @@
 import mongoose from "mongoose";
-import { Business, BusinessMember } from "@/models";
+import { Branch, Business, BusinessMember, LoyaltyProgram, NfcDevice, Reward } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { slugify, randomCode } from "@/utils/codes";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
-import { BUSINESS_ROLES, MEMBER_STATUS, BUSINESS_STATUS } from "@taptapsell/constants";
+import {
+  BUSINESS_ROLES,
+  MEMBER_STATUS,
+  BUSINESS_STATUS,
+  DEVICE_STATUS,
+} from "@taptapsell/constants";
 import type { CreateBusinessInput, UpdateBusinessInput } from "@taptapsell/validation";
 
 export async function generateUniqueSlug(name: string): Promise<string> {
@@ -98,5 +103,50 @@ export async function listMyBusinesses(userId: string) {
 
   return memberships
     .filter((m) => m.businessId)
-    .map((m) => ({ business: m.businessId, role: m.role }));
+    .map((m) => ({
+      business: m.businessId,
+      role: m.role,
+      // Empty means every branch.
+      branchIds: m.branchIds.map((id) => id.toString()),
+    }));
+}
+
+/** What is left to set up before customers can start collecting stamps. */
+export async function getOnboardingStatus(businessId: string) {
+  const [business, branches, programs, rewards, activeStampers, members] = await Promise.all([
+    Business.findById(businessId).select("contact description"),
+    Branch.countDocuments({ businessId }),
+    LoyaltyProgram.countDocuments({ businessId }),
+    Reward.countDocuments({ businessId }),
+    NfcDevice.countDocuments({ businessId, status: DEVICE_STATUS.ACTIVE }),
+    BusinessMember.countDocuments({ businessId }),
+  ]);
+
+  const steps = {
+    profile: Boolean(business?.contact?.phone && business?.contact?.address),
+    branch: branches > 0,
+    program: programs > 0,
+    reward: rewards > 0,
+    stamper: activeStampers > 0,
+    // Optional: a business may run with the owner alone.
+    staff: members > 1,
+  };
+  const required = [steps.profile, steps.branch, steps.program, steps.reward, steps.stamper];
+
+  return { steps, ready: required.every(Boolean) };
+}
+
+/** Staff invitations waiting for the signed-in user to accept or decline. */
+export async function listMyPendingInvitations(userId: string) {
+  const memberships = await BusinessMember.find({
+    userId,
+    status: MEMBER_STATUS.INVITED,
+  }).populate<{ businessId: { _id: unknown; name: string; status: string } | null }>(
+    "businessId",
+    "name status",
+  );
+
+  return memberships
+    .filter((m) => m.businessId)
+    .map((m) => ({ business: m.businessId, role: m.role, invitedAt: m.createdAt }));
 }

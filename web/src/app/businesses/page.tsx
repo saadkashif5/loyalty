@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { apiFetch, ApiRequestError } from "@/lib/api";
-import { Card, EmptyState, LinkButton, PageHeader, StatusBadge } from "@/components/ui";
+import { acceptStaffInviteAction, declineStaffInviteAction } from "@/app/actions/business";
+import {
+  Button,
+  Card,
+  EmptyState,
+  LinkButton,
+  PageHeader,
+  SecondaryButton,
+  StatusBadge,
+} from "@/components/ui";
 
 interface Membership {
   role: string;
@@ -13,11 +22,20 @@ interface Membership {
   } | null;
 }
 
+interface PendingInvitation {
+  business: { _id: string; name: string };
+  role: string;
+}
+
 export default async function BusinessesPage() {
   let memberships: Membership[];
+  let invitations: PendingInvitation[];
 
   try {
-    memberships = await apiFetch<Membership[]>("/businesses");
+    [memberships, invitations] = await Promise.all([
+      apiFetch<Membership[]>("/businesses"),
+      apiFetch<PendingInvitation[]>("/businesses/invitations"),
+    ]);
   } catch (error) {
     if (error instanceof ApiRequestError && error.status === 401) redirect("/login");
     throw error;
@@ -33,12 +51,37 @@ export default async function BusinessesPage() {
         action={<LinkButton href="/account/security">Security</LinkButton>}
       />
 
-      {valid.length === 0 ? (
+      {invitations.length > 0 ? (
+        <section className="mb-6 space-y-3">
+          <h2 className="text-sm font-semibold text-slate-700">Invitations</h2>
+          {invitations.map((inv) => (
+            <Card
+              key={inv.business._id}
+              className="flex flex-wrap items-center justify-between gap-4"
+            >
+              <p className="text-sm">
+                <span className="font-medium">{inv.business.name}</span> invited you to join as{" "}
+                {inv.role.toLowerCase()}.
+              </p>
+              <div className="flex gap-2">
+                <form action={acceptStaffInviteAction.bind(null, inv.business._id)}>
+                  <Button type="submit">Accept</Button>
+                </form>
+                <form action={declineStaffInviteAction.bind(null, inv.business._id)}>
+                  <SecondaryButton type="submit">Decline</SecondaryButton>
+                </form>
+              </div>
+            </Card>
+          ))}
+        </section>
+      ) : null}
+
+      {valid.length === 0 && invitations.length === 0 ? (
         <EmptyState>
           You do not manage a business yet. Businesses join TapTapSell by invitation: open the link
           in the invitation you received, or ask the business owner to add you as staff.
         </EmptyState>
-      ) : (
+      ) : valid.length === 0 ? null : (
         <ul className="space-y-3">
           {valid.map((m) => (
             <li key={m.business!._id}>

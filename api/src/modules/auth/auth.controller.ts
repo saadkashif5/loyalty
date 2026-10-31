@@ -15,7 +15,7 @@ import { listActiveSessions, revokeOtherSessions, revokeSession } from "./token.
 import { toPublicUser } from "./auth.serializer";
 
 function context(req: Request) {
-  return { userAgent: req.header("user-agent"), ip: req.ip };
+  return { userAgent: req.clientUserAgent, ip: req.clientIp };
 }
 
 export const registerHandler = asyncHandler(async (req: Request, res: Response) => {
