@@ -21,10 +21,15 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" });
 }
 
-export default async function ActivityPage({ params }: { params: { businessId: string } }) {
+export default async function ActivityPage({
+  params,
+}: {
+  params: Promise<{ businessId: string }>;
+}) {
+  const { businessId } = await params;
   const [stamps, redemptions] = await Promise.all([
-    apiFetch<Stamp[]>(`/businesses/${params.businessId}/stamps?limit=25`),
-    apiFetch<RedemptionRecord[]>(`/businesses/${params.businessId}/redemptions?limit=25`),
+    apiFetch<Stamp[]>(`/businesses/${businessId}/stamps?limit=25`),
+    apiFetch<RedemptionRecord[]>(`/businesses/${businessId}/redemptions?limit=25`),
   ]);
 
   return (

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { registerAction } from "@/app/actions/auth";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
 
@@ -15,7 +16,7 @@ function SubmitButton() {
 }
 
 export default function RegisterPage() {
-  const [state, formAction] = useFormState(registerAction, {});
+  const [state, formAction] = useActionState(registerAction, {});
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">

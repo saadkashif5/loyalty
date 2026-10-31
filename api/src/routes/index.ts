@@ -6,6 +6,7 @@ import discoveryRoutes from "@/modules/businesses/discovery.routes";
 import businessScopedRoutes from "./business.routes";
 import cardsRoutes from "@/modules/loyalty/cards.routes";
 import stampsRoutes from "@/modules/stamps/stamps.routes";
+import tapsRoutes from "@/modules/taps/taps.routes";
 import redemptionsRoutes from "@/modules/redemptions/redemptions.routes";
 import notificationsRoutes from "@/modules/notifications/notifications.routes";
 import adminRoutes from "@/modules/admin/admin.routes";
@@ -25,6 +26,7 @@ router.use("/businesses/:businessId", businessScopedRoutes);
 
 // Customer app surface
 router.use("/loyalty-cards", cardsRoutes);
+router.use("/taps", tapsRoutes);
 router.use("/stamps", stampsRoutes);
 router.use("/redemptions", redemptionsRoutes);
 router.use("/notifications", notificationsRoutes);

@@ -20,7 +20,6 @@ const redemptionSchema = new Schema(
   { timestamps: true },
 );
 
-redemptionSchema.index({ redemptionCode: 1 }, { unique: true });
 redemptionSchema.index({ businessId: 1, createdAt: -1 });
 
 export const Redemption = model("Redemption", redemptionSchema, "redemptions");

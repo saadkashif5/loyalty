@@ -9,8 +9,13 @@ interface Branch {
   status: string;
 }
 
-export default async function BranchesPage({ params }: { params: { businessId: string } }) {
-  const branches = await apiFetch<Branch[]>(`/businesses/${params.businessId}/branches`);
+export default async function BranchesPage({
+  params,
+}: {
+  params: Promise<{ businessId: string }>;
+}) {
+  const { businessId } = await params;
+  const branches = await apiFetch<Branch[]>(`/businesses/${businessId}/branches`);
 
   return (
     <>
@@ -37,7 +42,7 @@ export default async function BranchesPage({ params }: { params: { businessId: s
           )}
         </div>
 
-        <CreateBranchForm businessId={params.businessId} />
+        <CreateBranchForm businessId={businessId} />
       </div>
     </>
   );

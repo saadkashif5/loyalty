@@ -12,7 +12,9 @@ import apiRoutes from "@/routes";
 export function createApp(): Express {
   const app = express();
 
-  const allowedOrigins = env.CORS_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean);
+  const allowedOrigins = env.CORS_ORIGINS.split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAccessToken } from "@/lib/session";
 
-export default function HomePage() {
-  redirect(getAccessToken() ? "/businesses" : "/login");
+export default async function HomePage() {
+  redirect((await getAccessToken()) ? "/businesses" : "/login");
 }

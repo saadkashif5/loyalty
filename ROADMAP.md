@@ -1,0 +1,599 @@
+# TapTapSell Loyalty — Product & Engineering Roadmap
+
+_Drafted 2026-10-30. Builds on [PRD.md](PRD.md) and the current state recorded in [TODO.md](TODO.md).
+Where this document and the PRD disagree, this document reflects the newer product direction._
+
+TapTapSell Loyalty is a multi-tenant SaaS platform for Pakistani businesses. Customers collect
+digital stamps by tapping a passive NFC stamper with their phone. Businesses pay a monthly subscription.
+The platform owner (Super Admin) controls who gets onboarded and whether they have paid.
+
+---
+
+## 1. What changes from today
+
+| Topic | Built today / PRD assumption | New direction |
+|---|---|---|
+| Business onboarding | Anyone registers and creates a business (self-serve) | **Invite-only.** Super Admin invites a business owner; the owner gets their own dashboard |
+| Customer surface | Native Expo app is primary | **Mobile web portal** opened by tapping the stamper. No install required. Native app deferred |
+| Customer login | Email + password | **Phone number + one-time code** (WhatsApp first, SMS fallback) |
+| Join flow | Customer finds business in app and taps "Join" | **First tap** on the stamper opens the portal → sign up → joined to that business's program |
+| Stamp flow | App reads tag, posts the static device identifier | **Every tap produces a one-time cryptographic URL** (see §3, D1). Tapping again while the portal is open records a stamp |
+| Tenancy | Per-business data, customer identity global | Same, made explicit: one customer account, a **separate card per business program**, a separate customer relationship per business |
+| Monetisation | Not built | **Monthly subscription plans in PKR**, trials, invoices, local payment methods, dunning, auto-suspension, Super Admin finance console |
+| Platform admin | API only, no UI, no way to create admins (seed script added) | Full admin console with MFA, on its own subdomain |
+| Scale | Single API process, in-memory rate limits, unbounded queries | Horizontally scalable services, Redis, queues, pre-aggregated analytics, sharding-ready data model |
+
+---
+
+## 2. Target end-to-end flow
+
+```
+SUPER ADMIN                     BUSINESS OWNER                       CUSTOMER
+───────────                     ──────────────                       ────────
+1. Creates business record,
+   picks plan + trial,
+   invites owner (email/WhatsApp) ─► 2. Opens invite link, sets password,
+                                      verifies phone, enrols MFA
+                                   3. Onboarding wizard: profile, logo,
+                                      branches, loyalty program, rewards,
+                                      staff invites
+4. Provisions stampers (writes keys
+   to NTAG 424 DNA tags), assigns
+   to branch, ships them ───────────► 5. Activates stamper at the branch
+                                                                       6. Makes a purchase. Staff hold the
+                                                                          stamper to the customer's phone
+                                                                       7. Phone opens tap.taptapsell.pk/t?...
+                                                                          (one-time URL from the tag)
+                                                                       8. First time: enter phone → OTP →
+                                                                          name → joined; card created for
+                                                                          THIS business only
+                                                                       9. Portal open → staff tap again →
+                                                                          stamp recorded, card updates live
+                                                                      10. Card full → reward unlocked,
+                                                                          redemption code shown
+                                   11. Staff validate the code at the
+                                       counter (dashboard on their phone)
+12. Monthly: invoice generated,
+    owner pays (gateway / bank /
+    Raast / manual). Unpaid → grace
+    → stamping suspended → reactivated
+    on payment
+```
+
+A customer who visits five businesses has **one account** and **five independent cards**. A business
+only ever sees its own customers, its own cards and its own stamps.
+
+---
+
+## 3. Key design decisions
+
+### D1. Secure taps
+
+> **Decision (2026-10-31):** start on **NTAG 215 with the UID + tap-counter mirror**, and move to
+> NTAG 424 DNA later. Built: `POST /taps` verifies the tap, enforces a strictly increasing counter
+> per stamper, binds the chip UID, and issues a single-use tap token that `POST /stamps` consumes.
+> Chip-specific checks live in `api/src/modules/taps/verifiers/`; switching chips means adding a
+> verifier and changing the stamper's `tagType`. Provisioning steps:
+> [docs/stamper-provisioning.md](docs/stamper-provisioning.md).
+>
+> What NTAG 215 does and does not protect against: a **saved or shared stamper URL cannot be
+> reused**, but the counter is unsigned, so **someone who edits the number in the URL can still
+> forge a tap**. Cooldowns, daily caps, staff-held stampers and anomaly flags carry that risk until
+> the move to NTAG 424 DNA, which this section explains below.
+
+**The problem.** A normal NFC tag (NTAG213/215, what the code assumes today) holds a fixed URL. Once a
+customer taps it once, they can bookmark that URL and open it from home every day. Cooldowns and rate
+limits only slow this down. QR codes printed on the stamper have the same flaw. For a product aimed at
+the masses, this is the single biggest fraud risk.
+
+**The fix.** NTAG 424 DNA is still a passive, battery-free tag, but it supports *Secure Unique NFC
+(SUN)*: on **every tap** it writes a fresh URL containing an encrypted tap counter and a cryptographic
+signature (AES-128 CMAC). The server:
+
+1. Verifies the signature with that tag's key.
+2. Checks the counter is higher than the last one seen (atomic conditional update).
+3. Issues a short-lived, single-use **tap token** (≈2 minutes) bound to that device and counter.
+
+A copied or bookmarked URL is already used and is rejected. Phones read it as an ordinary NDEF URL, so
+iPhones (XS and later, in the background) and NFC Android phones open it without any app.
+
+**Consequences**
+- Tags cost more than NTAG213 (still low single-digit USD in volume; confirm with suppliers).
+- The platform needs a **provisioning step**: an admin tool plus an NFC writer (USB reader or an
+  Android phone) to write per-tag keys and the URL template before shipping.
+- Per-tag keys are **derived from a master key held in a cloud KMS**, never stored in plaintext.
+- The static QR code on the stamper is downgraded to **onboarding only** (open the business page and
+  join). It never grants a stamp.
+
+**Phones without NFC** (common on budget Android, and iPhone 7–X in a browser): staff use **counter
+mode** in the dashboard. The customer shows a rotating signed QR from their portal card, or staff look
+them up by phone number, and staff grant the stamp. These stamps are attributed to the staff member,
+capped per day and audited.
+
+### D2. Customer identity: phone number + OTP
+
+- Pakistani customers expect phone-based sign-up. The phone number is normalised to E.164 (+92…).
+- Codes are sent over **WhatsApp (authentication template) first, SMS fallback**. This is cheaper and has
+  better delivery than SMS alone.
+- Customers have **one global account**. Businesses see the **name and a masked phone number**
+  (+92 3•• •••4567) by default. Marketing contact requires per-business opt-in consent.
+- Business users (owners, managers, staff) and platform admins keep email + password, with **TOTP MFA
+  mandatory** for Owners and all platform admins.
+
+### D3. Customer surface: a mobile-web PWA portal
+
+- Opens instantly from a tap; no app store step; works on Chrome Android and Safari iOS.
+- Small JavaScript budget for low-end phones and expensive data.
+- On Android Chrome, the portal can also listen for taps **inside the page** (Web NFC), so the second
+  tap does not open a new tab.
+- The existing Expo app is **frozen, not deleted**. It returns in Phase 6 if the data shows demand.
+
+### D4. Separate front-end apps per audience
+
+| Subdomain | App | Users | Notes |
+|---|---|---|---|
+| `tap.taptapsell.pk` | Customer portal (PWA) | Customers | Tiny bundle, cookie session, Urdu/English |
+| `business.taptapsell.pk` | Business dashboard | Owners, managers, staff | Responsive: staff use it on phones at the counter |
+| `admin.taptapsell.pk` | Platform console | Super Admin, admins | MFA + Cloudflare Access/IP allowlist; isolated deploy |
+| `api.taptapsell.pk` | REST API | All of the above | Stateless, horizontally scaled |
+| `taptapsell.pk` | Marketing site | Public | Pricing, "request access" form |
+
+Separate apps mean separate cookies, separate attack surface and a small customer bundle. Domain names
+are placeholders.
+
+### D5. Multi-tenancy model
+
+- **Shared database, tenant key on every tenant-owned document** (`businessId`). This is what exists
+  today and scales well to tens of thousands of tenants.
+- Isolation moves from "every handler remembers to filter" to **enforced at the data layer**: a
+  Mongoose plugin/repository layer that refuses queries on tenant collections without a `businessId`,
+  plus an automated cross-tenant test generated from the route table.
+- New `business_customers` collection: one row per (business, customer) holding first-seen date,
+  consent flags and branch of acquisition. It drives plan customer limits and future CRM features.
+- Large chains can later be moved to a dedicated cluster without code changes (tenant routing hook).
+
+### D6. Billing model for Pakistan
+
+- Reliable recurring auto-debit is limited in Pakistan (wallet auto-debit is not broadly available to
+  merchants; card tokenisation depends on the gateway). v1 is therefore **invoice-based monthly
+  billing**: an invoice is issued, the owner pays through a hosted checkout (cards, JazzCash, Easypaisa
+  via the chosen gateway), bank transfer/Raast with proof upload, or a manual entry by the Super Admin.
+- A gateway-agnostic `PaymentProvider` interface, so Safepay / PayFast / JazzCash / Easypaisa can be
+  added or swapped. Card auto-charge is added where the chosen gateway supports tokenised recurring
+  payments.
+- Tax: services are subject to **provincial sales tax**, and rates differ by province. Invoices carry
+  NTN/STRN fields and a configurable tax line. Confirm the rules with a tax adviser before launch.
+
+### D7. Hosting
+
+- Region close to Pakistan for latency (Middle East cloud regions). Confirm any data-residency
+  requirements before choosing.
+- MongoDB Atlas (dedicated tier), managed Redis, object storage for logos and invoice PDFs, Cloudflare
+  in front of everything (CDN, WAF, bot protection, DDoS).
+
+---
+
+## 4. Scale & security targets (design assumptions)
+
+These are the numbers the architecture is designed and load-tested against. Adjust them if your
+targets differ.
+
+| Dimension | Design target |
+|---|---|
+| Customers | 10 million accounts |
+| Businesses | 50,000 tenants, 150,000 branches |
+| Stampers | 250,000 devices |
+| Stamps | 5 million / day, **peak 500 taps/second** (lunch, evenings, Ramadan iftar, Eid) |
+| Tap → stamp shown | p95 under 800 ms on a 4G connection; API p95 under 250 ms |
+| Customer portal | First load under 150 KB of gzipped JavaScript; usable on 3G |
+| Availability | 99.9% monthly for tap and stamp paths |
+| Data loss / recovery | RPO 5 minutes (point-in-time backups), RTO 1 hour |
+| Security baseline | OWASP ASVS Level 2; external penetration test before public launch |
+
+---
+
+## 5. Target architecture
+
+```
+                 Cloudflare (CDN · WAF · bot protection · edge rate limits)
+                                       │
+      ┌──────────────┬─────────────────┼──────────────────┬──────────────┐
+   portal (PWA)  business dashboard  admin console     marketing     api.*
+      └──────────────┴────────┬────────┴──────────────────┘              │
+                              ▼                                          │
+                 API service (stateless, autoscaled, ≥2 zones) ◄─────────┘
+                   │            │             │
+                   ▼            ▼             ▼
+            MongoDB Atlas     Redis       Cloud KMS
+            (replica set,   (rate limits,  (SUN master keys,
+             sharding-ready, OTP, tap       secrets)
+             PITR backups)   tokens, cache,
+                   │         job queues)
+                   │            │
+                   ▼            ▼
+            Outbox collection ─► Worker service (BullMQ)
+                                  ├─ notifications: WhatsApp / SMS / email
+                                  ├─ billing: invoices, reminders, suspension
+                                  ├─ analytics: daily aggregates
+                                  └─ exports, PDFs, fraud rules
+```
+
+Key points:
+- **Outbox pattern:** the stamp transaction writes an outbox event in the same transaction; workers
+  deliver notifications and update aggregates. The stamp path never waits on WhatsApp or SMS.
+- **Pre-aggregated analytics:** `business_daily_stats` and similar counters replace the current
+  full-collection scans. Heavy reports read from an analytics node.
+- **Everything shared lives in Redis:** rate limits, OTP state, tap tokens, idempotency and caches. The
+  current in-memory rate limiter does not work with more than one API instance.
+- **Sharding-ready:** stamps, cards and redemptions queries always include `businessId` or
+  `customerId`, so shard keys can be introduced when the data size demands it.
+- **Cursor pagination** everywhere (the current `skip`-based pagination degrades on large collections).
+
+---
+
+## 6. Phased plan
+
+Legend: `[x]` done · `[~]` partly done (see the note) · `[ ]` not started.
+
+Each phase lists its goal, the work, and exit criteria. Phases 0–3 are sequential. Phase 4 starts in
+parallel with Phase 2 and must finish before public launch.
+
+### Phase 0 — Stabilise the foundation and lock decisions
+
+**Goal:** a reliable base to build on, and the decisions that unblock everything else.
+
+Engineering
+- [x] Run the existing integration suite against the Docker replica set and fix failures
+      — _it had never run; fixed branch creation (500 on every branch without a location) and
+      too-short test keys; now 24 tests_
+- [~] CI on every push: lint, typecheck, unit + integration tests, build (GitHub Actions)
+      — _`.github/workflows/ci.yml` written and every step passes locally; first GitHub run
+      happens on the next push_
+- [~] ESLint + Prettier + commit hooks; dependency, secret and SAST scanning in CI
+      — _ESLint 9, Prettier, EditorConfig and a lint-staged pre-commit hook in place; `npm audit`
+      (0 vulnerabilities after upgrading Next.js 14→16, React 18→19, zod 3→4), gitleaks, CodeQL
+      and Dependabot configured, pending the first GitHub run_
+- [ ] Repo layout for multiple apps: `api`, `worker`, `portal`, `dashboard` (current `web`), `admin`,
+      shared `packages/*` — _deferred to Phase 1, when the admin console is the first new app_
+- [~] Add Redis; move rate limiting, idempotency and caching onto it
+      — _Redis in `docker-compose.yml`; every rate limiter uses it when `REDIS_URL` is set
+      (verified: 429 after the 10th login across a shared store); required in staging and
+      production. Stamp idempotency stays on MongoDB's unique index by design. Caching moves to
+      Phase 4_
+- [x] Error tracking (Sentry or equivalent) for API and web apps; structured logs without PII
+      — _Sentry in the API (5xx only, cookies, auth headers and bodies stripped) and in the web
+      app (server, edge and browser); off unless a DSN is configured_
+- [~] Environments: development, staging, production with separate databases, secrets and keys
+      — _[docs/environments.md](docs/environments.md); the API refuses to start in staging or
+      production without Redis, without CORS origins, or with identical JWT secrets. Provisioning
+      the actual staging and production infrastructure is still to do_
+- [~] Fix known defects: manual stamp (no transaction, no cooldown, no route), duplicate
+      `redemptionCode` index, reward-tier selection, analytics `distinct` over all stamps,
+      raw Mongoose documents returned to clients (add response serializers)
+      — _all fixed and tested except response serializers. Also fixed: the compiled API could
+      not start (`node dist/server.js` crashed on the shared TypeScript packages); it is now
+      bundled with tsup_
+- [x] Seed scripts: Super Admin, demo business, demo customers — _`seed:admin`, `seed:demo`_
+
+Decisions (Architecture Decision Records in `docs/adr/`)
+- [x] NFC tag model — [ADR 0001](docs/adr/0001-nfc-tag-model.md): NTAG 215 with counter mirror
+      now, NTAG 424 DNA later
+- [ ] OTP providers (WhatsApp Business API + SMS aggregator) and monthly budget
+- [ ] Payment gateway shortlist and merchant account applications (these take weeks; start now)
+- [ ] Hosting region, domains, data-residency position
+- [ ] Plan prices and limits (see §7)
+
+**Exit:** CI green, integration tests passing, decisions recorded.
+
+---
+
+### Phase 1 — Platform owner console and invite-only tenant onboarding
+
+**Goal:** the Super Admin can bring a business onto the platform end to end without touching the
+database or curl.
+
+Platform roles and security
+- [ ] Platform permission matrix: `SUPER_ADMIN` (everything), `ADMIN` (operations), `SUPPORT`
+      (read-only plus limited actions), `FINANCE` (billing only)
+- [ ] Mandatory TOTP MFA for all platform users; session list and remote sign-out
+- [ ] Admin console behind Cloudflare Access or IP allowlist
+
+Business invitations
+- [ ] `business_invitations` collection: hashed single-use token, 7-day expiry, plan and trial preset
+- [ ] Delivery by email and WhatsApp; resend and revoke
+- [ ] Accept page: set password, verify phone, enrol MFA, land in onboarding wizard
+- [ ] Remove self-serve `POST /businesses` for ordinary users; marketing-site "request access" form
+      feeds a lead list in the admin console
+
+Admin console
+- [ ] Overview: tenants by status, active stampers, stamps today, signups
+- [ ] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
+      members, subscription and audit trail; activate, suspend and restore with reason
+- [ ] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
+      (provisioned → shipped → active → revoked/replaced), print labels and QR
+- [ ] Users: search customers and business users; suspend/restore; force sign-out
+- [ ] Audit log viewer with filters
+- [ ] Support "view as business" — read-only, time-limited, banner shown, fully audited
+
+Business dashboard
+- [ ] Onboarding wizard: profile, logo upload (object storage, signed URLs, image validation),
+      first branch, first program, first reward, staff invites
+- [ ] Edit screens for programs, rewards and branches; activate/deactivate toggles
+- [ ] Staff management: invite, accept-invite page, change role, disable, branch scoping enforced
+- [ ] Customers page: paginated, masked phone, card progress, history
+- [ ] Device activation, revoke and "report lost stamper"
+- [ ] Suspended business sees a read-only dashboard with a clear reason
+
+**Exit:** a test business is invited, onboarded, configured and has an active stamper, entirely
+through the UI. Cross-tenant tests pass for every business route.
+
+---
+
+### Phase 2 — Customer portal and secure tap-to-join / tap-to-stamp
+
+**Goal:** a customer with any modern phone can join and earn stamps by tapping, and replaying a tap
+from home does not work.
+
+Secure taps (server)
+- [x] Device model: tag type, tag UID, last tap counter
+- [x] `POST /taps` — verify the tap and counter, issue a single-use tap token (Mongo, TTL-indexed;
+      move to Redis with the rest of the shared state)
+- [x] `POST /stamps` consumes a tap token inside the stamp transaction; a bare device identifier is
+      accepted only for `STATIC` stampers
+- [x] NTAG 21x UID + counter mirror verifier
+- [ ] Admin action to reset a stamper's bound UID and counter (after a tag is re-written or replaced)
+- [ ] Portal route `/t/:deviceIdentifier` that forwards the URL's query parameters to `POST /taps`
+- [ ] Before public launch: NTAG 424 DNA (SUN) verifier, per-tag keys derived from a KMS master
+      key, key rotation procedure
+
+Customer authentication
+- [ ] Phone OTP: request and verify endpoints; 6-digit codes, 5-minute expiry, 5 attempts, stored
+      hashed in Redis; per-phone, per-IP and per-prefix limits; CAPTCHA (e.g. Turnstile) on request to
+      stop SMS-pumping fraud
+- [ ] Cookie sessions for the portal (httpOnly, Secure, SameSite=Lax) with CSRF tokens on writes
+- [ ] Account deletion and data export for customers
+
+Customer portal (PWA)
+- [ ] Tap landing: business branding, program explanation, sign up or log in, join
+- [ ] First tap = join (optional "welcome stamp" per program); later taps = stamp
+- [ ] Live card update with clear success and error states (cooldown, not enrolled, stamper inactive,
+      business unavailable, offline)
+- [ ] "My cards": every business the customer has joined, each card separate
+- [ ] Rewards: unlocked rewards with code and QR to show staff; history
+- [ ] Web NFC listening inside the page on Android Chrome
+- [ ] Urdu and English (RTL support), PKR formatting, Asia/Karachi time
+- [ ] Notification centre; consent for WhatsApp messages per business
+- [ ] Install-to-home-screen prompt
+
+Counter mode for businesses (mobile web)
+- [ ] Staff add a stamp by scanning the customer's rotating signed card QR or searching by phone;
+      per-staff daily caps; audited
+- [ ] Staff validate redemptions by scanning the reward QR or entering the code
+- [ ] Optional manager approval for stamps above a threshold
+
+Programs and rewards
+- [ ] Multiple reward tiers per program (fix the current single-threshold logic)
+- [ ] Stamp expiry and reward expiry options; reward-expiring reminder job
+
+Fraud controls
+- [ ] Daily cap per card per business, cooldown per card, velocity rules per device and per staff
+- [ ] Anomaly flags: stamps outside opening hours, bursts from one stamper, many new accounts on one
+      stamper; review queue for owners and admins
+
+**Exit:** the device test matrix (about 10 Android phones across price bands, plus iPhones) joins and
+stamps by tapping; replayed URLs are rejected; end-to-end tests cover join, stamp, unlock and redeem.
+
+---
+
+### Phase 3 — Subscriptions and billing
+
+**Goal:** businesses pay monthly in PKR. Non-payment is handled automatically. The Super Admin sees
+revenue and collections at a glance.
+
+Plans and entitlements
+- [ ] `plans` collection, editable by the Super Admin, **versioned** so existing customers can keep
+      ("grandfather") their price
+- [ ] Entitlements service: limits on branches, active programs, stampers, staff, customers, plus
+      feature flags; enforced in API middleware and reflected in the UI
+- [ ] Limits never break existing customers: at the customer limit, **new joins** are blocked and the
+      owner is prompted to upgrade; existing cards keep working
+
+Subscription lifecycle
+
+```
+TRIALING ──► ACTIVE ──(invoice overdue)──► PAST_DUE ──(grace ends)──► SUSPENDED ──(90 days)──► CANCELLED
+               ▲                              │                           │
+               └──────────(payment)───────────┴────────(payment)──────────┘
+```
+
+- [ ] Scheduled jobs: renewal invoice 7 days before period end; reminders before due date, on the due
+      date and during grace; automatic suspension; reactivation on payment
+- [ ] Suspension stops stamping and puts the dashboard in read-only mode with a billing page;
+      customers see "temporarily unavailable" (policy for pending rewards: see open decisions)
+- [ ] Upgrade takes effect immediately with prorated charge; downgrade at period end
+- [ ] Annual billing option with discount
+
+Invoices and payments
+- [ ] Sequential invoice numbers, PDF invoices and receipts, NTN/STRN, configurable tax line
+- [ ] `PaymentProvider` interface; first gateway integration with hosted checkout and
+      signature-verified, idempotent webhooks
+- [ ] Bank transfer / Raast with proof upload and admin approval
+- [ ] Manual payment entry (cash, cheque) by `FINANCE` or `SUPER_ADMIN`, audited
+- [ ] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds
+- [ ] Hardware charges (stamper fee, replacement fee) as invoice line items
+
+Owner billing page
+- [ ] Current plan, usage against limits, next invoice, invoices list, pay now, change plan
+
+Super Admin finance console
+- [ ] MRR, ARR, active / trialing / past-due / suspended counts, churn, trial conversion
+- [ ] Overdue list with ageing and one-click reminders; revenue by plan and city
+- [ ] CSV export for the accountant
+
+**Exit:** in staging, with the gateway sandbox, a business moves through trial → active → past due →
+suspended → reactivated, with correct invoices and notifications at every step.
+
+---
+
+### Phase 4 — Scale and security hardening (starts alongside Phase 2)
+
+**Goal:** prove the platform survives "the masses" and an attacker before public launch.
+
+Scalability
+- [ ] Outbox + worker service for notifications, aggregates, billing jobs and exports
+- [ ] Pre-aggregated analytics; analytics queries on an analytics node
+- [ ] Cursor pagination on all list endpoints
+- [ ] Redis caches for device resolution, user status and entitlements, with explicit invalidation
+- [ ] Shard-key plan documented and validated on a staging cluster
+- [ ] Autoscaling, at least two availability zones, zero-downtime deploys
+- [ ] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run
+
+Security
+- [ ] Threat model per surface (portal, dashboard, admin, API, stamper, payments)
+- [ ] OWASP ASVS Level 2 checklist completed
+- [ ] Tenant-isolation data-layer enforcement plus generated cross-tenant tests in CI
+- [ ] Secrets in a secrets manager; SUN master keys in KMS; key rotation runbook
+- [ ] Strict Content-Security-Policy, HSTS, secure cookies on every app
+- [ ] Append-only audit log shipped to write-once storage
+- [ ] Logs and errors scrubbed of phone numbers, OTPs, tokens and passwords
+- [ ] External penetration test; all critical and high findings fixed
+
+Reliability and operations
+- [ ] Point-in-time backups; quarterly restore drill
+- [ ] Tracing (OpenTelemetry), dashboards for tap success rate, OTP delivery rate, payment success
+- [ ] Alerting, on-call rotation, runbooks, public status page
+
+**Exit:** load test passes at 3× target; pentest criticals and highs closed; restore drill done within
+RTO.
+
+---
+
+### Phase 5 — Pilot and public launch
+
+**Goal:** real businesses and real customers, then open the doors.
+
+- [ ] Legal: terms of service, privacy policy, business subscription agreement, data processing terms
+- [ ] Pilot with 10–20 businesses (cafés first) in one city, free or discounted
+- [ ] Stamper operations: provisioning line, packaging, delivery, installation guide
+- [ ] Staff training: short Urdu video and printed counter card
+- [ ] WhatsApp support line and an admin-side support workflow
+- [ ] Pilot metrics: tap success rate, sign-up conversion from first tap, repeat visits, redemption
+      rate, owner satisfaction
+- [ ] Public launch: marketing site, pricing page, request-access funnel, sales playbook
+
+**Exit:** pilot targets met (agree the numbers before the pilot starts); billing live with real
+payments.
+
+---
+
+### Phase 6 — Growth (after launch)
+
+- WhatsApp marketing campaigns with consent, templates and message credits billed per plan
+- Customer segments, birthday rewards, win-back offers, referrals
+- Points-based programs alongside stamps
+- Native mobile app (revive the Expo app) if portal data shows demand
+- Google / Apple Wallet passes (assessed and deferred earlier)
+- Chain and franchise features; public business directory; partner API
+- Data warehouse for platform analytics
+
+---
+
+## 7. Subscription plans (proposal — validate with the market)
+
+Prices are placeholders in PKR per month, excluding tax. They are stored in the database and editable
+by the Super Admin, so they can change without a release.
+
+| | Starter | Growth | Pro | Enterprise |
+|---|---|---|---|---|
+| Indicative price | PKR 2,999 | PKR 7,999 | PKR 19,999 | Custom |
+| Branches | 1 | 3 | 10 | Unlimited |
+| Active loyalty programs | 1 | 3 | Unlimited | Unlimited |
+| Stampers included | 1 | 3 | 10 | By contract |
+| Staff accounts | 3 | 10 | Unlimited | Unlimited |
+| Loyalty customers | 1,000 | 5,000 | 25,000 | Unlimited |
+| Analytics | Basic | Full + CSV export | Full + branch comparison | Custom reports |
+| Fraud review queue | — | ✓ | ✓ | ✓ |
+| WhatsApp campaigns (Phase 6) | — | Add-on | Credits included | Credits included |
+| Support | WhatsApp, business hours | WhatsApp, priority | Dedicated contact | SLA |
+
+- **Trial:** 30 days on Starter limits, no card required (invite-only already filters leads).
+- **Annual:** pay for 10 months, get 12.
+- **Hardware:** extra stampers and replacements are one-time charges.
+
+---
+
+## 8. Data model changes
+
+| Collection | Purpose |
+|---|---|
+| `business_invitations` | Owner invites from Super Admin; hashed token, expiry, preset plan |
+| `business_customers` | Per-tenant customer relationship: consent, first seen, acquisition branch |
+| `plans` | Versioned plan catalogue with limits and feature flags |
+| `subscriptions` | One per business: plan version, status, period dates, trial end, grace end |
+| `invoices` / `invoice_lines` | Billing documents, tax lines, sequential numbering |
+| `payments` | Gateway, bank, Raast and manual payments; webhook references |
+| `coupons` | Discounts and trial extensions |
+| `outbox_events` | Reliable hand-off from transactions to workers |
+| `business_daily_stats` | Pre-aggregated analytics counters |
+| `fraud_flags` | Anomaly findings for owner and admin review |
+| `leads` | "Request access" submissions |
+| Changes to `users` | Phone becomes the primary customer identifier; MFA secrets for business and platform users; locale |
+| Changes to `nfc_devices` | Tag UID, key version, last SUN counter, provisioning and shipping status |
+| Changes to `stamps` | Source adds `STAFF`; staff attribution; tap-token reference |
+
+Redis (not Mongo): OTP challenges, tap tokens, rate-limit counters, idempotency keys, caches, job
+queues.
+
+---
+
+## 9. Pakistan-specific requirements
+
+- Phone-first identity with +92 normalisation and validation.
+- WhatsApp as the main channel for codes, receipts, reminders and support; SMS as fallback.
+- English and Urdu, with right-to-left layout and a lightweight Urdu font.
+- PKR without decimals; Asia/Karachi time zone (no daylight saving); opening hours that can change in
+  Ramadan.
+- Built for low-end Android phones, patchy 3G/4G and expensive data.
+- Local payment methods: cards, JazzCash, Easypaisa, bank transfer, Raast.
+- Local categories: café, restaurant, bakery, sweets, salon, barber, gym, pharmacy, retail, car wash,
+  laundry, other.
+- Addresses by city and area; city used for reporting and sales.
+- Tax invoices with NTN/STRN; provincial sales tax on services (confirm with adviser).
+- Privacy: Pakistan's personal data protection legislation has been in draft; design to a GDPR-like
+  baseline (consent, minimisation, export, deletion, retention) so the platform is ready when it is
+  enacted.
+
+---
+
+## 10. Decisions needed from you
+
+1. ~~**NFC tags**~~ — decided 2026-10-31: NTAG 215 with counter mirror now; NTAG 424 DNA later.
+   Still open: **when** to switch (recommended: before public launch).
+2. **OTP:** WhatsApp-first with SMS fallback — and which providers and monthly budget.
+3. **Payment gateway(s)** to integrate first.
+4. **Plan prices and limits** in §7.
+5. **Suspended business policy:** can customers still redeem rewards they already unlocked (recommended:
+   yes, for 30 days)?
+6. **First tap:** join only, or join plus a welcome stamp?
+7. **Customer data visible to businesses:** masked phone by default (recommended), or full phone with
+   consent?
+8. **Native app:** confirm it is deferred to Phase 6.
+9. **Platform team roles:** do you need `ADMIN`, `SUPPORT` and `FINANCE` users, or only Super Admin for
+   now?
+10. **Hosting region and domain names.**
+
+---
+
+## 11. Main risks
+
+| Risk | Mitigation |
+|---|---|
+| Stamp fraud via copied tag URLs | NTAG 424 DNA SUN, single-use tap tokens, caps, anomaly flags |
+| Staff collusion (staff stamping friends) | Staff-attributed counter stamps, daily caps, owner review queue |
+| OTP cost and SMS-pumping attacks | WhatsApp first, CAPTCHA, per-prefix limits, spend alerts |
+| Phones without NFC | Counter mode via customer QR or phone lookup |
+| Payment collection failures | Invoice model, multiple payment methods, grace period, manual entry |
+| Gateway onboarding delays | Apply in Phase 0; bank transfer and manual payments work without a gateway |
+| A cross-tenant data leak | Data-layer enforcement, generated isolation tests, pentest |
+| Traffic peaks (Ramadan, Eid, promotions) | Autoscaling, Redis, queues, load tests at 3× target |
+| Customer adoption | No-install portal, one-tap join, Urdu UX, instant visible reward progress |

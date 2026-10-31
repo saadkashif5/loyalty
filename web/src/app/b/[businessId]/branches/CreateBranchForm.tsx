@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { createBranchAction } from "@/app/actions/business";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
 
@@ -15,7 +16,7 @@ function SubmitButton() {
 
 export function CreateBranchForm({ businessId }: { businessId: string }) {
   const action = createBranchAction.bind(null, businessId);
-  const [state, formAction] = useFormState(action, {});
+  const [state, formAction] = useActionState(action, {});
 
   return (
     <Card className="h-fit">

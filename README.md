@@ -1,6 +1,6 @@
 # TapTapSell Loyalty
 
-NFC-first digital loyalty platform for Pakistani businesses. See [PRD.md](PRD.md) for the full product definition and [TODO.md](TODO.md) for the implementation checklist.
+NFC-first digital loyalty platform for Pakistani businesses. See [PRD.md](PRD.md) for the original product definition, [ROADMAP.md](ROADMAP.md) for the current phased plan and [TODO.md](TODO.md) for the detailed checklist.
 
 ## Repository layout
 
@@ -13,7 +13,7 @@ taptapsell-loyalty/
 │   ├── constants/    roles, permissions, statuses shared across apps
 │   ├── types/        shared API response types
 │   └── validation/   zod schemas shared by API and clients
-└── docs/
+└── docs/         provisioning and environment guides
 ```
 
 `api`, `web` and `packages/*` are npm workspaces. `mobile` is kept outside the
@@ -23,13 +23,33 @@ workspace set so Metro resolves its dependencies without symlink workarounds.
 
 ```bash
 npm install
-cp api/.env.example api/.env   # then fill in real values
+docker compose up -d --wait            # MongoDB replica set on :27017, Redis on :6379
+cp api/.env.example api/.env           # then fill in real values
+npm run seed:admin --workspace=api     # needs SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD
+npm run seed:demo --workspace=api      # demo café, stamper DEMO01, three customers
 npm run dev:api
+npm run dev:web
 ```
 
 The API requires MongoDB. Transactions are used for the stamp flow, so the
 database must be a replica set — MongoDB Atlas is one by default; a local
-standalone `mongod` is not.
+standalone `mongod` is not. Redis is optional in development (rate limits fall
+back to memory) and required in staging and production. See
+[docs/environments.md](docs/environments.md).
+
+## Everyday commands
+
+| Command | What it does |
+|---|---|
+| `npm run lint` | ESLint across `api`, `web` and `packages` |
+| `npm run format` / `npm run format:check` | Prettier |
+| `npm run typecheck` | TypeScript in every workspace |
+| `npm test` | Integration tests (needs `docker compose up -d`) |
+| `npm run build:api` / `npm run build:web` | Production builds |
+
+A pre-commit hook runs ESLint and Prettier on staged files. CI runs all of the
+above plus a dependency audit, secret scanning and CodeQL on every push and
+pull request.
 
 ## Running tests
 

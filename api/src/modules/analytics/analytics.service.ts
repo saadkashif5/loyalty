@@ -15,9 +15,13 @@ export async function getBusinessOverview(businessId: string) {
   const [totalCustomers, activeCustomers, totalStamps, rewardsUnlocked, rewardsRedeemed] =
     await Promise.all([
       LoyaltyCard.countDocuments({ businessId: objectId }),
-      Stamp.distinct("customerId", { businessId: objectId, createdAt: { $gte: activeSince } }).then(
-        (ids) => ids.length,
-      ),
+      // Counted in the database: `distinct` would return every customer id to
+      // the API and fails outright past MongoDB's 16 MB result limit.
+      Stamp.aggregate<{ count: number }>([
+        { $match: { businessId: objectId, createdAt: { $gte: activeSince } } },
+        { $group: { _id: "$customerId" } },
+        { $count: "count" },
+      ]).then((rows) => rows[0]?.count ?? 0),
       Stamp.countDocuments({ businessId: objectId }),
       Redemption.countDocuments({ businessId: objectId }),
       Redemption.countDocuments({ businessId: objectId, status: REDEMPTION_STATUS.REDEEMED }),

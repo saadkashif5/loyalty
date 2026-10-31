@@ -1,7 +1,9 @@
+import "./instrument";
 import { createApp } from "./app";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { connectDatabase, disconnectDatabase } from "@/config/database";
+import { disconnectRedis } from "@/config/redis";
 
 async function main(): Promise<void> {
   await connectDatabase();
@@ -14,7 +16,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}, shutting down gracefully...`);
     server.close(async () => {
-      await disconnectDatabase();
+      await Promise.all([disconnectDatabase(), disconnectRedis()]);
       process.exit(0);
     });
     // Force-exit if graceful shutdown hangs.

@@ -2,7 +2,7 @@ import { Branch, Business, NfcDevice } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { generateActivationCode, generateDeviceIdentifier } from "@/utils/codes";
-import { BUSINESS_STATUS, DEVICE_STATUS } from "@taptapsell/constants";
+import { BUSINESS_STATUS, DEVICE_STATUS, type TagType } from "@taptapsell/constants";
 import type {
   ActivateDeviceInput,
   AssignDeviceInput,
@@ -18,6 +18,7 @@ export async function registerDevices(actorUserId: string, input: RegisterDevice
       deviceIdentifier: generateDeviceIdentifier(),
       activationCode: generateActivationCode(),
       deviceType: input.deviceType,
+      tagType: input.tagType,
       metadata: input.metadata ?? {},
       status: DEVICE_STATUS.UNASSIGNED,
     });
@@ -143,11 +144,7 @@ export async function revokeDevice(
 
 // Replacement keeps loyalty history intact: the old device stops issuing stamps
 // but its past stamps remain attributed to it (§61).
-export async function replaceDevice(
-  businessId: string,
-  oldDeviceId: string,
-  actorUserId: string,
-) {
+export async function replaceDevice(businessId: string, oldDeviceId: string, actorUserId: string) {
   const oldDevice = await NfcDevice.findOne({ _id: oldDeviceId, businessId });
   if (!oldDevice) throw ApiError.notFound("Device not found");
 
@@ -155,6 +152,7 @@ export async function replaceDevice(
     deviceIdentifier: generateDeviceIdentifier(),
     activationCode: generateActivationCode(),
     deviceType: oldDevice.deviceType,
+    tagType: oldDevice.tagType,
     businessId: oldDevice.businessId,
     branchId: oldDevice.branchId,
     status: DEVICE_STATUS.ASSIGNED,
@@ -181,6 +179,7 @@ interface ResolvedDevice {
   deviceId: string;
   businessId: string;
   branchId: string;
+  tagType: TagType;
 }
 
 // Called on every stamp attempt. The tag identifier alone proves nothing —
@@ -208,5 +207,6 @@ export async function resolveDeviceForStamping(deviceIdentifier: string): Promis
     deviceId: device._id.toString(),
     businessId: device.businessId.toString(),
     branchId: device.branchId.toString(),
+    tagType: device.tagType as TagType,
   };
 }

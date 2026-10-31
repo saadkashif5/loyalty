@@ -45,7 +45,10 @@ router.patch(
   "/businesses/:businessId/status",
   asyncHandler(async (req, res) => {
     const { status, reason } = statusSchema.parse(req.body);
-    sendSuccess(res, await service.setBusinessStatus(req.params.businessId, req.userId!, status, reason));
+    sendSuccess(
+      res,
+      await service.setBusinessStatus(req.params.businessId, req.userId!, status, reason),
+    );
   }),
 );
 

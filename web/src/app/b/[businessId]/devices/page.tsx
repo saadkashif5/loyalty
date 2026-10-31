@@ -16,10 +16,11 @@ interface Branch {
   name: string;
 }
 
-export default async function DevicesPage({ params }: { params: { businessId: string } }) {
+export default async function DevicesPage({ params }: { params: Promise<{ businessId: string }> }) {
+  const { businessId } = await params;
   const [devices, branches] = await Promise.all([
-    apiFetch<Device[]>(`/businesses/${params.businessId}/devices`),
-    apiFetch<Branch[]>(`/businesses/${params.businessId}/branches`),
+    apiFetch<Device[]>(`/businesses/${businessId}/devices`),
+    apiFetch<Branch[]>(`/businesses/${businessId}/branches`),
   ]);
 
   return (
@@ -50,7 +51,7 @@ export default async function DevicesPage({ params }: { params: { businessId: st
                     <StatusBadge status={device.status} />
                     {device.status === "ACTIVE" ? (
                       <RevokeDeviceButton
-                        businessId={params.businessId}
+                        businessId={businessId}
                         deviceId={device._id}
                         identifier={device.deviceIdentifier}
                       />
@@ -62,7 +63,7 @@ export default async function DevicesPage({ params }: { params: { businessId: st
           )}
         </div>
 
-        <ActivateDeviceForm businessId={params.businessId} branches={branches} />
+        <ActivateDeviceForm businessId={businessId} branches={branches} />
       </div>
     </>
   );

@@ -11,8 +11,13 @@ interface Program {
   settings?: { minMinutesBetweenStamps?: number };
 }
 
-export default async function ProgramsPage({ params }: { params: { businessId: string } }) {
-  const programs = await apiFetch<Program[]>(`/businesses/${params.businessId}/programs`);
+export default async function ProgramsPage({
+  params,
+}: {
+  params: Promise<{ businessId: string }>;
+}) {
+  const { businessId } = await params;
+  const programs = await apiFetch<Program[]>(`/businesses/${businessId}/programs`);
 
   return (
     <>
@@ -48,7 +53,7 @@ export default async function ProgramsPage({ params }: { params: { businessId: s
           )}
         </div>
 
-        <CreateProgramForm businessId={params.businessId} />
+        <CreateProgramForm businessId={businessId} />
       </div>
     </>
   );

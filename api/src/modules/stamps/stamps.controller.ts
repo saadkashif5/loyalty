@@ -1,18 +1,36 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
-import { createStampSchema } from "@taptapsell/validation";
+import { createManualStampSchema, createStampSchema } from "@taptapsell/validation";
 import * as service from "./stamps.service";
 
 export const createStampHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = createStampSchema.parse(req.body);
 
-  const result = await service.createStamp({
+  const base = {
     customerId: req.userId!,
-    deviceIdentifier: input.deviceIdentifier,
-    source: input.source,
     idempotencyKey: req.idempotencyKey!,
     metadata: input.metadata,
+  };
+
+  const result = await service.createStamp(
+    "tapToken" in input
+      ? { ...base, tapToken: input.tapToken }
+      : { ...base, deviceIdentifier: input.deviceIdentifier, source: input.source },
+  );
+
+  sendSuccess(res, result, { status: result.alreadyRecorded ? 200 : 201 });
+});
+
+export const createManualStampHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = createManualStampSchema.parse(req.body);
+
+  const result = await service.createManualStamp({
+    businessId: req.businessId!,
+    actorUserId: req.userId!,
+    loyaltyCardId: input.loyaltyCardId,
+    branchId: input.branchId,
+    idempotencyKey: req.idempotencyKey!,
   });
 
   sendSuccess(res, result, { status: result.alreadyRecorded ? 200 : 201 });

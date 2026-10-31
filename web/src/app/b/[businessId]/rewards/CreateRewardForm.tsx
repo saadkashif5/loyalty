@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { createRewardAction } from "@/app/actions/business";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
 
@@ -28,7 +29,7 @@ export function CreateRewardForm({
   programs: { _id: string; name: string; requiredStamps: number }[];
 }) {
   const action = createRewardAction.bind(null, businessId);
-  const [state, formAction] = useFormState(action, {});
+  const [state, formAction] = useActionState(action, {});
 
   if (programs.length === 0) {
     return (

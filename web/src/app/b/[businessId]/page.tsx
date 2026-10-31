@@ -16,10 +16,15 @@ interface DayCount {
   count: number;
 }
 
-export default async function OverviewPage({ params }: { params: { businessId: string } }) {
+export default async function OverviewPage({
+  params,
+}: {
+  params: Promise<{ businessId: string }>;
+}) {
+  const { businessId } = await params;
   const [overview, stamps] = await Promise.all([
-    apiFetch<Overview>(`/businesses/${params.businessId}/analytics/overview`),
-    apiFetch<DayCount[]>(`/businesses/${params.businessId}/analytics/stamps?days=14`),
+    apiFetch<Overview>(`/businesses/${businessId}/analytics/overview`),
+    apiFetch<DayCount[]>(`/businesses/${businessId}/analytics/stamps?days=14`),
   ]);
 
   const peak = Math.max(1, ...stamps.map((d) => d.count));
@@ -41,9 +46,7 @@ export default async function OverviewPage({ params }: { params: { businessId: s
         <Stat
           label="Redemption rate"
           value={
-            overview.redemptionRate === null
-              ? "—"
-              : `${Math.round(overview.redemptionRate * 100)}%`
+            overview.redemptionRate === null ? "—" : `${Math.round(overview.redemptionRate * 100)}%`
           }
           hint={overview.rewardsUnlocked === 0 ? "No rewards unlocked yet" : undefined}
         />

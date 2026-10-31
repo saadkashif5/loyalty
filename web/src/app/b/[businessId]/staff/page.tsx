@@ -9,8 +9,9 @@ interface Member {
   userId?: { name: string; email: string } | null;
 }
 
-export default async function StaffPage({ params }: { params: { businessId: string } }) {
-  const members = await apiFetch<Member[]>(`/businesses/${params.businessId}/members`);
+export default async function StaffPage({ params }: { params: Promise<{ businessId: string }> }) {
+  const { businessId } = await params;
+  const members = await apiFetch<Member[]>(`/businesses/${businessId}/members`);
 
   return (
     <>
@@ -40,7 +41,7 @@ export default async function StaffPage({ params }: { params: { businessId: stri
           )}
         </div>
 
-        <InviteMemberForm businessId={params.businessId} />
+        <InviteMemberForm businessId={businessId} />
       </div>
     </>
   );

@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Platform, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ApiError, apiFetch } from "@/lib/api";
-import { checkNfcAvailability, readStamperTag, type NfcAvailability } from "@/lib/nfc";
+import {
+  checkNfcAvailability,
+  readStamperTag,
+  type NfcAvailability,
+  type StamperTap,
+} from "@/lib/nfc";
 import { Button, Card, Muted, Screen, StampProgress, Title, colors } from "@/components/ui";
 
 interface StampResult {
@@ -65,9 +70,9 @@ export default function ScanScreen() {
   const scan = useCallback(async () => {
     setPhase({ kind: "scanning" });
 
-    let deviceIdentifier: string;
+    let tap: StamperTap;
     try {
-      deviceIdentifier = await readStamperTag();
+      tap = await readStamperTag();
     } catch (err) {
       const unreadable = err instanceof Error && err.message === "UNREADABLE_TAG";
       setPhase({
@@ -83,9 +88,20 @@ export default function ScanScreen() {
     setPhase({ kind: "submitting" });
 
     try {
+      // Stampers that report taps are verified first and exchanged for a
+      // single-use tap token; static tags still send the bare identifier.
+      let body: Record<string, unknown> = { deviceIdentifier: tap.identifier, source: "NFC" };
+      if (Object.keys(tap.params).length > 0) {
+        const { tapToken } = await apiFetch<{ tapToken: string }>("/taps", {
+          method: "POST",
+          body: { deviceIdentifier: tap.identifier, params: tap.params },
+        });
+        body = { tapToken };
+      }
+
       const result = await apiFetch<StampResult>("/stamps", {
         method: "POST",
-        body: { deviceIdentifier, source: "NFC" },
+        body,
         idempotencyKey: newIdempotencyKey(),
       });
       setPhase({ kind: "success", result });

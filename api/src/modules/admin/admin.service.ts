@@ -3,11 +3,7 @@ import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { BUSINESS_STATUS, DEVICE_STATUS, USER_STATUS } from "@taptapsell/constants";
 
-export async function listBusinesses(options: {
-  status?: string;
-  page: number;
-  limit: number;
-}) {
+export async function listBusinesses(options: { status?: string; page: number; limit: number }) {
   const filter = options.status ? { status: options.status } : {};
 
   const [items, total] = await Promise.all([
@@ -94,9 +90,7 @@ export async function setUserStatus(
   await recordAudit({
     actorUserId,
     action:
-      status === USER_STATUS.SUSPENDED
-        ? AUDIT_ACTIONS.USER_SUSPENDED
-        : AUDIT_ACTIONS.USER_RESTORED,
+      status === USER_STATUS.SUSPENDED ? AUDIT_ACTIONS.USER_SUSPENDED : AUDIT_ACTIONS.USER_RESTORED,
     resourceType: "User",
     resourceId: userId,
     metadata: { status },
@@ -105,11 +99,7 @@ export async function setUserStatus(
   return user;
 }
 
-export async function listAuditLogs(options: {
-  businessId?: string;
-  page: number;
-  limit: number;
-}) {
+export async function listAuditLogs(options: { businessId?: string; page: number; limit: number }) {
   const filter = options.businessId ? { businessId: options.businessId } : {};
 
   const [items, total] = await Promise.all([

@@ -3,7 +3,7 @@ import { ACCESS_TOKEN_COOKIE } from "@/lib/session";
 
 // A cheap gate that keeps signed-out visitors off dashboard routes. The API
 // still authorises every request on its own — this is convenience, not security.
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const hasSession = request.cookies.has(ACCESS_TOKEN_COOKIE);
 
   if (!hasSession) {

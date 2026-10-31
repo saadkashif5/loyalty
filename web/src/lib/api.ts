@@ -30,7 +30,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
   if (!options.anonymous) {
-    const token = getAccessToken();
+    const token = await getAccessToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
   if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;

@@ -1,19 +1,11 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { createBusinessAction } from "@/app/actions/business";
 import { Button, Card, ErrorText, Field, Input, PageHeader } from "@/components/ui";
 
-const CATEGORIES = [
-  "CAFE",
-  "RESTAURANT",
-  "BAKERY",
-  "SALON",
-  "BARBER",
-  "GYM",
-  "RETAIL",
-  "OTHER",
-];
+const CATEGORIES = ["CAFE", "RESTAURANT", "BAKERY", "SALON", "BARBER", "GYM", "RETAIL", "OTHER"];
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -25,7 +17,7 @@ function SubmitButton() {
 }
 
 export default function NewBusinessPage() {
-  const [state, formAction] = useFormState(createBusinessAction, {});
+  const [state, formAction] = useActionState(createBusinessAction, {});
 
   return (
     <main className="mx-auto max-w-md p-6">

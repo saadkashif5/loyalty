@@ -12,14 +12,15 @@ const NAV = [
   { href: "/redeem", label: "Redeem" },
 ];
 
-export default function BusinessLayout({
+export default async function BusinessLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
-  params: { businessId: string };
+  params: Promise<{ businessId: string }>;
 }) {
-  const base = `/b/${params.businessId}`;
+  const { businessId } = await params;
+  const base = `/b/${businessId}`;
 
   return (
     <div className="min-h-screen">

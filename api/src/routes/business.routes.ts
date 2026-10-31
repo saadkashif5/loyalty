@@ -22,7 +22,11 @@ import {
   revokeDeviceHandler,
   replaceDeviceHandler,
 } from "@/modules/devices/devices.controller";
-import { listBusinessStampsHandler } from "@/modules/stamps/stamps.controller";
+import {
+  createManualStampHandler,
+  listBusinessStampsHandler,
+} from "@/modules/stamps/stamps.controller";
+import { requireIdempotencyKey } from "@/middleware/idempotency";
 import {
   validateRedemptionHandler,
   listBusinessRedemptionsHandler,
@@ -44,30 +48,100 @@ router.use("/branches", branchRoutes);
 router.use("/members", memberRoutes);
 
 // Loyalty programs
-router.get("/programs", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_VIEW }), listProgramsHandler);
-router.post("/programs", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_MANAGE }), createProgramHandler);
-router.get("/programs/:programId", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_VIEW }), getProgramHandler);
-router.patch("/programs/:programId", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_MANAGE }), updateProgramHandler);
+router.get(
+  "/programs",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_VIEW }),
+  listProgramsHandler,
+);
+router.post(
+  "/programs",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_MANAGE }),
+  createProgramHandler,
+);
+router.get(
+  "/programs/:programId",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_VIEW }),
+  getProgramHandler,
+);
+router.patch(
+  "/programs/:programId",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.PROGRAM_MANAGE }),
+  updateProgramHandler,
+);
 
 // Rewards
-router.get("/rewards", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REWARD_VIEW }), listRewardsHandler);
-router.post("/rewards", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REWARD_MANAGE }), createRewardHandler);
-router.patch("/rewards/:rewardId", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REWARD_MANAGE }), updateRewardHandler);
+router.get(
+  "/rewards",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REWARD_VIEW }),
+  listRewardsHandler,
+);
+router.post(
+  "/rewards",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REWARD_MANAGE }),
+  createRewardHandler,
+);
+router.patch(
+  "/rewards/:rewardId",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REWARD_MANAGE }),
+  updateRewardHandler,
+);
 
 // NFC devices
-router.get("/devices", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }), listDevicesHandler);
-router.post("/devices/activate", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }), activateDeviceHandler);
-router.post("/devices/:deviceId/revoke", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }), revokeDeviceHandler);
-router.post("/devices/:deviceId/replace", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }), replaceDeviceHandler);
+router.get(
+  "/devices",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }),
+  listDevicesHandler,
+);
+router.post(
+  "/devices/activate",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }),
+  activateDeviceHandler,
+);
+router.post(
+  "/devices/:deviceId/revoke",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }),
+  revokeDeviceHandler,
+);
+router.post(
+  "/devices/:deviceId/replace",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.DEVICE_MANAGE }),
+  replaceDeviceHandler,
+);
 
 // Loyalty activity
-router.get("/stamps", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.STAMP_VIEW }), listBusinessStampsHandler);
-router.get("/redemptions", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REDEMPTION_VIEW }), listBusinessRedemptionsHandler);
+router.get(
+  "/stamps",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.STAMP_VIEW }),
+  listBusinessStampsHandler,
+);
+router.post(
+  "/stamps/manual",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.STAMP_ISSUE_MANUAL }),
+  requireIdempotencyKey,
+  createManualStampHandler,
+);
+router.get(
+  "/redemptions",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REDEMPTION_VIEW }),
+  listBusinessRedemptionsHandler,
+);
 
 // Analytics
-router.get("/analytics/overview", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.ANALYTICS_VIEW }), overviewHandler);
-router.get("/analytics/stamps", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.ANALYTICS_VIEW }), stampsOverTimeHandler);
-router.get("/analytics/near-completion", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.ANALYTICS_VIEW }), nearCompletionHandler);
+router.get(
+  "/analytics/overview",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.ANALYTICS_VIEW }),
+  overviewHandler,
+);
+router.get(
+  "/analytics/stamps",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.ANALYTICS_VIEW }),
+  stampsOverTimeHandler,
+);
+router.get(
+  "/analytics/near-completion",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.ANALYTICS_VIEW }),
+  nearCompletionHandler,
+);
 
 // Staff-facing reward validation — the counter workflow (§17.1 step 6).
 router.post(

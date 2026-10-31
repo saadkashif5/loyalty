@@ -45,16 +45,26 @@ export async function updateProgram(
   input: UpdateProgramInput,
 ) {
   const { minMinutesBetweenStamps, ...rest } = input;
+
+  if (input.requiredStamps !== undefined) {
+    const largest = await Reward.findOne({ programId, businessId, status: "ACTIVE" })
+      .sort({ requiredStamps: -1 })
+      .select("requiredStamps");
+    if (largest && largest.requiredStamps > input.requiredStamps) {
+      throw ApiError.badRequest(
+        `An active reward needs ${largest.requiredStamps} stamps. Lower or deactivate it first.`,
+      );
+    }
+  }
+
   const update: Record<string, unknown> = { ...rest };
   if (minMinutesBetweenStamps !== undefined) {
     update["settings.minMinutesBetweenStamps"] = minMinutesBetweenStamps;
   }
 
-  const program = await LoyaltyProgram.findOneAndUpdate(
-    { _id: programId, businessId },
-    update,
-    { new: true },
-  );
+  const program = await LoyaltyProgram.findOneAndUpdate({ _id: programId, businessId }, update, {
+    new: true,
+  });
   if (!program) throw ApiError.notFound("Loyalty program not found");
 
   await recordAudit({
@@ -90,8 +100,21 @@ export async function detachRewardFromProgram(programId: string, rewardId: strin
 }
 
 export async function assertProgramBelongsToBusiness(programId: string, businessId: string) {
-  const exists = await LoyaltyProgram.exists({ _id: programId, businessId });
-  if (!exists) throw ApiError.notFound("Loyalty program not found");
+  const program = await LoyaltyProgram.findOne({ _id: programId, businessId }).select(
+    "requiredStamps",
+  );
+  if (!program) throw ApiError.notFound("Loyalty program not found");
+  return program;
+}
+
+// A card resets when it reaches the program's stamp count, so a reward that
+// needs more stamps than that could never be unlocked.
+export function assertRewardFitsProgram(rewardStamps: number, programStamps: number) {
+  if (rewardStamps > programStamps) {
+    throw ApiError.badRequest(
+      `A reward cannot need more stamps than the program's card holds (${programStamps}).`,
+    );
+  }
 }
 
 export async function findRewardsForProgram(programId: string) {

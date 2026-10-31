@@ -11,14 +11,20 @@ export async function checkNfcAvailability(): Promise<NfcAvailability> {
   return enabled ? "READY" : "DISABLED";
 }
 
+export interface StamperTap {
+  identifier: string;
+  /** Query parameters the chip wrote into the URL (e.g. NTAG21x `m`); empty for static tags. */
+  params: Record<string, string>;
+}
+
 /**
- * Pulls the stamper's public identifier out of the tag.
+ * Pulls the stamper's public identifier and tap parameters out of the tag.
  *
- * The tag is expected to hold the stamper URL (the same one behind its printed
- * QR code); the identifier is its last path segment. Nothing else on the tag is
- * trusted — the backend re-resolves the identifier and decides everything (§10.2).
+ * The tag is expected to hold the stamper URL; the identifier is its last path
+ * segment. Nothing on the tag is trusted — the backend verifies the tap and
+ * decides everything (§10.2).
  */
-function extractIdentifier(tag: TagEvent | null): string | null {
+function extractTap(tag: TagEvent | null): StamperTap | null {
   const record = tag?.ndefMessage?.[0];
   if (!record?.payload) return null;
 
@@ -30,23 +36,33 @@ function extractIdentifier(tag: TagEvent | null): string | null {
   }
   if (!text) return null;
 
-  const segment = text.split("?")[0].split("/").filter(Boolean).pop();
+  const [path, query = ""] = text.split("?");
+  const segment = path.split("/").filter(Boolean).pop();
   if (!segment) return null;
 
   // Guard the format before it ever reaches the network (§31).
-  return /^[A-Z0-9]{4,32}$/i.test(segment) ? segment.toUpperCase() : null;
+  if (!/^[A-Z0-9]{4,32}$/i.test(segment)) return null;
+
+  // Parsed by hand: URLSearchParams is incomplete in React Native.
+  const params: Record<string, string> = {};
+  for (const pair of query.split("&")) {
+    const [key, value] = pair.split("=");
+    if (key && value && /^[A-Za-z0-9_-]{1,256}$/.test(value)) params[key] = value;
+  }
+
+  return { identifier: segment.toUpperCase(), params };
 }
 
-export async function readStamperTag(): Promise<string> {
+export async function readStamperTag(): Promise<StamperTap> {
   try {
     await NfcManager.requestTechnology(NfcTech.Ndef);
     const tag = await NfcManager.getTag();
-    const identifier = extractIdentifier(tag);
+    const tap = extractTap(tag);
 
-    if (!identifier) {
+    if (!tap) {
       throw new Error("UNREADABLE_TAG");
     }
-    return identifier;
+    return tap;
   } finally {
     // Always release, including when the scan was cancelled or the app was
     // backgrounded mid-read, so the next scan is not blocked (§32).

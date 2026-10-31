@@ -69,7 +69,10 @@ export async function updateMember(
   await recordAudit({
     actorUserId,
     businessId,
-    action: input.status === "DISABLED" ? AUDIT_ACTIONS.MEMBER_DISABLED : AUDIT_ACTIONS.MEMBER_ROLE_CHANGED,
+    action:
+      input.status === "DISABLED"
+        ? AUDIT_ACTIONS.MEMBER_DISABLED
+        : AUDIT_ACTIONS.MEMBER_ROLE_CHANGED,
     resourceType: "BusinessMember",
     resourceId: memberId,
     metadata: { ...input },

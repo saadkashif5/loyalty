@@ -18,8 +18,20 @@ router.use(requireAuth);
 // behind requireBusinessRole.
 router.post("/accept", acceptInviteHandler);
 
-router.get("/", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.MEMBER_VIEW }), listMembersHandler);
-router.post("/", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.MEMBER_MANAGE }), inviteMemberHandler);
-router.patch("/:memberId", requireBusinessRole({ permission: BUSINESS_PERMISSIONS.MEMBER_MANAGE }), updateMemberHandler);
+router.get(
+  "/",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.MEMBER_VIEW }),
+  listMembersHandler,
+);
+router.post(
+  "/",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.MEMBER_MANAGE }),
+  inviteMemberHandler,
+);
+router.patch(
+  "/:memberId",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.MEMBER_MANAGE }),
+  updateMemberHandler,
+);
 
 export default router;

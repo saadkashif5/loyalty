@@ -17,10 +17,11 @@ interface Program {
   requiredStamps: number;
 }
 
-export default async function RewardsPage({ params }: { params: { businessId: string } }) {
+export default async function RewardsPage({ params }: { params: Promise<{ businessId: string }> }) {
+  const { businessId } = await params;
   const [rewards, programs] = await Promise.all([
-    apiFetch<Reward[]>(`/businesses/${params.businessId}/rewards`),
-    apiFetch<Program[]>(`/businesses/${params.businessId}/programs`),
+    apiFetch<Reward[]>(`/businesses/${businessId}/rewards`),
+    apiFetch<Program[]>(`/businesses/${businessId}/programs`),
   ]);
 
   return (
@@ -54,7 +55,7 @@ export default async function RewardsPage({ params }: { params: { businessId: st
           )}
         </div>
 
-        <CreateRewardForm businessId={params.businessId} programs={programs} />
+        <CreateRewardForm businessId={businessId} programs={programs} />
       </div>
     </>
   );

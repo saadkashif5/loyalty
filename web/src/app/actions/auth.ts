@@ -30,7 +30,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     return { error: payload?.error?.message ?? "Could not sign in. Please try again." };
   }
 
-  setSessionCookies(payload.data);
+  await setSessionCookies(payload.data);
   redirect("/businesses");
 }
 
@@ -45,15 +45,15 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
     return { error: payload?.error?.message ?? "Could not create your account." };
   }
 
-  setSessionCookies(payload.data);
+  await setSessionCookies(payload.data);
   redirect("/businesses");
 }
 
 export async function logoutAction() {
-  const refreshToken = getRefreshToken();
+  const refreshToken = await getRefreshToken();
   if (refreshToken) {
     await postAuth("/auth/logout", { refreshToken });
   }
-  clearSessionCookies();
+  await clearSessionCookies();
   redirect("/login");
 }

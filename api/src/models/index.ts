@@ -7,6 +7,7 @@ export * from "./LoyaltyProgram";
 export * from "./LoyaltyCard";
 export * from "./NfcDevice";
 export * from "./Stamp";
+export * from "./TapToken";
 export * from "./Reward";
 export * from "./Redemption";
 export * from "./Notification";

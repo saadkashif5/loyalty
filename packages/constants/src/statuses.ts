@@ -36,8 +36,7 @@ export const LOYALTY_CARD_STATUS = {
   COMPLETED: "COMPLETED",
   EXPIRED: "EXPIRED",
 } as const;
-export type LoyaltyCardStatus =
-  (typeof LOYALTY_CARD_STATUS)[keyof typeof LOYALTY_CARD_STATUS];
+export type LoyaltyCardStatus = (typeof LOYALTY_CARD_STATUS)[keyof typeof LOYALTY_CARD_STATUS];
 
 // NFC device lifecycle — PRD §39
 export const DEVICE_STATUS = {
@@ -49,6 +48,16 @@ export const DEVICE_STATUS = {
   REPLACED: "REPLACED",
 } as const;
 export type DeviceStatus = (typeof DEVICE_STATUS)[keyof typeof DEVICE_STATUS];
+
+// How a stamper proves that a tap is fresh. Each type has a verifier in
+// api/src/modules/taps/verifiers, so changing chips is a per-device setting.
+// STATIC tags carry only the public identifier and cannot stop replayed URLs;
+// they remain for the legacy in-app flow until all stampers are replaced.
+export const TAG_TYPE = {
+  STATIC: "STATIC",
+  NTAG21X_MIRROR: "NTAG21X_MIRROR",
+} as const;
+export type TagType = (typeof TAG_TYPE)[keyof typeof TAG_TYPE];
 
 export const STAMP_SOURCE = {
   NFC: "NFC",
@@ -75,8 +84,7 @@ export const REDEMPTION_STATUS = {
   CANCELLED: "CANCELLED",
   EXPIRED: "EXPIRED",
 } as const;
-export type RedemptionStatus =
-  (typeof REDEMPTION_STATUS)[keyof typeof REDEMPTION_STATUS];
+export type RedemptionStatus = (typeof REDEMPTION_STATUS)[keyof typeof REDEMPTION_STATUS];
 
 export const NOTIFICATION_STATUS = {
   PENDING: "PENDING",
@@ -84,5 +92,4 @@ export const NOTIFICATION_STATUS = {
   FAILED: "FAILED",
   READ: "READ",
 } as const;
-export type NotificationStatus =
-  (typeof NOTIFICATION_STATUS)[keyof typeof NOTIFICATION_STATUS];
+export type NotificationStatus = (typeof NOTIFICATION_STATUS)[keyof typeof NOTIFICATION_STATUS];

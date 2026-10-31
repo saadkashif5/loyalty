@@ -5,7 +5,7 @@ import { registerHandler, loginHandler, refreshHandler, logoutHandler } from "./
 const router = Router();
 
 // Stricter limits on credential-guessing-prone routes (§14, §30).
-const authRateLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
+const authRateLimiter = createRateLimiter({ name: "auth", windowMs: 60_000, max: 10 });
 
 router.post("/register", authRateLimiter, registerHandler);
 router.post("/login", authRateLimiter, loginHandler);

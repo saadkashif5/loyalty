@@ -34,9 +34,7 @@ export default async function BusinessesPage() {
       />
 
       {valid.length === 0 ? (
-        <EmptyState>
-          You are not part of any business yet. Create one to get started.
-        </EmptyState>
+        <EmptyState>You are not part of any business yet. Create one to get started.</EmptyState>
       ) : (
         <ul className="space-y-3">
           {valid.map((m) => (

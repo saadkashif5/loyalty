@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { activateDeviceAction } from "@/app/actions/business";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
 
@@ -21,7 +22,7 @@ export function ActivateDeviceForm({
   branches: { _id: string; name: string }[];
 }) {
   const action = activateDeviceAction.bind(null, businessId);
-  const [state, formAction] = useFormState(action, {});
+  const [state, formAction] = useActionState(action, {});
 
   if (branches.length === 0) {
     return (

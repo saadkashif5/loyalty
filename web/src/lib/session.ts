@@ -5,8 +5,8 @@ export const REFRESH_TOKEN_COOKIE = "tts_refresh";
 
 // Tokens live in httpOnly cookies rather than localStorage so page scripts —
 // and anything injected into them — cannot read them (§30, §31).
-export function setSessionCookies(tokens: { accessToken: string; refreshToken: string }) {
-  const store = cookies();
+export async function setSessionCookies(tokens: { accessToken: string; refreshToken: string }) {
+  const store = await cookies();
   const secure = process.env.NODE_ENV === "production";
 
   store.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, {
@@ -26,16 +26,16 @@ export function setSessionCookies(tokens: { accessToken: string; refreshToken: s
   });
 }
 
-export function clearSessionCookies() {
-  const store = cookies();
+export async function clearSessionCookies() {
+  const store = await cookies();
   store.delete(ACCESS_TOKEN_COOKIE);
   store.delete(REFRESH_TOKEN_COOKIE);
 }
 
-export function getAccessToken(): string | undefined {
-  return cookies().get(ACCESS_TOKEN_COOKIE)?.value;
+export async function getAccessToken(): Promise<string | undefined> {
+  return (await cookies()).get(ACCESS_TOKEN_COOKIE)?.value;
 }
 
-export function getRefreshToken(): string | undefined {
-  return cookies().get(REFRESH_TOKEN_COOKIE)?.value;
+export async function getRefreshToken(): Promise<string | undefined> {
+  return (await cookies()).get(REFRESH_TOKEN_COOKIE)?.value;
 }

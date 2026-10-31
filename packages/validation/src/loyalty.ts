@@ -38,7 +38,7 @@ export const createRewardSchema = z.object({
   name: z.string().min(1).max(160),
   description: z.string().max(2000).optional(),
   type: z.enum(["FREE_ITEM", "PERCENT_OFF", "FIXED_DISCOUNT", "OTHER"]),
-  value: z.record(z.unknown()).optional(),
+  value: z.record(z.string(), z.unknown()).optional(),
   requiredStamps: z.number().int().min(1).max(100),
   expiresAt: z.coerce.date().optional(),
   terms: z.string().max(5000).optional(),
@@ -57,14 +57,29 @@ export const joinProgramSchema = z.object({
 });
 export type JoinProgramInput = z.infer<typeof joinProgramSchema>;
 
-// Stamp requests carry only a device identifier — never a stamp count or any
-// claim about eligibility. The backend decides (§13.1, §54 Principle 3).
-export const createStampSchema = z.object({
-  deviceIdentifier: z.string().min(4).max(32),
-  source: z.enum(["NFC", "QR"]),
-  metadata: z.record(z.unknown()).optional(),
-});
+// Stamp requests carry only proof of a tap — never a stamp count or any claim
+// about eligibility. The backend decides (§13.1, §54 Principle 3).
+// A tap token comes from POST /taps; a bare device identifier is accepted only
+// for STATIC stampers, which cannot prove a tap is fresh.
+export const createStampSchema = z.union([
+  z.object({
+    tapToken: z.string().min(32).max(128),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  }),
+  z.object({
+    deviceIdentifier: z.string().min(4).max(32),
+    source: z.enum(["NFC", "QR"]),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  }),
+]);
 export type CreateStampInput = z.infer<typeof createStampSchema>;
+
+// Staff-issued stamp; the customer is taken from the card, never from the body.
+export const createManualStampSchema = z.object({
+  loyaltyCardId: objectId,
+  branchId: objectId,
+});
+export type CreateManualStampInput = z.infer<typeof createManualStampSchema>;
 
 export const createRedemptionSchema = z.object({
   rewardId: objectId,

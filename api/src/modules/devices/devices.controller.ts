@@ -39,9 +39,7 @@ export const revokeDeviceHandler = asyncHandler(async (req: Request, res: Respon
 });
 
 export const replaceDeviceHandler = asyncHandler(async (req: Request, res: Response) => {
-  sendSuccess(
-    res,
-    await service.replaceDevice(req.businessId!, req.params.deviceId, req.userId!),
-    { status: 201 },
-  );
+  sendSuccess(res, await service.replaceDevice(req.businessId!, req.params.deviceId, req.userId!), {
+    status: 201,
+  });
 });

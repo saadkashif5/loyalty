@@ -35,8 +35,7 @@ export const BUSINESS_PERMISSIONS = {
   CAMPAIGN_MANAGE: "campaign:manage",
 } as const;
 
-export type BusinessPermission =
-  (typeof BUSINESS_PERMISSIONS)[keyof typeof BUSINESS_PERMISSIONS];
+export type BusinessPermission = (typeof BUSINESS_PERMISSIONS)[keyof typeof BUSINESS_PERMISSIONS];
 
 const { OWNER, MANAGER, STAFF } = BUSINESS_ROLES;
 

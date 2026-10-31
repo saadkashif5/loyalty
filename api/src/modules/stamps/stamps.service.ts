@@ -1,32 +1,37 @@
-import mongoose from "mongoose";
-import {
-  LoyaltyCard,
-  LoyaltyProgram,
-  Redemption,
-  Reward,
-  Stamp,
-} from "@/models";
+import mongoose, { type ClientSession, type Types } from "mongoose";
+import { Branch, LoyaltyCard, LoyaltyProgram, Redemption, Reward, Stamp } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
+import { consumeTap, findUsableTap } from "@/modules/taps/taps.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { queueNotification } from "@/services/notification.service";
 import {
   LOYALTY_CARD_STATUS,
   PROGRAM_STATUS,
   REDEMPTION_STATUS,
+  REWARD_STATUS,
   STAMP_SOURCE,
+  TAG_TYPE,
   type StampSource,
 } from "@taptapsell/constants";
 
 const DUPLICATE_KEY_ERROR = 11000;
 
-interface StampRequest {
+type StampRequest = {
   customerId: string;
-  deviceIdentifier: string;
-  source: StampSource;
   idempotencyKey: string;
   metadata?: Record<string, unknown>;
+} & (
+  | { tapToken: string }
+  // Legacy path, accepted only for STATIC stampers.
+  | { deviceIdentifier: string; source: StampSource }
+);
+
+interface UnlockedReward {
+  redemptionId: string;
+  redemptionCode: string;
+  rewardName: string;
 }
 
 export interface StampResult {
@@ -37,11 +42,10 @@ export interface StampResult {
     stampCount: number;
     requiredStamps: number;
   };
-  unlockedReward: {
-    redemptionId: string;
-    redemptionCode: string;
-    rewardName: string;
-  } | null;
+  /** First reward unlocked by this stamp; kept for clients that show one. */
+  unlockedReward: UnlockedReward | null;
+  /** Every reward unlocked by this stamp (several tiers can share a threshold). */
+  unlockedRewards: UnlockedReward[];
 }
 
 /**
@@ -74,12 +78,9 @@ async function resolveCardForDevice(customerId: string, businessId: string, bran
   });
 
   if (!card) {
-    throw new ApiError(
-      409,
-      "NOT_ENROLLED",
-      "You have not joined this loyalty program yet.",
-      { programs: programs.map((p) => ({ id: p._id.toString(), name: p.name })) },
-    );
+    throw new ApiError(409, "NOT_ENROLLED", "You have not joined this loyalty program yet.", {
+      programs: programs.map((p) => ({ id: p._id.toString(), name: p.name })),
+    });
   }
 
   const program = programs.find((p) => p._id.toString() === card.programId.toString())!;
@@ -120,173 +121,274 @@ async function buildResultForExistingStamp(
       requiredStamps: program?.requiredStamps ?? 0,
     },
     unlockedReward: null,
+    unlockedRewards: [],
   };
 }
 
+interface StampContext {
+  customerId: string;
+  cardId: Types.ObjectId;
+  program: { _id: Types.ObjectId; requiredStamps: number };
+  businessId: string;
+  branchId: string;
+  deviceId?: string;
+  source: StampSource;
+  idempotencyKey: string;
+  metadata: Record<string, unknown>;
+}
+
 /**
- * The core loyalty transaction (§28). Stamp creation, progress increment and
- * reward unlock all commit together or not at all, so the system can never end
- * up with a stamp that did not count or a reward granted twice.
+ * Writes one stamp and everything it causes, inside the caller's transaction
+ * (§28). Every active reward whose threshold the card reaches is unlocked, so a
+ * program can offer tiers (e.g. a small reward at 5 stamps and a bigger one at
+ * 10). The program's stamp count is the length of one cycle: reaching it
+ * resets the card for the next cycle.
  */
-export async function createStamp(request: StampRequest): Promise<StampResult> {
-  const device = await resolveDeviceForStamping(request.deviceIdentifier);
-  const { card, program } = await resolveCardForDevice(
-    request.customerId,
-    device.businessId,
-    device.branchId,
+async function applyStamp(ctx: StampContext, session: ClientSession): Promise<StampResult> {
+  const [stamp] = await Stamp.create(
+    [
+      {
+        customerId: ctx.customerId,
+        loyaltyCardId: ctx.cardId,
+        programId: ctx.program._id,
+        businessId: ctx.businessId,
+        branchId: ctx.branchId,
+        deviceId: ctx.deviceId,
+        source: ctx.source,
+        idempotencyKey: ctx.idempotencyKey,
+        metadata: ctx.metadata,
+      },
+    ],
+    { session },
   );
 
-  const minMinutes = (program.settings as { minMinutesBetweenStamps?: number })
-    ?.minMinutesBetweenStamps ?? 5;
-  assertStampCooldown(card.lastStampAt, minMinutes);
+  const updatedCard = await LoyaltyCard.findOneAndUpdate(
+    { _id: ctx.cardId },
+    { $inc: { stampCount: 1 }, $set: { lastStampAt: new Date() } },
+    { new: true, session },
+  );
+  if (!updatedCard) throw ApiError.internal();
 
+  const rewards = await Reward.find({
+    programId: ctx.program._id,
+    status: REWARD_STATUS.ACTIVE,
+    requiredStamps: updatedCard.stampCount,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+  }).session(session);
+
+  const unlockedRewards: UnlockedReward[] = [];
+  for (const reward of rewards) {
+    const [redemption] = await Redemption.create(
+      [
+        {
+          rewardId: reward._id,
+          customerId: ctx.customerId,
+          loyaltyCardId: updatedCard._id,
+          businessId: ctx.businessId,
+          branchId: ctx.branchId,
+          redemptionCode: generateRedemptionCode(),
+          status: REDEMPTION_STATUS.PENDING,
+        },
+      ],
+      { session },
+    );
+
+    unlockedRewards.push({
+      redemptionId: redemption._id.toString(),
+      redemptionCode: redemption.redemptionCode,
+      rewardName: reward.name,
+    });
+  }
+
+  if (updatedCard.stampCount >= ctx.program.requiredStamps) {
+    updatedCard.stampCount = 0;
+    await updatedCard.save({ session });
+  }
+
+  return {
+    stampId: stamp._id.toString(),
+    alreadyRecorded: false,
+    card: {
+      id: updatedCard._id.toString(),
+      stampCount: updatedCard.stampCount,
+      requiredStamps: ctx.program.requiredStamps,
+    },
+    unlockedReward: unlockedRewards[0] ?? null,
+    unlockedRewards,
+  };
+}
+
+/** Runs applyStamp in a transaction; a duplicate idempotency key returns the original stamp. */
+async function commitStamp(
+  ctx: StampContext,
+  beforeWrite?: (session: ClientSession) => Promise<void>,
+): Promise<StampResult> {
   const session = await mongoose.startSession();
-  let result: StampResult;
 
   try {
-    result = await session.withTransaction(async (): Promise<StampResult> => {
-      const [stamp] = await Stamp.create(
-        [
-          {
-            customerId: request.customerId,
-            loyaltyCardId: card._id,
-            programId: program._id,
-            businessId: device.businessId,
-            branchId: device.branchId,
-            deviceId: device.deviceId,
-            source: request.source,
-            idempotencyKey: request.idempotencyKey,
-            metadata: request.metadata ?? {},
-          },
-        ],
-        { session },
-      );
-
-      const updatedCard = await LoyaltyCard.findOneAndUpdate(
-        { _id: card._id },
-        { $inc: { stampCount: 1 }, $set: { lastStampAt: new Date() } },
-        { new: true, session },
-      );
-      if (!updatedCard) throw ApiError.internal();
-
-      let unlockedReward: StampResult["unlockedReward"] = null;
-
-      if (updatedCard.stampCount >= program.requiredStamps) {
-        const reward = await Reward.findOne({
-          programId: program._id,
-          status: "ACTIVE",
-          requiredStamps: { $lte: updatedCard.stampCount },
-        })
-          .sort({ requiredStamps: -1 })
-          .session(session);
-
-        if (reward) {
-          const [redemption] = await Redemption.create(
-            [
-              {
-                rewardId: reward._id,
-                customerId: request.customerId,
-                loyaltyCardId: updatedCard._id,
-                businessId: device.businessId,
-                branchId: device.branchId,
-                redemptionCode: generateRedemptionCode(),
-                status: REDEMPTION_STATUS.PENDING,
-              },
-            ],
-            { session },
-          );
-
-          // Progress resets so the card keeps working for the next reward cycle.
-          updatedCard.stampCount = 0;
-          await updatedCard.save({ session });
-
-          unlockedReward = {
-            redemptionId: redemption._id.toString(),
-            redemptionCode: redemption.redemptionCode,
-            rewardName: reward.name,
-          };
-        }
-      }
-
-      return {
-        stampId: stamp._id.toString(),
-        alreadyRecorded: false,
-        card: {
-          id: updatedCard._id.toString(),
-          stampCount: updatedCard.stampCount,
-          requiredStamps: program.requiredStamps,
-        },
-        unlockedReward,
-      };
+    return await session.withTransaction(async () => {
+      if (beforeWrite) await beforeWrite(session);
+      return applyStamp(ctx, session);
     });
   } catch (err) {
     // A retried request carrying the same idempotency key is not an error —
     // it returns the original outcome instead of creating a second stamp (§28).
-    if (
-      err instanceof mongoose.mongo.MongoServerError &&
-      err.code === DUPLICATE_KEY_ERROR
-    ) {
-      return buildResultForExistingStamp(request.customerId, request.idempotencyKey);
+    if (err instanceof mongoose.mongo.MongoServerError && err.code === DUPLICATE_KEY_ERROR) {
+      return buildResultForExistingStamp(ctx.customerId, ctx.idempotencyKey);
     }
     throw err;
   } finally {
     await session.endSession();
   }
+}
 
+async function notifyStamp(customerId: string, result: StampResult) {
+  if (result.alreadyRecorded) return;
+
+  const unlocked = result.unlockedRewards.length > 0;
   await queueNotification({
-    userId: request.customerId,
-    type: result.unlockedReward ? "REWARD_UNLOCKED" : "STAMP_ADDED",
-    title: result.unlockedReward ? "Reward unlocked!" : "Stamp added",
-    body: result.unlockedReward
-      ? `You have earned: ${result.unlockedReward.rewardName}`
+    userId: customerId,
+    type: unlocked ? "REWARD_UNLOCKED" : "STAMP_ADDED",
+    title: unlocked ? "Reward unlocked!" : "Stamp added",
+    body: unlocked
+      ? `You have earned: ${result.unlockedRewards.map((r) => r.rewardName).join(", ")}`
       : `${result.card.stampCount} of ${result.card.requiredStamps} stamps collected.`,
     data: { loyaltyCardId: result.card.id },
   });
+}
 
+function minMinutesBetweenStamps(program: { settings?: unknown }): number {
+  const settings = program.settings as { minMinutesBetweenStamps?: number } | undefined;
+  return settings?.minMinutesBetweenStamps ?? 5;
+}
+
+/**
+ * The customer-facing stamp (§13.1). Stamp creation, progress increment and
+ * reward unlock all commit together or not at all, so the system can never end
+ * up with a stamp that did not count or a reward granted twice.
+ */
+export async function createStamp(request: StampRequest): Promise<StampResult> {
+  // A retry of a request that already succeeded returns the original outcome.
+  // Checked first because the tap token that request carried is now consumed.
+  if (
+    await Stamp.exists({ customerId: request.customerId, idempotencyKey: request.idempotencyKey })
+  ) {
+    return buildResultForExistingStamp(request.customerId, request.idempotencyKey);
+  }
+
+  let tap: Awaited<ReturnType<typeof findUsableTap>> | null = null;
+  let deviceIdentifier: string;
+  let source: StampSource;
+
+  if ("tapToken" in request) {
+    tap = await findUsableTap(request.tapToken);
+    deviceIdentifier = tap.deviceIdentifier;
+    source = STAMP_SOURCE.NFC;
+  } else {
+    deviceIdentifier = request.deviceIdentifier;
+    source = request.source;
+  }
+
+  // Re-resolved even with a tap token: the stamper may have been revoked since the tap.
+  const device = await resolveDeviceForStamping(deviceIdentifier);
+  if (!tap && device.tagType !== TAG_TYPE.STATIC) {
+    throw new ApiError(400, "TAP_REQUIRED", "Tap the stamper with your phone to collect a stamp.");
+  }
+
+  const { card, program } = await resolveCardForDevice(
+    request.customerId,
+    device.businessId,
+    device.branchId,
+  );
+  assertStampCooldown(card.lastStampAt, minMinutesBetweenStamps(program));
+
+  const usedTap = tap;
+  const result = await commitStamp(
+    {
+      customerId: request.customerId,
+      cardId: card._id,
+      program,
+      businessId: device.businessId,
+      branchId: device.branchId,
+      deviceId: device.deviceId,
+      source,
+      idempotencyKey: request.idempotencyKey,
+      metadata: {
+        ...(request.metadata ?? {}),
+        ...(usedTap ? { tapCounter: usedTap.tapCounter } : {}),
+      },
+    },
+    usedTap ? (session) => consumeTap(usedTap._id, request.customerId, session) : undefined,
+  );
+
+  await notifyStamp(request.customerId, result);
   return result;
 }
 
-/** Manual stamp issuance by business staff — always audited (§13, §37). */
+/**
+ * Manual stamp issued by business staff (§13, §37). Goes through the same
+ * transaction, cooldown and reward rules as a tap, and is always audited.
+ */
 export async function createManualStamp(params: {
   businessId: string;
   actorUserId: string;
-  customerId: string;
   loyaltyCardId: string;
   branchId: string;
   idempotencyKey: string;
-}) {
+}): Promise<StampResult> {
   const card = await LoyaltyCard.findOne({
     _id: params.loyaltyCardId,
-    customerId: params.customerId,
     businessId: params.businessId,
+    status: LOYALTY_CARD_STATUS.ACTIVE,
   });
   if (!card) throw ApiError.notFound("Loyalty card not found for this business");
 
-  const stamp = await Stamp.create({
-    customerId: params.customerId,
-    loyaltyCardId: card._id,
-    programId: card.programId,
+  const customerId = card.customerId.toString();
+  if (await Stamp.exists({ customerId, idempotencyKey: params.idempotencyKey })) {
+    return buildResultForExistingStamp(customerId, params.idempotencyKey);
+  }
+
+  const branch = await Branch.exists({ _id: params.branchId, businessId: params.businessId });
+  if (!branch) throw ApiError.badRequest("Branch does not belong to this business");
+
+  const program = await LoyaltyProgram.findOne({
+    _id: card.programId,
+    businessId: params.businessId,
+    status: PROGRAM_STATUS.ACTIVE,
+  });
+  if (!program) throw ApiError.badRequest("This loyalty program is not active");
+
+  const scoped = program.branches.length > 0;
+  if (scoped && !program.branches.some((id) => id.toString() === params.branchId)) {
+    throw ApiError.badRequest("This loyalty program does not run at that branch");
+  }
+
+  assertStampCooldown(card.lastStampAt, minMinutesBetweenStamps(program));
+
+  const result = await commitStamp({
+    customerId,
+    cardId: card._id,
+    program,
     businessId: params.businessId,
     branchId: params.branchId,
     source: STAMP_SOURCE.ADMIN,
     idempotencyKey: params.idempotencyKey,
+    metadata: { issuedBy: params.actorUserId },
   });
 
-  await LoyaltyCard.updateOne(
-    { _id: card._id },
-    { $inc: { stampCount: 1 }, $set: { lastStampAt: new Date() } },
-  );
+  if (!result.alreadyRecorded) {
+    await recordAudit({
+      actorUserId: params.actorUserId,
+      businessId: params.businessId,
+      action: AUDIT_ACTIONS.STAMP_ISSUED_MANUAL,
+      resourceType: "Stamp",
+      resourceId: result.stampId,
+      metadata: { customerId, loyaltyCardId: params.loyaltyCardId },
+    });
+  }
 
-  await recordAudit({
-    actorUserId: params.actorUserId,
-    businessId: params.businessId,
-    action: AUDIT_ACTIONS.STAMP_ISSUED_MANUAL,
-    resourceType: "Stamp",
-    resourceId: stamp._id,
-    metadata: { customerId: params.customerId, loyaltyCardId: params.loyaltyCardId },
-  });
-
-  return stamp;
+  await notifyStamp(customerId, result);
+  return result;
 }
 
 export async function listCustomerStamps(customerId: string, limit = 50) {

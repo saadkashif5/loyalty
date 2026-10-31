@@ -1,5 +1,6 @@
+import * as Sentry from "@sentry/node";
 import type { NextFunction, Request, Response } from "express";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { ApiError } from "@/utils/ApiError";
 import { logger } from "@/config/logger";
 import type { ApiError as ApiErrorBody } from "@taptapsell/types";
@@ -14,17 +15,18 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.status(404).json(body);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
   const apiError =
     err instanceof ApiError
       ? err
       : err instanceof ZodError
-        ? ApiError.badRequest("Validation failed", err.flatten())
+        ? ApiError.badRequest("Validation failed", z.flattenError(err))
         : ApiError.internal();
 
   if (apiError.statusCode >= 500) {
     logger.error({ err, correlationId: req.correlationId, path: req.path }, "Unhandled error");
+    // No-op unless Sentry was initialised (SENTRY_DSN set).
+    Sentry.captureException(err, { tags: { correlationId: req.correlationId, path: req.path } });
   } else {
     logger.warn(
       { code: apiError.code, correlationId: req.correlationId, path: req.path },

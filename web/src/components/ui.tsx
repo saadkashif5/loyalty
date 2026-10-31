@@ -9,7 +9,11 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   );
 }
 
-export function PageHeader({ title, description, action }: {
+export function PageHeader({
+  title,
+  description,
+  action,
+}: {
   title: string;
   description?: string;
   action?: ReactNode;
@@ -78,9 +82,7 @@ export function ErrorText({ children }: { children: ReactNode }) {
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return (
-    <Card className="text-center text-sm text-slate-500">{children}</Card>
-  );
+  return <Card className="text-center text-sm text-slate-500">{children}</Card>;
 }
 
 const STATUS_STYLES: Record<string, string> = {

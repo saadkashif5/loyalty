@@ -7,7 +7,9 @@ const branchSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 160 },
     address: { type: String },
     location: {
-      type: { type: String, enum: ["Point"], default: "Point" },
+      // No default: a Point without coordinates is rejected by the 2dsphere
+      // index, so a branch without a location must store no location at all.
+      type: { type: String, enum: ["Point"] },
       coordinates: { type: [Number], default: undefined }, // [lng, lat]
     },
     contact: {

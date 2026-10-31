@@ -64,7 +64,10 @@ export async function rotateRefreshToken(
   if (!existing || existing.revokedAt || existing.expiresAt < new Date()) {
     // Reuse of a revoked/expired token is a signal of theft — revoke the whole chain defensively.
     if (existing?.revokedAt) {
-      await RefreshToken.updateMany({ userId: existing.userId, revokedAt: null }, { revokedAt: new Date() });
+      await RefreshToken.updateMany(
+        { userId: existing.userId, revokedAt: null },
+        { revokedAt: new Date() },
+      );
     }
     return null;
   }

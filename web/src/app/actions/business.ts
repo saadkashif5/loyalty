@@ -112,8 +112,12 @@ export async function activateDeviceAction(
     await apiFetch(`/businesses/${businessId}/devices/activate`, {
       method: "POST",
       body: {
-        deviceIdentifier: String(formData.get("deviceIdentifier") ?? "").trim().toUpperCase(),
-        activationCode: String(formData.get("activationCode") ?? "").trim().toUpperCase(),
+        deviceIdentifier: String(formData.get("deviceIdentifier") ?? "")
+          .trim()
+          .toUpperCase(),
+        activationCode: String(formData.get("activationCode") ?? "")
+          .trim()
+          .toUpperCase(),
         branchId: String(formData.get("branchId") ?? ""),
       },
     });
@@ -143,7 +147,9 @@ export async function validateRedemptionAction(
   _prev: RedeemState,
   formData: FormData,
 ): Promise<RedeemState> {
-  const code = String(formData.get("redemptionCode") ?? "").trim().toUpperCase();
+  const code = String(formData.get("redemptionCode") ?? "")
+    .trim()
+    .toUpperCase();
 
   try {
     const redemption = await apiFetch<{ rewardId: { name: string } }>(
