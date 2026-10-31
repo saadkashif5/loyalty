@@ -401,3 +401,55 @@ describe("platform team and sessions", () => {
     expect(currentCode(admin.secret)).toMatch(/^\d{6}$/);
   });
 });
+
+describe("admin console data", () => {
+  it("searches businesses and shows one in detail", async () => {
+    const admin = await platformUser("admin@example.com", "ADMIN");
+    const invite = await inviteBusiness(admin.token);
+    await inviteBusiness(admin.token, {
+      business: { name: "Quetta Cafe", category: "CAFE" },
+      owner: { name: "Zara", email: "zara@example.com" },
+    });
+
+    const search = await api().get("/api/v1/admin/businesses?q=karachi").set(bearer(admin.token));
+    expect(search.body.data).toHaveLength(1);
+    expect(search.body.meta.total).toBe(1);
+
+    // Search text is treated literally, never as a pattern.
+    const regex = await api().get("/api/v1/admin/businesses?q=.*").set(bearer(admin.token));
+    expect(regex.body.data).toHaveLength(0);
+
+    const detail = await api()
+      .get(`/api/v1/admin/businesses/${invite.businessId}`)
+      .set(bearer(admin.token));
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.business.name).toBe("Karachi Bakers");
+    expect(detail.body.data.invitations[0].status).toBe("PENDING");
+    expect(detail.body.data.counts).toEqual({ customers: 0, stamps: 0, redemptions: 0 });
+  });
+
+  it("lists the stamper fleet to viewers and mints only with device permission", async () => {
+    const admin = await platformUser("admin@example.com", "ADMIN");
+    const support = await platformUser("support@example.com", "SUPPORT");
+
+    const minted = await api()
+      .post("/api/v1/admin/devices")
+      .set(bearer(admin.token))
+      .send({ quantity: 3 });
+    expect(minted.status).toBe(201);
+    // Activation codes are visible once, at mint time only.
+    expect(minted.body.data[0].activationCode).toEqual(expect.any(String));
+
+    const fleet = await api()
+      .get("/api/v1/admin/devices?status=UNASSIGNED")
+      .set(bearer(support.token));
+    expect(fleet.body.meta.total).toBe(3);
+    expect(fleet.body.data[0].activationCode).toBeUndefined();
+
+    const supportMint = await api()
+      .post("/api/v1/admin/devices")
+      .set(bearer(support.token))
+      .send({ quantity: 1 });
+    expect(supportMint.status).toBe(403);
+  });
+});

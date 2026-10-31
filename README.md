@@ -7,7 +7,8 @@ NFC-first digital loyalty platform for Pakistani businesses. See [PRD.md](PRD.md
 ```
 taptapsell-loyalty/
 ├── api/          Node.js + TypeScript REST API (modular monolith)
-├── web/          Next.js business & platform admin dashboard
+├── web/          Next.js business dashboard (owners, managers, staff)
+├── admin/        Next.js platform console (TapTapSell team only)
 ├── mobile/       React Native (Expo) customer app
 ├── packages/
 │   ├── constants/    roles, permissions, statuses shared across apps
@@ -16,7 +17,7 @@ taptapsell-loyalty/
 └── docs/         provisioning and environment guides
 ```
 
-`api`, `web` and `packages/*` are npm workspaces. `mobile` is kept outside the
+`api`, `web`, `admin` and `packages/*` are npm workspaces. `mobile` is kept outside the
 workspace set so Metro resolves its dependencies without symlink workarounds.
 
 ## Getting started
@@ -28,13 +29,14 @@ cp api/.env.example api/.env           # then fill in real values
 npm run seed:admin --workspace=api     # needs SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD
 npm run seed:demo --workspace=api      # demo café, stamper DEMO01, three customers
 npm run dev:api
-npm run dev:web
+npm run dev:web                        # business dashboard on :3000
+npm run dev:admin                      # platform console on :3001
 ```
 
-Sign in at `http://localhost:3000/login` as the Super Admin and turn on two-step
-verification at `/account/security`; admin API routes refuse platform users
-until it is on. Businesses join by invitation: `POST /api/v1/admin/businesses`
-creates the business and returns an invite link for its owner.
+Sign in to the console at `http://localhost:3001` as the Super Admin; it asks
+for two-step verification to be set up first. Businesses join by invitation:
+**Businesses → Invite a business** creates the business and gives you a link
+for its owner, who accepts it on the business dashboard.
 
 The API requires MongoDB. Transactions are used for the stamp flow, so the
 database must be a replica set — MongoDB Atlas is one by default; a local
@@ -50,7 +52,7 @@ back to memory) and required in staging and production. See
 | `npm run format` / `npm run format:check` | Prettier |
 | `npm run typecheck` | TypeScript in every workspace |
 | `npm test` | Integration tests (needs `docker compose up -d`) |
-| `npm run build:api` / `npm run build:web` | Production builds |
+| `npm run build:api` / `build:web` / `build:admin` | Production builds |
 
 A pre-commit hook runs ESLint and Prettier on staged files. CI runs all of the
 above plus a dependency audit, secret scanning and CodeQL on every push and

@@ -1,12 +1,38 @@
-import { AuditLog, Business, LoyaltyCard, NfcDevice, Stamp, User } from "@/models";
+import {
+  AuditLog,
+  Branch,
+  Business,
+  BusinessMember,
+  LoyaltyCard,
+  NfcDevice,
+  Redemption,
+  Stamp,
+  User,
+} from "@/models";
+import { listInvitations } from "@/modules/invitations/invitations.service";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { revokeAllUserSessions } from "@/modules/auth/token.service";
 import { BUSINESS_STATUS, DEVICE_STATUS, USER_STATUS } from "@taptapsell/constants";
 import type { AddTeamMemberInput, UpdateTeamMemberInput } from "@taptapsell/validation";
 
-export async function listBusinesses(options: { status?: string; page: number; limit: number }) {
-  const filter = options.status ? { status: options.status } : {};
+function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function listBusinesses(options: {
+  status?: string;
+  query?: string;
+  page: number;
+  limit: number;
+}) {
+  const filter: Record<string, unknown> = {};
+  if (options.status) filter.status = options.status;
+  if (options.query) {
+    // Escaped so search text cannot be injected as a regex.
+    const pattern = { $regex: escapeRegex(options.query), $options: "i" };
+    filter.$or = [{ name: pattern }, { slug: pattern }, { "contact.phone": pattern }];
+  }
 
   const [items, total] = await Promise.all([
     Business.find(filter)
@@ -215,4 +241,57 @@ export async function updateTeamMember(
   });
 
   return { id: user.id, email: user.email, platformRole: user.platformRole };
+}
+
+/** Everything the platform team needs on one business page. */
+export async function getBusinessDetail(businessId: string) {
+  const business = await Business.findById(businessId);
+  if (!business) throw ApiError.notFound("Business not found");
+
+  const [members, branches, devices, invitations, customers, stamps, redemptions] =
+    await Promise.all([
+      BusinessMember.find({ businessId }).populate("userId", "name email phone status"),
+      Branch.find({ businessId }).sort({ createdAt: 1 }),
+      NfcDevice.find({ businessId }).populate("branchId", "name").sort({ createdAt: -1 }),
+      listInvitations(businessId),
+      LoyaltyCard.countDocuments({ businessId }),
+      Stamp.countDocuments({ businessId }),
+      Redemption.countDocuments({ businessId }),
+    ]);
+
+  return {
+    business,
+    members,
+    branches,
+    devices,
+    invitations,
+    counts: { customers, stamps, redemptions },
+  };
+}
+
+/** The whole stamper fleet, including stampers not yet assigned to anyone. */
+export async function listDevices(options: {
+  status?: string;
+  businessId?: string;
+  query?: string;
+  page: number;
+  limit: number;
+}) {
+  const filter: Record<string, unknown> = {};
+  if (options.status) filter.status = options.status;
+  if (options.businessId) filter.businessId = options.businessId;
+  if (options.query)
+    filter.deviceIdentifier = { $regex: escapeRegex(options.query), $options: "i" };
+
+  const [items, total] = await Promise.all([
+    NfcDevice.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((options.page - 1) * options.limit)
+      .limit(options.limit)
+      .populate("businessId", "name")
+      .populate("branchId", "name"),
+    NfcDevice.countDocuments(filter),
+  ]);
+
+  return { items, total };
 }

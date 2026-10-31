@@ -8,7 +8,14 @@ import prettier from "eslint-config-prettier";
 // is linted separately once it is revived (see ROADMAP.md Phase 6).
 export default tseslint.config(
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/.next/**", "mobile/**", "web/next-env.d.ts"],
+    ignores: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.next/**",
+      "mobile/**",
+      "web/next-env.d.ts",
+      "admin/next-env.d.ts",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -26,7 +33,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["web/**/*.{ts,tsx}"],
+    files: ["web/**/*.{ts,tsx}", "admin/**/*.{ts,tsx}"],
     languageOptions: {
       globals: { ...globals.browser },
     },

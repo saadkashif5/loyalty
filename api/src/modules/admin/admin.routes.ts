@@ -52,7 +52,8 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
     const status = typeof req.query.status === "string" ? req.query.status : undefined;
-    const { items, total } = await service.listBusinesses({ status, page, limit });
+    const query = typeof req.query.q === "string" ? req.query.q.slice(0, 100) : undefined;
+    const { items, total } = await service.listBusinesses({ status, query, page, limit });
     sendSuccess(res, items, { meta: { page, limit, total } });
   }),
 );
@@ -66,6 +67,14 @@ router.post(
     sendSuccess(res, await invitations.createBusinessWithInvitation(req.userId!, input), {
       status: 201,
     });
+  }),
+);
+
+router.get(
+  "/businesses/:businessId",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await service.getBusinessDetail(req.params.businessId));
   }),
 );
 
@@ -160,6 +169,22 @@ router.post(
 
 // ---- Stamper fleet ------------------------------------------------------------
 
+router.get(
+  "/devices",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    const { page, limit } = pagination(req.query);
+    const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+    const { items, total } = await service.listDevices({
+      status: str(req.query.status),
+      businessId: str(req.query.businessId),
+      query: str(req.query.q)?.slice(0, 32),
+      page,
+      limit,
+    });
+    sendSuccess(res, items, { meta: { page, limit, total } });
+  }),
+);
 router.post("/devices", can(P.DEVICE_MANAGE), registerDevicesHandler);
 router.patch("/devices/:deviceId/assign", can(P.DEVICE_MANAGE), assignDeviceHandler);
 

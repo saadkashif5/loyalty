@@ -31,7 +31,7 @@ has been considered and **deferred**._
 | Notifications | Persisted + list/read/preferences only — no push delivery |
 | Business web dashboard (Next.js 16) — auth, overview, programs, rewards, devices, branches, staff, activity, redeem | Built, `next build` passes. Create-only forms (no edit UI); no customers page, settings or analytics charts beyond 14-day bars |
 | Owner onboarding | Invite-only: platform creates the business and invites the owner; `/invite/[token]` accept page; self-serve business creation removed; public lead form (`POST /leads`) |
-| Platform admin dashboard UI | Not started (API only) |
+| Platform admin console (`admin/`, separate Next.js app) | Built: sign-in with two-step, overview, businesses (search, invite, detail, suspend/restore, invitations, assign stamper), leads, stamper fleet (mint, list), users, audit log, team, own security. Not built: view-as-business, labels/QR printing |
 | Customer mobile app (Expo) — auth, cards, card detail, NFC scan, rewards, discover, join, profile | Written, **not yet installed or run**; frozen per ROADMAP (customer portal replaces it) |
 | Integration test suite (`api/tests/coreLoop.test.ts`, `api/tests/platform.test.ts`) | **49/49 passing** against the Docker replica set; each test worker uses its own database |
 | Seed scripts | `seed:admin` (Super Admin), `seed:demo` (demo café, stamper, customers) |

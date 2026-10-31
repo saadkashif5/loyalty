@@ -134,12 +134,12 @@ capped per day and audited.
 |---|---|---|---|
 | `tap.taptapsell.pk` | Customer portal (PWA) | Customers | Tiny bundle, cookie session, Urdu/English |
 | `business.taptapsell.pk` | Business dashboard | Owners, managers, staff | Responsive: staff use it on phones at the counter |
-| `admin.taptapsell.pk` | Platform console | Super Admin, admins | MFA + Cloudflare Access/IP allowlist; isolated deploy |
+| _To be decided_ | Platform console (`admin/`) | Super Admin, admins | MFA + Cloudflare Access/IP allowlist; isolated deploy |
 | `api.taptapsell.pk` | REST API | All of the above | Stateless, horizontally scaled |
 | `taptapsell.pk` | Marketing site | Public | Pricing, "request access" form |
 
 Separate apps mean separate cookies, separate attack surface and a small customer bundle. Domain names
-are placeholders.
+are placeholders; the admin console's domain is still to be decided (`admin.taptapsell.pk` is taken).
 
 ### D5. Multi-tenancy model
 
@@ -253,8 +253,9 @@ Engineering
       — _ESLint 9, Prettier, EditorConfig and a lint-staged pre-commit hook in place; `npm audit`
       (after upgrading Next.js 14→16, React 18→19, zod 3→4: no high or critical; 5 moderate in Sentry's build-time source-map plugin (`glob`/`minimatch`), which only runs with `withSentryConfig` and is not used here), gitleaks, CodeQL
       and Dependabot configured, pending the first GitHub run_
-- [ ] Repo layout for multiple apps: `api`, `worker`, `portal`, `dashboard` (current `web`), `admin`,
-      shared `packages/*` — _deferred to Phase 1, when the admin console is the first new app_
+- [~] Repo layout for multiple apps: `api`, `worker`, `portal`, `dashboard` (current `web`), `admin`,
+      shared `packages/*` — _`admin/` is now its own Next.js app and workspace; `portal/` comes in
+      Phase 2 and `worker/` in Phase 4; renaming `web` to `dashboard` is left until then_
 - [~] Add Redis; move rate limiting, idempotency and caching onto it
       — _Redis in `docker-compose.yml`; every rate limiter uses it when `REDIS_URL` is set
       (verified: 429 after the 10th login across a shared store); required in staging and
@@ -320,14 +321,22 @@ Business invitations
       automatic "converted" on invite. Marketing-site form itself not built_
 
 Admin console
-- [~] Overview: tenants by status, active stampers, stamps today, signups — _API has totals; no UI_
-- [ ] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
-      members, subscription and audit trail; activate, suspend and restore with reason
-- [ ] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
-      (provisioned → shipped → active → revoked/replaced), print labels and QR
-- [~] Users: search customers and business users; suspend/restore; force sign-out — _API done; no UI_
-- [~] Audit log viewer with filters — _API (filter by business); no UI_
+- [x] Overview: tenants by status, active stampers, stamps today, signups — _separate `admin/` app:
+      "needs attention" (new leads, pending invitations, suspended businesses, stampers to assign)
+      and platform totals. Stamps-today and signup trends need the Phase 4 aggregates_
+- [~] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
+      members, subscription and audit trail; activate, suspend and restore with reason — _search by
+      name/slug/phone, status filter, invite form (also pre-filled from a lead), detail page with
+      counts, people, branches, stampers, invitations (new link / revoke) and suspend/restore with a
+      reason. Plan and city filters and subscription wait for Phase 3_
+- [~] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
+      (provisioned → shipped → active → revoked/replaced), print labels and QR — _fleet list with
+      filters, mint batches (activation codes shown once), assign from the business page.
+      Shipped status, labels/QR printing and SUN keys (NTAG 424 DNA) not built_
+- [x] Users: search customers and business users; suspend/restore; force sign-out
+- [~] Audit log viewer with filters — _filter by business only_
 - [ ] Support "view as business" — read-only, time-limited, banner shown, fully audited
+- [x] Platform team page — _add by email, change role, remove (signs them out); own role locked_
 
 Business dashboard
 - [ ] Onboarding wizard: profile, logo upload (object storage, signed URLs, image validation),
