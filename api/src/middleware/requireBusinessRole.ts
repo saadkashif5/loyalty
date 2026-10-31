@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { Business, BusinessMember } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { mfaSetupRequired } from "@/middleware/auth";
+import { REDEEM_DURING_BILLING_SUSPENSION_DAYS } from "@/modules/billing/billing.config";
 import {
   BUSINESS_ROLE_HIERARCHY,
   BUSINESS_ROLES,
@@ -29,6 +30,11 @@ interface Options {
   permission?: BusinessPermission | BusinessPermission[];
   /** Route param holding the business id. Defaults to "businessId". */
   paramName?: string;
+  /**
+   * Keeps this action available for a while when the business is suspended
+   * for non-payment, so customers can still use rewards they already earned.
+   */
+  allowDuringBillingSuspension?: boolean;
 }
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -74,7 +80,18 @@ export function requireBusinessRole(options: Options = {}) {
     }
 
     // A suspended business keeps read access to its data but can change nothing (§60).
-    if (business.status === BUSINESS_STATUS.SUSPENDED && !READ_METHODS.has(req.method)) {
+    const billingGrace =
+      options.allowDuringBillingSuspension &&
+      business.suspension?.kind === "BILLING" &&
+      business.suspension.at &&
+      Date.now() - business.suspension.at.getTime() <
+        REDEEM_DURING_BILLING_SUSPENSION_DAYS * 86_400_000;
+
+    if (
+      business.status === BUSINESS_STATUS.SUSPENDED &&
+      !READ_METHODS.has(req.method) &&
+      !billingGrace
+    ) {
       const reason = business.suspension?.reason;
       next(
         new ApiError(

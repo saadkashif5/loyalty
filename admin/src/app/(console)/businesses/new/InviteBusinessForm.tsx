@@ -37,7 +37,13 @@ function Submit() {
   );
 }
 
-export function InviteBusinessForm({ prefill }: { prefill: InvitePrefill }) {
+export function InviteBusinessForm({
+  prefill,
+  plans,
+}: {
+  prefill: InvitePrefill;
+  plans: Array<{ code: string; name: string; isPublic: boolean; isActive: boolean }>;
+}) {
   const [state, formAction] = useActionState(inviteBusinessAction, {});
 
   if (state.inviteUrl && state.businessId) {
@@ -106,6 +112,25 @@ export function InviteBusinessForm({ prefill }: { prefill: InvitePrefill }) {
               placeholder="0300 1234567"
               defaultValue={prefill.ownerPhone}
             />
+          </Field>
+        </div>
+      </Card>
+
+      <Card className="space-y-4">
+        <h2 className="font-semibold">Plan</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Plan">
+            <Select name="planCode" defaultValue="STARTER">
+              {plans.map((p) => (
+                <option key={p.code} value={p.code}>
+                  {p.name}
+                  {p.isPublic ? "" : " (hidden)"}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Free trial (days, from when the owner accepts)">
+            <Input name="trialDays" type="number" min={0} max={90} defaultValue={30} />
           </Field>
         </div>
       </Card>

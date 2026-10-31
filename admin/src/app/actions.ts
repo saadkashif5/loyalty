@@ -167,6 +167,8 @@ export async function inviteBusinessAction(
             phone: text(formData, "ownerPhone"),
           },
           leadId: text(formData, "leadId"),
+          planCode: text(formData, "planCode"),
+          trialDays: formData.has("trialDays") ? Number(formData.get("trialDays")) : undefined,
         },
       },
     );
@@ -336,5 +338,121 @@ export async function updateTeamMemberAction(
     return { done: true };
   } catch (error) {
     return { error: messageFrom(error, "Could not change the role.") };
+  }
+}
+
+// ---- Billing ---------------------------------------------------------------------------
+
+function limitValue(formData: FormData, name: string): number | null {
+  const value = text(formData, name);
+  return value === undefined ? null : Number(value);
+}
+
+function planBody(formData: FormData) {
+  return {
+    name: text(formData, "name"),
+    description: text(formData, "description"),
+    priceMonthlyPkr: Number(formData.get("priceMonthlyPkr")),
+    priceAnnualPkr: Number(formData.get("priceAnnualPkr")),
+    limits: {
+      branches: limitValue(formData, "branches"),
+      programs: limitValue(formData, "programs"),
+      stampers: limitValue(formData, "stampers"),
+      staff: limitValue(formData, "staff"),
+      customers: limitValue(formData, "customers"),
+    },
+    isPublic: formData.get("isPublic") === "on",
+  };
+}
+
+export async function createPlanAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  try {
+    await apiFetch("/admin/plans", {
+      method: "POST",
+      body: { code: text(formData, "code"), ...planBody(formData) },
+    });
+    revalidatePath("/plans");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not create the plan.") };
+  }
+}
+
+export async function updatePlanAction(
+  planId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/plans/${planId}`, {
+      method: "PATCH",
+      body: { ...planBody(formData), isActive: formData.get("isActive") === "on" },
+    });
+    revalidatePath("/plans");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not save the plan.") };
+  }
+}
+
+function refreshBilling(businessId: string) {
+  revalidatePath(`/businesses/${businessId}`);
+  revalidatePath("/finance");
+}
+
+export async function changeSubscriptionPlanAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/subscription`, {
+      method: "PATCH",
+      body: { planCode: text(formData, "planCode"), billingCycle: text(formData, "billingCycle") },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not change the plan.") };
+  }
+}
+
+export async function extendTrialAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/subscription/extend-trial`, {
+      method: "POST",
+      body: { days: Number(formData.get("days")) },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not extend the trial.") };
+  }
+}
+
+export async function recordPaymentAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/payments`, {
+      method: "POST",
+      body: {
+        amountPkr: Number(formData.get("amountPkr")),
+        method: text(formData, "method"),
+        reference: text(formData, "reference"),
+        periods: Number(formData.get("periods") ?? 1),
+        note: text(formData, "note"),
+      },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not record the payment.") };
   }
 }

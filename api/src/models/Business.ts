@@ -24,6 +24,9 @@ const businessSchema = new Schema(
     },
     // Why the platform suspended the business; shown on its read-only dashboard.
     suspension: {
+      // ADMIN: suspended by the platform team. BILLING: unpaid subscription;
+      // lifts automatically on payment.
+      kind: { type: String, enum: ["ADMIN", "BILLING"] },
       reason: { type: String, maxlength: 500 },
       at: { type: Date },
     },

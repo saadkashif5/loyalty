@@ -30,6 +30,9 @@ import {
   lookupCounterCodeHandler,
 } from "@/modules/counter/counter.controller";
 import fraudRoutes from "@/modules/fraud/fraud.routes";
+import { getBillingSummary } from "@/modules/billing/subscriptions.service";
+import { asyncHandler } from "@/utils/asyncHandler";
+import { sendSuccess } from "@/utils/response";
 import {
   createManualStampHandler,
   listBusinessStampsHandler,
@@ -149,6 +152,15 @@ router.post(
   counterStampHandler,
 );
 
+// The owner's plan, usage, payments and the plans they could move to.
+router.get(
+  "/billing",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.BUSINESS_MANAGE_BILLING }),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await getBillingSummary(req.businessId!));
+  }),
+);
+
 // Alerts about suspicious stamping.
 router.use("/fraud-flags", fraudRoutes);
 
@@ -197,7 +209,10 @@ router.get(
 // Staff-facing reward validation — the counter workflow (§17.1 step 6).
 router.post(
   "/redemptions/validate",
-  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.REDEMPTION_VALIDATE }),
+  requireBusinessRole({
+    permission: BUSINESS_PERMISSIONS.REDEMPTION_VALIDATE,
+    allowDuringBillingSuspension: true,
+  }),
   validateRedemptionHandler,
 );
 

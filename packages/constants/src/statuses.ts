@@ -114,3 +114,33 @@ export const FRAUD_FLAG_TYPE = {
   STAFF_DAILY_CAP: "STAFF_DAILY_CAP",
 } as const;
 export type FraudFlagType = (typeof FRAUD_FLAG_TYPE)[keyof typeof FRAUD_FLAG_TYPE];
+
+// ---- Billing (ROADMAP Phase 3) ------------------------------------------------------
+
+export const SUBSCRIPTION_STATUS = {
+  TRIALING: "TRIALING",
+  ACTIVE: "ACTIVE",
+  /** Period ended unpaid; still working during the grace period. */
+  PAST_DUE: "PAST_DUE",
+  /** Grace period over: the business is suspended until it pays. */
+  SUSPENDED: "SUSPENDED",
+  CANCELLED: "CANCELLED",
+} as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUS)[keyof typeof SUBSCRIPTION_STATUS];
+
+export const BILLING_CYCLE = { MONTHLY: "MONTHLY", ANNUAL: "ANNUAL" } as const;
+export type BillingCycle = (typeof BILLING_CYCLE)[keyof typeof BILLING_CYCLE];
+
+export const PAYMENT_METHOD = {
+  BANK_TRANSFER: "BANK_TRANSFER",
+  RAAST: "RAAST",
+  CASH: "CASH",
+  CHEQUE: "CHEQUE",
+  CARD: "CARD",
+  OTHER: "OTHER",
+} as const;
+export type PaymentMethod = (typeof PAYMENT_METHOD)[keyof typeof PAYMENT_METHOD];
+
+/** Why a business is suspended: billing suspensions lift automatically on payment. */
+export const SUSPENSION_KIND = { ADMIN: "ADMIN", BILLING: "BILLING" } as const;
+export type SuspensionKind = (typeof SUSPENSION_KIND)[keyof typeof SUSPENSION_KIND];

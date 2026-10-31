@@ -1,5 +1,6 @@
 import { LoyaltyCard, LoyaltyProgram, Redemption, Stamp } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { LOYALTY_CARD_STATUS, PROGRAM_STATUS, REDEMPTION_STATUS } from "@taptapsell/constants";
 
 // Joining is idempotent: tapping "join" twice returns the same card rather than
@@ -17,6 +18,12 @@ export async function joinProgram(customerId: string, programId: string) {
 
   const existing = await LoyaltyCard.findOne({ customerId, programId });
   if (existing) return existing;
+
+  // Only someone new to this business counts against its customer limit.
+  const businessId = program.businessId.toString();
+  if (!(await LoyaltyCard.exists({ customerId, businessId }))) {
+    await assertWithinPlan(businessId, "customers");
+  }
 
   return LoyaltyCard.create({
     customerId,

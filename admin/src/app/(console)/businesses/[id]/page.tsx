@@ -4,6 +4,8 @@ import { apiFetch, apiFetchPage } from "@/lib/api";
 import { can, getMe } from "@/lib/me";
 import { Card, PageHeader, Stat, StatusBadge, Table, Td, formatDate } from "@/components/ui";
 import { AssignDeviceForm, InvitationActions, StatusForm } from "./BusinessActions";
+import { SubscriptionCard } from "./SubscriptionCard";
+import type { BillingSummary, Plan } from "@/lib/billing";
 
 interface Detail {
   business: {
@@ -49,14 +51,20 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
   const me = await getMe();
   const canManage = can(me.platformRole, PLATFORM_PERMISSIONS.BUSINESS_MANAGE);
   const canAssign = can(me.platformRole, PLATFORM_PERMISSIONS.DEVICE_MANAGE);
+  const canSeeBilling = can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_VIEW);
+  const canManageBilling = can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_MANAGE);
 
-  const [detail, unassigned] = await Promise.all([
+  const [detail, unassigned, billing, plans] = await Promise.all([
     apiFetch<Detail>(`/admin/businesses/${id}`),
     canAssign
       ? apiFetchPage<Array<{ _id: string; deviceIdentifier: string }>>(
           "/admin/devices?status=UNASSIGNED&limit=100",
         )
       : Promise.resolve(null),
+    canSeeBilling
+      ? apiFetch<BillingSummary>(`/admin/businesses/${id}/billing`)
+      : Promise.resolve(null),
+    canManageBilling ? apiFetch<Plan[]>("/admin/plans") : Promise.resolve([] as Plan[]),
   ]);
   const { business } = detail;
 
@@ -93,6 +101,15 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
           </Card>
         ) : null}
       </div>
+
+      {billing ? (
+        <SubscriptionCard
+          businessId={business._id}
+          billing={billing}
+          plans={plans}
+          canManage={canManageBilling}
+        />
+      ) : null}
 
       <section>
         <h2 className="mb-3 font-semibold">Owner invitations</h2>

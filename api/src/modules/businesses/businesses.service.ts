@@ -154,3 +154,38 @@ export async function listMyPendingInvitations(userId: string) {
     .filter((m) => m.businessId)
     .map((m) => ({ business: m.businessId, role: m.role, invitedAt: m.createdAt }));
 }
+
+/**
+ * Suspends or restores a business and its stampers. Shared by the platform
+ * team (kind ADMIN) and the billing job (kind BILLING); callers audit.
+ */
+export async function applyBusinessStatus(
+  businessId: string,
+  status: "ACTIVE" | "SUSPENDED",
+  suspension?: { kind: "ADMIN" | "BILLING"; reason?: string },
+) {
+  const business = await Business.findById(businessId);
+  if (!business) throw ApiError.notFound("Business not found");
+
+  business.status = status;
+  business.suspension =
+    status === BUSINESS_STATUS.SUSPENDED
+      ? { kind: suspension?.kind ?? "ADMIN", reason: suspension?.reason, at: new Date() }
+      : undefined;
+  await business.save();
+
+  // Suspension must also stop the hardware: an active stamper at a suspended
+  // business would otherwise keep issuing valid stamps (§60).
+  if (status === BUSINESS_STATUS.SUSPENDED) {
+    await NfcDevice.updateMany(
+      { businessId, status: DEVICE_STATUS.ACTIVE },
+      { status: DEVICE_STATUS.SUSPENDED },
+    );
+  } else {
+    await NfcDevice.updateMany(
+      { businessId, status: DEVICE_STATUS.SUSPENDED },
+      { status: DEVICE_STATUS.ACTIVE },
+    );
+  }
+  return business;
+}

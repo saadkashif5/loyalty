@@ -16,7 +16,7 @@ export interface Membership {
     name: string;
     category: string;
     status: string;
-    suspension?: { reason?: string; at?: string };
+    suspension?: { kind?: "ADMIN" | "BILLING"; reason?: string; at?: string };
   } | null;
 }
 

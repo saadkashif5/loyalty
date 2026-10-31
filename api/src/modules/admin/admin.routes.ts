@@ -7,7 +7,12 @@ import { sendSuccess } from "@/utils/response";
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
 import {
   addTeamMemberSchema,
+  changeSubscriptionPlanSchema,
   createBusinessWithOwnerSchema,
+  createPlanSchema,
+  extendTrialSchema,
+  recordPaymentSchema,
+  updatePlanSchema,
   updateLeadSchema,
   updateTeamMemberSchema,
 } from "@taptapsell/validation";
@@ -15,6 +20,8 @@ import * as service from "./admin.service";
 import * as invitations from "@/modules/invitations/invitations.service";
 import * as leads from "@/modules/leads/leads.service";
 import * as fraud from "@/modules/fraud/fraud.service";
+import * as plans from "@/modules/billing/plans.service";
+import * as billing from "@/modules/billing/subscriptions.service";
 import { registerDevicesHandler, assignDeviceHandler } from "@/modules/devices/devices.controller";
 
 // Mounted at /api/v1/admin. Every route names the platform permission it needs;
@@ -134,6 +141,79 @@ router.patch(
   asyncHandler(async (req, res) => {
     const input = updateLeadSchema.parse(req.body);
     sendSuccess(res, await leads.updateLead(req.userId!, req.params.leadId, input));
+  }),
+);
+
+// ---- Billing ------------------------------------------------------------------
+
+router.get(
+  "/plans",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await plans.listPlans());
+  }),
+);
+
+router.post(
+  "/plans",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = createPlanSchema.parse(req.body);
+    sendSuccess(res, await plans.createPlan(req.userId!, input), { status: 201 });
+  }),
+);
+
+router.patch(
+  "/plans/:planId",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = updatePlanSchema.parse(req.body);
+    sendSuccess(res, await plans.updatePlan(req.userId!, req.params.planId, input));
+  }),
+);
+
+router.get(
+  "/billing/overview",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await billing.getFinanceOverview());
+  }),
+);
+
+router.get(
+  "/businesses/:businessId/billing",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await billing.getBillingSummary(req.params.businessId));
+  }),
+);
+
+router.patch(
+  "/businesses/:businessId/subscription",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = changeSubscriptionPlanSchema.parse(req.body);
+    sendSuccess(res, await billing.changePlan(req.userId!, req.params.businessId, input));
+  }),
+);
+
+router.post(
+  "/businesses/:businessId/subscription/extend-trial",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = extendTrialSchema.parse(req.body);
+    sendSuccess(res, await billing.extendTrial(req.userId!, req.params.businessId, input));
+  }),
+);
+
+router.post(
+  "/businesses/:businessId/payments",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = recordPaymentSchema.parse(req.body);
+    sendSuccess(res, await billing.recordPayment(req.userId!, req.params.businessId, input), {
+      status: 201,
+    });
   }),
 );
 

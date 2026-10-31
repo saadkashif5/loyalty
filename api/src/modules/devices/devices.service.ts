@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { Branch, Business, NfcDevice } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { generateActivationCode, generateDeviceIdentifier } from "@/utils/codes";
 import { BUSINESS_STATUS, DEVICE_STATUS, type TagType } from "@taptapsell/constants";
@@ -96,6 +97,8 @@ export async function activateDevice(
 
   const branch = await Branch.findOne({ _id: input.branchId, businessId });
   if (!branch) throw ApiError.badRequest("Branch does not belong to your business");
+
+  if (device.status !== DEVICE_STATUS.ACTIVE) await assertWithinPlan(businessId, "stampers");
 
   device.businessId = branch.businessId;
   device.branchId = branch._id;

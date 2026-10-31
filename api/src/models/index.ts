@@ -17,3 +17,6 @@ export * from "./Lead";
 export * from "./OtpChallenge";
 export * from "./CounterCode";
 export * from "./FraudFlag";
+export * from "./Plan";
+export * from "./Subscription";
+export * from "./Payment";

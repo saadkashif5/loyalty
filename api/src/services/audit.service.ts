@@ -42,6 +42,12 @@ export const AUDIT_ACTIONS = {
   INVITATION_REVOKED: "invitation.revoked",
   INVITATION_ACCEPTED: "invitation.accepted",
   LEAD_UPDATED: "lead.updated",
+  PLAN_CREATED: "plan.created",
+  PLAN_UPDATED: "plan.updated",
+  SUBSCRIPTION_PLAN_CHANGED: "subscription.plan_changed",
+  SUBSCRIPTION_TRIAL_EXTENDED: "subscription.trial_extended",
+  SUBSCRIPTION_STATUS_CHANGED: "subscription.status_changed",
+  PAYMENT_RECORDED: "payment.recorded",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

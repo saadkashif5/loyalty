@@ -10,6 +10,7 @@ import {
   User,
 } from "@/models";
 import { listInvitations } from "@/modules/invitations/invitations.service";
+import { applyBusinessStatus } from "@/modules/businesses/businesses.service";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { revokeAllUserSessions } from "@/modules/auth/token.service";
@@ -51,27 +52,7 @@ export async function setBusinessStatus(
   status: "ACTIVE" | "SUSPENDED",
   reason?: string,
 ) {
-  const business = await Business.findById(businessId);
-  if (!business) throw ApiError.notFound("Business not found");
-
-  business.status = status;
-  business.suspension =
-    status === BUSINESS_STATUS.SUSPENDED ? { reason, at: new Date() } : undefined;
-  await business.save();
-
-  // Suspension must also stop the hardware: an active stamper at a suspended
-  // business would otherwise keep issuing valid stamps (§60).
-  if (status === BUSINESS_STATUS.SUSPENDED) {
-    await NfcDevice.updateMany(
-      { businessId, status: DEVICE_STATUS.ACTIVE },
-      { status: DEVICE_STATUS.SUSPENDED },
-    );
-  } else {
-    await NfcDevice.updateMany(
-      { businessId, status: DEVICE_STATUS.SUSPENDED },
-      { status: DEVICE_STATUS.ACTIVE },
-    );
-  }
+  const business = await applyBusinessStatus(businessId, status, { kind: "ADMIN", reason });
 
   await recordAudit({
     actorUserId,

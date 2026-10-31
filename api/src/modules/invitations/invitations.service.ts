@@ -15,6 +15,8 @@ import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { generateUniqueSlug } from "@/modules/businesses/businesses.service";
 import { hashPassword, issueTokenPair, type AuthContext } from "@/modules/auth/auth.service";
 import { toPublicUser } from "@/modules/auth/auth.serializer";
+import { createTrialSubscription, startTrial } from "@/modules/billing/subscriptions.service";
+import { findActivePlan } from "@/modules/billing/plans.service";
 import { BUSINESS_ROLES, BUSINESS_STATUS, MEMBER_STATUS } from "@taptapsell/constants";
 import type { AcceptInvitationInput, CreateBusinessWithOwnerInput } from "@taptapsell/validation";
 
@@ -75,6 +77,8 @@ export async function createBusinessWithInvitation(
     if (lead.status === "CONVERTED") throw ApiError.conflict("This lead is already converted");
   }
 
+  // Fails early, before anything is written, if the plan does not exist.
+  await findActivePlan(input.planCode);
   const slug = await generateUniqueSlug(input.business.name);
   const token = newToken();
   const session = await mongoose.startSession();
@@ -102,6 +106,7 @@ export async function createBusinessWithInvitation(
         ],
         { session },
       );
+      await createTrialSubscription(business._id, input.planCode, input.trialDays, session);
       if (input.leadId) {
         await Lead.updateOne(
           { _id: input.leadId },
@@ -276,6 +281,8 @@ export async function acceptInvitation(
         },
         { upsert: true, session },
       );
+
+      await startTrial(invitation.businessId, session);
 
       // A business suspended while the invitation was open stays suspended.
       await Business.updateOne(

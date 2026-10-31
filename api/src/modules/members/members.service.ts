@@ -1,5 +1,6 @@
 import { BusinessMember, User } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { BUSINESS_ROLES, MEMBER_STATUS } from "@taptapsell/constants";
 import type { InviteMemberInput, UpdateMemberInput } from "@taptapsell/validation";
@@ -15,6 +16,8 @@ export async function inviteMember(
   actorUserId: string,
   input: InviteMemberInput,
 ) {
+  await assertWithinPlan(businessId, "staff");
+
   const user = await User.findOne({ email: input.email });
   if (!user) {
     throw ApiError.notFound("No account exists with that email. Ask them to sign up first.");

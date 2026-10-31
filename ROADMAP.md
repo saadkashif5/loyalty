@@ -428,7 +428,7 @@ Programs and rewards
 - [x] Multiple reward tiers per program (fix the current single-threshold logic) — _done in Phase 0_
 - [~] Stamp expiry and reward expiry options; reward-expiring reminder job — _rewards can be
       valid for N days after unlocking; expired codes are refused at the counter;
-      `npm run job:reward-expiry` marks expired rewards and emails/notifies customers once when
+      `npm run jobs` marks expired rewards and emails/notifies customers once when
       3 days are left (run it on a schedule until the Phase 4 worker). Stamp expiry not built_
 
 Fraud controls
@@ -452,12 +452,12 @@ stamps by tapping; replayed URLs are rejected; end-to-end tests cover join, stam
 revenue and collections at a glance.
 
 Plans and entitlements
-- [ ] `plans` collection, editable by the Super Admin, **versioned** so existing customers can keep
-      ("grandfather") their price
-- [ ] Entitlements service: limits on branches, active programs, stampers, staff, customers, plus
-      feature flags; enforced in API middleware and reflected in the UI
-- [ ] Limits never break existing customers: at the customer limit, **new joins** are blocked and the
-      owner is prompted to upgrade; existing cards keep working
+- [x] `plans` collection, editable by the Super Admin, **versioned** so existing customers can keep
+      ("grandfather") their price — _four default plans created on first use; edits bump the version; subscriptions keep a copy of price and limits_
+- [~] Entitlements service: limits on branches, active programs, stampers, staff, customers, plus
+      feature flags; enforced in API middleware and reflected in the UI — _limits on branches, active programs, active stampers, staff and customers enforced in the API; feature flags not built_
+- [x] Limits never break existing customers: at the customer limit, **new joins** are blocked and the
+      owner is prompted to upgrade; existing cards keep working — _a customer new to the business is refused at the limit with a customer-friendly message; existing cards keep working_
 
 Subscription lifecycle
 
@@ -467,28 +467,28 @@ TRIALING ──► ACTIVE ──(invoice overdue)──► PAST_DUE ──(grace
                └──────────(payment)───────────┴────────(payment)──────────┘
 ```
 
-- [ ] Scheduled jobs: renewal invoice 7 days before period end; reminders before due date, on the due
-      date and during grace; automatic suspension; reactivation on payment
-- [ ] Suspension stops stamping and puts the dashboard in read-only mode with a billing page;
-      customers see "temporarily unavailable" (policy for pending rewards: see open decisions)
-- [ ] Upgrade takes effect immediately with prorated charge; downgrade at period end
-- [ ] Annual billing option with discount
+- [~] Scheduled jobs: renewal invoice 7 days before period end; reminders before due date, on the due
+      date and during grace; automatic suspension; reactivation on payment — _`npm run jobs`: reminders 3 days before trial/period end, past due → 7-day grace → suspended → cancelled after 90 days, owners emailed at each step. Renewal invoices come with invoicing_
+- [x] Suspension stops stamping and puts the dashboard in read-only mode with a billing page;
+      customers see "temporarily unavailable" (policy for pending rewards: see open decisions) — _billing suspensions are marked BILLING, lift automatically on payment, and keep reward redemption open for 30 days; a suspension by the team is unaffected by payment_
+- [~] Upgrade takes effect immediately with prorated charge; downgrade at period end — _plan changes by the team take effect at once; proration and owner self-service wait for invoices_
+- [x] Annual billing option with discount — _annual cycle at the price of 10 months_
 
 Invoices and payments
 - [ ] Sequential invoice numbers, PDF invoices and receipts, NTN/STRN, configurable tax line
 - [ ] `PaymentProvider` interface; first gateway integration with hosted checkout and
-      signature-verified, idempotent webhooks
+      signature-verified, idempotent webhooks — _deferred: card gateway comes later_
 - [ ] Bank transfer / Raast with proof upload and admin approval
-- [ ] Manual payment entry (cash, cheque) by `FINANCE` or `SUPER_ADMIN`, audited
-- [ ] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds
+- [x] Manual payment entry (cash, cheque) by `FINANCE` or `SUPER_ADMIN`, audited — _bank transfer, Raast, cash, cheque; paid time starts after any remaining trial or paid period; owner emailed a receipt_
+- [~] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds — _trial extensions built (also revive an expired, never-paid trial)_
 - [ ] Hardware charges (stamper fee, replacement fee) as invoice line items
 
 Owner billing page
-- [ ] Current plan, usage against limits, next invoice, invoices list, pay now, change plan
+- [~] Current plan, usage against limits, next invoice, invoices list, pay now, change plan — _Billing page with plan, status, usage, payments, how to pay and plan comparison; banners for trial ending, overdue and billing suspension. Invoices, pay now and self-service plan change not built_
 
 Super Admin finance console
-- [ ] MRR, ARR, active / trialing / past-due / suspended counts, churn, trial conversion
-- [ ] Overdue list with ageing and one-click reminders; revenue by plan and city
+- [~] MRR, ARR, active / trialing / past-due / suspended counts, churn, trial conversion — _MRR, ARR, collected this month, counts by status; churn and trial conversion not built_
+- [~] Overdue list with ageing and one-click reminders; revenue by plan and city — _overdue list with due date and suspension date; reminders are automatic; revenue by plan/city not built_
 - [ ] CSV export for the accountant
 
 **Exit:** in staging, with the gateway sandbox, a business moves through trial → active → past due →

@@ -1,5 +1,6 @@
 import { LoyaltyProgram, Reward } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { PROGRAM_STATUS } from "@taptapsell/constants";
 import type { CreateProgramInput, UpdateProgramInput } from "@taptapsell/validation";
@@ -9,6 +10,7 @@ export async function createProgram(
   actorUserId: string,
   input: CreateProgramInput,
 ) {
+  await assertWithinPlan(businessId, "programs");
   const { minMinutesBetweenStamps, maxStampsPerDay, ...rest } = input;
 
   const program = await LoyaltyProgram.create({
@@ -45,6 +47,14 @@ export async function updateProgram(
   input: UpdateProgramInput,
 ) {
   const { minMinutesBetweenStamps, maxStampsPerDay, ...rest } = input;
+
+  // Switching a paused program back on counts against the plan like a new one.
+  if (input.status === PROGRAM_STATUS.ACTIVE) {
+    const current = await LoyaltyProgram.findOne({ _id: programId, businessId }).select("status");
+    if (current && current.status !== PROGRAM_STATUS.ACTIVE) {
+      await assertWithinPlan(businessId, "programs");
+    }
+  }
 
   if (input.requiredStamps !== undefined) {
     const largest = await Reward.findOne({ programId, businessId, status: "ACTIVE" })

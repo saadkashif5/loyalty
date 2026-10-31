@@ -2,6 +2,33 @@ import Link from "next/link";
 import { BUSINESS_PERMISSIONS, type BusinessPermission } from "@taptapsell/constants";
 import { logoutAction } from "@/app/actions/auth";
 import { can, getMembership } from "@/lib/membership";
+import { apiFetch } from "@/lib/api";
+
+interface BillingStatus {
+  subscription: { status: string; trialEndsAt: string | null; graceEndsAt: string | null } | null;
+}
+
+const DAY = 86_400_000;
+
+/** A one-line nudge for owners when the trial is ending or payment is due. */
+function billingNotice(billing: BillingStatus | null): string | null {
+  const sub = billing?.subscription;
+  if (!sub) return null;
+  const daysLeft = (iso: string | null) =>
+    iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / DAY)) : null;
+
+  if (sub.status === "TRIALING") {
+    const left = daysLeft(sub.trialEndsAt);
+    return left !== null && left <= 7
+      ? `Your free trial ends in ${left} day${left === 1 ? "" : "s"}.`
+      : null;
+  }
+  if (sub.status === "PAST_DUE") {
+    const left = daysLeft(sub.graceEndsAt);
+    return `Payment is overdue. Stamping stops in ${left ?? 0} day${left === 1 ? "" : "s"} unless you pay.`;
+  }
+  return null;
+}
 
 const P = BUSINESS_PERMISSIONS;
 
@@ -18,6 +45,7 @@ const NAV: Array<{ href: string; label: string; permissions: BusinessPermission[
   { href: "/activity", label: "Activity", permissions: [P.STAMP_VIEW] },
   { href: "/alerts", label: "Alerts", permissions: [P.FRAUD_REVIEW] },
   { href: "/staff", label: "Staff", permissions: [P.MEMBER_VIEW] },
+  { href: "/billing", label: "Billing", permissions: [P.BUSINESS_MANAGE_BILLING] },
   { href: "/settings", label: "Settings", permissions: [P.BUSINESS_MANAGE_PROFILE] },
 ];
 
@@ -32,6 +60,10 @@ export default async function BusinessLayout({
   const { role, business } = await getMembership(businessId);
   const base = `/b/${businessId}`;
   const items = NAV.filter((item) => item.permissions.some((p) => can(role, p)));
+  const billing = can(role, P.BUSINESS_MANAGE_BILLING)
+    ? await apiFetch<BillingStatus>(`/businesses/${businessId}/billing`).catch(() => null)
+    : null;
+  const notice = billingNotice(billing);
 
   return (
     <div className="min-h-screen">
@@ -67,11 +99,35 @@ export default async function BusinessLayout({
 
       {business.status === "SUSPENDED" ? (
         <div className="border-b border-red-200 bg-red-50">
-          <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-red-800">
-            <strong>This business is suspended.</strong>{" "}
-            {business.suspension?.reason ? `Reason: ${business.suspension.reason}. ` : ""}
-            Customers cannot collect stamps and nothing can be changed until TapTapSell restores it.
-            Your data is safe and still visible.
+          {business.suspension?.kind === "BILLING" ? (
+            <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-red-800">
+              <strong>Stamping is paused because payment has not arrived.</strong> Customers can
+              still redeem rewards they already earned. Paying switches everything back on straight
+              away.{" "}
+              {can(role, P.BUSINESS_MANAGE_BILLING) ? (
+                <Link href={`${base}/billing`} className="font-medium underline">
+                  See billing
+                </Link>
+              ) : null}
+            </p>
+          ) : (
+            <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-red-800">
+              <strong>This business is suspended.</strong>{" "}
+              {business.suspension?.reason ? `Reason: ${business.suspension.reason}. ` : ""}
+              Customers cannot collect stamps and nothing can be changed until TapTapSell restores
+              it. Your data is safe and still visible.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      {notice ? (
+        <div className="border-b border-amber-200 bg-amber-50">
+          <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-amber-900">
+            {notice}{" "}
+            <Link href={`${base}/billing`} className="font-medium underline">
+              See billing
+            </Link>
           </p>
         </div>
       ) : null}

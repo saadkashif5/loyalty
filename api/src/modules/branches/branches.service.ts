@@ -1,5 +1,6 @@
 import { Branch } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import type { CreateBranchInput, UpdateBranchInput } from "@taptapsell/validation";
 
@@ -13,6 +14,8 @@ export async function createBranch(
   actorUserId: string,
   input: CreateBranchInput,
 ) {
+  await assertWithinPlan(businessId, "branches");
+
   const branch = await Branch.create({
     businessId,
     name: input.name,

@@ -47,6 +47,9 @@ export const createBusinessWithOwnerSchema = z.object({
   }),
   /** Lead this business came from, if any; marked converted. */
   leadId: objectId.optional(),
+  /** Plan the business starts on, and its free trial (counted from when the owner accepts). */
+  planCode: z.string().trim().toUpperCase().min(2).max(31).default("STARTER"),
+  trialDays: z.number().int().min(0).max(90).default(30),
 });
 export type CreateBusinessWithOwnerInput = z.infer<typeof createBusinessWithOwnerSchema>;
 

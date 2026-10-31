@@ -149,6 +149,10 @@ const STATUS_STYLES: Record<string, string> = {
   OPEN: "bg-amber-50 text-amber-700",
   DISMISSED: "bg-slate-100 text-slate-600",
   CONFIRMED: "bg-red-50 text-red-700",
+  TRIALING: "bg-sky-50 text-sky-700",
+  PAST_DUE: "bg-amber-50 text-amber-700",
+  CANCELLED: "bg-slate-100 text-slate-600",
+  HIDDEN: "bg-slate-100 text-slate-600",
   REPLACED: "bg-slate-100 text-slate-600",
   DISABLED: "bg-slate-100 text-slate-600",
 };
@@ -205,4 +209,10 @@ export function Pagination({
       </div>
     </div>
   );
+}
+
+/** Pakistani rupees, no decimals: "PKR 2,999". */
+export function formatPkr(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return "—";
+  return `PKR ${amount.toLocaleString("en-PK")}`;
 }

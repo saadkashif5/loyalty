@@ -100,6 +100,9 @@ const STATUS_STYLES: Record<string, string> = {
   DISMISSED: "bg-slate-100 text-slate-600",
   CONFIRMED: "bg-red-50 text-red-700",
   EXPIRED: "bg-slate-100 text-slate-600",
+  TRIALING: "bg-sky-50 text-sky-700",
+  PAST_DUE: "bg-amber-50 text-amber-700",
+  CANCELLED: "bg-slate-100 text-slate-600",
 };
 
 export function StatusBadge({ status }: { status: string }) {

@@ -60,7 +60,7 @@ back to memory) and required in staging and production. See
 | `npm run typecheck` | TypeScript in every workspace |
 | `npm test` | Integration tests (needs `docker compose up -d`) |
 | `npm run build:api` / `build:web` / `build:admin` / `build:portal` | Production builds |
-| `npm run job:reward-expiry --workspace=api` | Expire old rewards and send reminders (schedule it, e.g. hourly) |
+| `npm run jobs --workspace=api` | Scheduled jobs: subscription lifecycle and reminders, reward expiry (schedule it, e.g. hourly) |
 
 A pre-commit hook runs ESLint and Prettier on staged files. CI runs all of the
 above plus a dependency audit, secret scanning and CodeQL on every push and

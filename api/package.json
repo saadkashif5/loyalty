@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "seed:demo": "tsx src/scripts/seedDemo.ts",
-    "job:reward-expiry": "tsx src/scripts/runRewardExpiry.ts",
+    "jobs": "tsx src/scripts/runJobs.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
