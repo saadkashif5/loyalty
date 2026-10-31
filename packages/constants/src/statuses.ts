@@ -63,6 +63,8 @@ export const STAMP_SOURCE = {
   NFC: "NFC",
   QR: "QR",
   ADMIN: "ADMIN",
+  // Added by staff at the counter after scanning the customer's card code.
+  STAFF: "STAFF",
 } as const;
 export type StampSource = (typeof STAMP_SOURCE)[keyof typeof STAMP_SOURCE];
 
@@ -93,3 +95,22 @@ export const NOTIFICATION_STATUS = {
   READ: "READ",
 } as const;
 export type NotificationStatus = (typeof NOTIFICATION_STATUS)[keyof typeof NOTIFICATION_STATUS];
+
+export const FRAUD_FLAG_STATUS = {
+  OPEN: "OPEN",
+  DISMISSED: "DISMISSED",
+  CONFIRMED: "CONFIRMED",
+} as const;
+export type FraudFlagStatus = (typeof FRAUD_FLAG_STATUS)[keyof typeof FRAUD_FLAG_STATUS];
+
+export const FRAUD_FLAG_TYPE = {
+  /** Many stamps from one stamper in a short time. */
+  DEVICE_BURST: "DEVICE_BURST",
+  /** A stamper URL used again (copied, shared or bookmarked). */
+  TAP_REPLAYED: "TAP_REPLAYED",
+  /** A tag reporting a different chip than the one bound to the stamper. */
+  TAG_MISMATCH: "TAG_MISMATCH",
+  /** A staff member reached their daily stamp limit. */
+  STAFF_DAILY_CAP: "STAFF_DAILY_CAP",
+} as const;
+export type FraudFlagType = (typeof FRAUD_FLAG_TYPE)[keyof typeof FRAUD_FLAG_TYPE];

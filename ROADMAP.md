@@ -416,19 +416,30 @@ Customer portal (PWA)
 - [ ] Install-to-home-screen prompt
 
 Counter mode for businesses (mobile web)
-- [ ] Staff add a stamp by scanning the customer's rotating signed card QR or searching by phone;
-      per-staff daily caps; audited
-- [ ] Staff validate redemptions by scanning the reward QR or entering the code
+- [x] Staff add a stamp by scanning the customer's rotating card code (camera or typed);
+      per-staff daily caps; audited — _the portal card shows an 8-character code + QR that changes
+      every few minutes and works once (spent inside the stamp transaction). Ordinary staff need the
+      code; stamping by search stays with managers and owners. Camera scanning uses the browser's
+      barcode reader (Chrome on Android); elsewhere staff type the code_
+- [x] Staff validate redemptions by scanning the reward QR or entering the code
 - [ ] Optional manager approval for stamps above a threshold
 
 Programs and rewards
 - [x] Multiple reward tiers per program (fix the current single-threshold logic) — _done in Phase 0_
-- [ ] Stamp expiry and reward expiry options; reward-expiring reminder job
+- [~] Stamp expiry and reward expiry options; reward-expiring reminder job — _rewards can be
+      valid for N days after unlocking; expired codes are refused at the counter;
+      `npm run job:reward-expiry` marks expired rewards and emails/notifies customers once when
+      3 days are left (run it on a schedule until the Phase 4 worker). Stamp expiry not built_
 
 Fraud controls
-- [ ] Daily cap per card per business, cooldown per card, velocity rules per device and per staff
-- [ ] Anomaly flags: stamps outside opening hours, bursts from one stamper, many new accounts on one
-      stamper; review queue for owners and admins
+- [x] Daily cap per card per business, cooldown per card, velocity rules per device and per staff —
+      _per-card daily limit (program setting, resets at midnight Pakistan time), cooldown, per-staff
+      daily limit (business setting), burst check per stamper_
+- [~] Anomaly flags: stamps outside opening hours, bursts from one stamper, many new accounts on one
+      stamper; review queue for owners and admins — _alerts for stamper bursts, replayed links,
+      copied-chip suspicion and staff limits, one alert per problem with a repeat count; owners and
+      managers review on Alerts, the platform team sees all businesses in the console. Opening hours
+      and new-account bursts not built (no opening hours in the data model yet)_
 
 **Exit:** the device test matrix (about 10 Android phones across price bands, plus iPhones) joins and
 stamps by tapping; replayed URLs are rejected; end-to-end tests cover join, stamp, unlock and redeem.

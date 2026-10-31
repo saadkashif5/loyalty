@@ -3,6 +3,7 @@ import type { ClientSession } from "mongoose";
 import { NfcDevice, TapToken } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
+import { raiseFlag } from "@/services/fraud.service";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
 import { getPublicBusiness } from "@/modules/businesses/discovery.service";
 import type { RecordTapInput } from "@taptapsell/validation";
@@ -35,6 +36,18 @@ async function flagSuspiciousTap(
     resourceType: "NfcDevice",
     resourceId: device.deviceId,
     metadata: { reason, tagUid: tap.tagUid, counter: tap.counter },
+  });
+  // One open alert per stamper and kind; repeats count up on it.
+  await raiseFlag({
+    businessId: device.businessId,
+    type: reason === "TAP_REPLAYED" ? "TAP_REPLAYED" : "TAG_MISMATCH",
+    severity: reason === "TAP_REPLAYED" ? "LOW" : "HIGH",
+    message:
+      reason === "TAP_REPLAYED"
+        ? "A stamper link was used again (refreshed, copied or shared)."
+        : "A tag claiming to be this stamper reported a different chip.",
+    deviceId: device.deviceId,
+    details: { tagUid: tap.tagUid, counter: tap.counter },
   });
 }
 

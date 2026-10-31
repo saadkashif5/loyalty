@@ -14,6 +14,7 @@ import {
 import * as service from "./admin.service";
 import * as invitations from "@/modules/invitations/invitations.service";
 import * as leads from "@/modules/leads/leads.service";
+import * as fraud from "@/modules/fraud/fraud.service";
 import { registerDevicesHandler, assignDeviceHandler } from "@/modules/devices/devices.controller";
 
 // Mounted at /api/v1/admin. Every route names the platform permission it needs;
@@ -133,6 +134,17 @@ router.patch(
   asyncHandler(async (req, res) => {
     const input = updateLeadSchema.parse(req.body);
     sendSuccess(res, await leads.updateLead(req.userId!, req.params.leadId, input));
+  }),
+);
+
+// ---- Alerts across all businesses ---------------------------------------------
+
+router.get(
+  "/fraud-flags",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : "OPEN";
+    sendSuccess(res, await fraud.listFlags({ status, limit: 200 }));
   }),
 );
 

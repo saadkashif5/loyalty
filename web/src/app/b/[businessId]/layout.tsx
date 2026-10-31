@@ -9,12 +9,14 @@ const P = BUSINESS_PERMISSIONS;
 const NAV: Array<{ href: string; label: string; permissions: BusinessPermission[] }> = [
   { href: "", label: "Overview", permissions: [P.CUSTOMER_VIEW] },
   { href: "/redeem", label: "Redeem", permissions: [P.REDEMPTION_VALIDATE] },
+  { href: "/counter", label: "Add stamp", permissions: [P.STAMP_ISSUE_COUNTER] },
   { href: "/customers", label: "Customers", permissions: [P.CUSTOMER_VIEW] },
   { href: "/programs", label: "Programs", permissions: [P.PROGRAM_VIEW] },
   { href: "/rewards", label: "Rewards", permissions: [P.REWARD_MANAGE] },
   { href: "/devices", label: "Stampers", permissions: [P.DEVICE_MANAGE, P.DEVICE_REPORT_PROBLEM] },
   { href: "/branches", label: "Branches", permissions: [P.BRANCH_MANAGE] },
   { href: "/activity", label: "Activity", permissions: [P.STAMP_VIEW] },
+  { href: "/alerts", label: "Alerts", permissions: [P.FRAUD_REVIEW] },
   { href: "/staff", label: "Staff", permissions: [P.MEMBER_VIEW] },
   { href: "/settings", label: "Settings", permissions: [P.BUSINESS_MANAGE_PROFILE] },
 ];

@@ -1,11 +1,21 @@
 import mongoose, { type ClientSession, type Types } from "mongoose";
-import { Branch, LoyaltyCard, LoyaltyProgram, Redemption, Reward, Stamp } from "@/models";
+import {
+  Branch,
+  Business,
+  CounterCode,
+  LoyaltyCard,
+  LoyaltyProgram,
+  Redemption,
+  Reward,
+  Stamp,
+} from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
 import { consumeTap, findUsableTap } from "@/modules/taps/taps.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { queueNotification } from "@/services/notification.service";
+import { checkDeviceBurst, raiseFlag } from "@/services/fraud.service";
 import {
   LOYALTY_CARD_STATUS,
   PROGRAM_STATUS,
@@ -132,9 +142,21 @@ interface StampContext {
   businessId: string;
   branchId: string;
   deviceId?: string;
+  /** Staff member who added the stamp (counter and manual stamps). */
+  issuedBy?: string;
   source: StampSource;
   idempotencyKey: string;
   metadata: Record<string, unknown>;
+}
+
+const DAY_MS = 86_400_000;
+// Pakistan Standard Time, UTC+5 all year (no daylight saving).
+const PAKISTAN_OFFSET_MS = 5 * 3_600_000;
+
+/** Midnight in Pakistan, as a UTC instant: daily caps reset at local midnight. */
+export function startOfPakistanDay(now: number = Date.now()): Date {
+  const local = now + PAKISTAN_OFFSET_MS;
+  return new Date(local - (local % DAY_MS) - PAKISTAN_OFFSET_MS);
 }
 
 /**
@@ -154,6 +176,7 @@ async function applyStamp(ctx: StampContext, session: ClientSession): Promise<St
         businessId: ctx.businessId,
         branchId: ctx.branchId,
         deviceId: ctx.deviceId,
+        issuedBy: ctx.issuedBy,
         source: ctx.source,
         idempotencyKey: ctx.idempotencyKey,
         metadata: ctx.metadata,
@@ -188,6 +211,9 @@ async function applyStamp(ctx: StampContext, session: ClientSession): Promise<St
           branchId: ctx.branchId,
           redemptionCode: generateRedemptionCode(),
           status: REDEMPTION_STATUS.PENDING,
+          expiresAt: reward.validForDays
+            ? new Date(Date.now() + reward.validForDays * DAY_MS)
+            : null,
         },
       ],
       { session },
@@ -257,9 +283,38 @@ async function notifyStamp(customerId: string, result: StampResult) {
   });
 }
 
-function minMinutesBetweenStamps(program: { settings?: unknown }): number {
-  const settings = program.settings as { minMinutesBetweenStamps?: number } | undefined;
-  return settings?.minMinutesBetweenStamps ?? 5;
+function programSettings(program: { settings?: unknown }) {
+  const settings = program.settings as
+    { minMinutesBetweenStamps?: number; maxStampsPerDay?: number } | undefined;
+  return {
+    minMinutesBetweenStamps: settings?.minMinutesBetweenStamps ?? 5,
+    maxStampsPerDay: settings?.maxStampsPerDay ?? 3,
+  };
+}
+
+/** No card collects more than the program's daily limit, however the stamps arrive (§14). */
+async function assertDailyCardCap(cardId: Types.ObjectId, program: { settings?: unknown }) {
+  const { maxStampsPerDay } = programSettings(program);
+  const today = await Stamp.countDocuments({
+    loyaltyCardId: cardId,
+    createdAt: { $gte: startOfPakistanDay() },
+  });
+  if (today >= maxStampsPerDay) {
+    throw new ApiError(
+      429,
+      "DAILY_STAMP_LIMIT",
+      `This card has reached today's limit of ${maxStampsPerDay} stamps. Come back tomorrow!`,
+    );
+  }
+}
+
+/** All card-level rules every stamp path applies before writing. */
+async function assertCardMayStamp(
+  card: { _id: Types.ObjectId; lastStampAt?: Date | null },
+  program: { settings?: unknown },
+) {
+  assertStampCooldown(card.lastStampAt, programSettings(program).minMinutesBetweenStamps);
+  await assertDailyCardCap(card._id, program);
 }
 
 /**
@@ -300,7 +355,7 @@ export async function createStamp(request: StampRequest): Promise<StampResult> {
     device.businessId,
     device.branchId,
   );
-  assertStampCooldown(card.lastStampAt, minMinutesBetweenStamps(program));
+  await assertCardMayStamp(card, program);
 
   const usedTap = tap;
   const result = await commitStamp(
@@ -321,28 +376,39 @@ export async function createStamp(request: StampRequest): Promise<StampResult> {
     usedTap ? (session) => consumeTap(usedTap._id, request.customerId, session) : undefined,
   );
 
+  if (!result.alreadyRecorded) void checkDeviceBurst(device.businessId, device.deviceId);
   await notifyStamp(request.customerId, result);
   return result;
 }
 
-/**
- * Manual stamp issued by business staff (§13, §37). Goes through the same
- * transaction, cooldown and reward rules as a tap, and is always audited.
- */
-export async function createManualStamp(params: {
+/** How many stamps one staff member may add per day at this business. */
+async function staffDailyCap(businessId: string): Promise<number> {
+  const business = await Business.findById(businessId).select("settings");
+  const cap = (business?.settings as { staffDailyStampCap?: number } | undefined)
+    ?.staffDailyStampCap;
+  return cap ?? 100;
+}
+
+interface StaffStampParams {
   businessId: string;
   actorUserId: string;
-  loyaltyCardId: string;
+  card: InstanceType<typeof LoyaltyCard>;
   branchId: string;
   idempotencyKey: string;
-}): Promise<StampResult> {
-  const card = await LoyaltyCard.findOne({
-    _id: params.loyaltyCardId,
-    businessId: params.businessId,
-    status: LOYALTY_CARD_STATUS.ACTIVE,
-  });
-  if (!card) throw ApiError.notFound("Loyalty card not found for this business");
+  source: typeof STAMP_SOURCE.ADMIN | typeof STAMP_SOURCE.STAFF;
+  auditAction: (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
+  /** Runs inside the stamp transaction (e.g. spending the customer's counter code). */
+  beforeWrite?: (session: ClientSession) => Promise<void>;
+  metadata?: Record<string, unknown>;
+}
 
+/**
+ * A stamp added by staff rather than by a tap. Same transaction, cooldown,
+ * daily card limit and reward rules as a tap, plus a daily limit per staff
+ * member; always audited (§13, §37).
+ */
+async function createStaffStamp(params: StaffStampParams): Promise<StampResult> {
+  const { card } = params;
   const customerId = card.customerId.toString();
   if (await Stamp.exists({ customerId, idempotencyKey: params.idempotencyKey })) {
     return buildResultForExistingStamp(customerId, params.idempotencyKey);
@@ -363,32 +429,145 @@ export async function createManualStamp(params: {
     throw ApiError.badRequest("This loyalty program does not run at that branch");
   }
 
-  assertStampCooldown(card.lastStampAt, minMinutesBetweenStamps(program));
-
-  const result = await commitStamp({
-    customerId,
-    cardId: card._id,
-    program,
+  const cap = await staffDailyCap(params.businessId);
+  const issuedToday = await Stamp.countDocuments({
     businessId: params.businessId,
-    branchId: params.branchId,
-    source: STAMP_SOURCE.ADMIN,
-    idempotencyKey: params.idempotencyKey,
-    metadata: { issuedBy: params.actorUserId },
+    issuedBy: params.actorUserId,
+    createdAt: { $gte: startOfPakistanDay() },
   });
+  if (issuedToday >= cap) {
+    await raiseFlag({
+      businessId: params.businessId,
+      type: "STAFF_DAILY_CAP",
+      message: `A staff member reached the daily limit of ${cap} stamps.`,
+      staffUserId: params.actorUserId,
+      details: { cap },
+    });
+    throw new ApiError(
+      429,
+      "STAFF_DAILY_LIMIT",
+      `You have added ${cap} stamps today, the most allowed. Ask a manager if this is a mistake.`,
+    );
+  }
+
+  await assertCardMayStamp(card, program);
+
+  const result = await commitStamp(
+    {
+      customerId,
+      cardId: card._id,
+      program,
+      businessId: params.businessId,
+      branchId: params.branchId,
+      issuedBy: params.actorUserId,
+      source: params.source,
+      idempotencyKey: params.idempotencyKey,
+      metadata: params.metadata ?? {},
+    },
+    params.beforeWrite,
+  );
 
   if (!result.alreadyRecorded) {
     await recordAudit({
       actorUserId: params.actorUserId,
       businessId: params.businessId,
-      action: AUDIT_ACTIONS.STAMP_ISSUED_MANUAL,
+      action: params.auditAction,
       resourceType: "Stamp",
       resourceId: result.stampId,
-      metadata: { customerId, loyaltyCardId: params.loyaltyCardId },
+      metadata: { customerId, loyaltyCardId: card._id.toString(), branchId: params.branchId },
     });
   }
 
   await notifyStamp(customerId, result);
   return result;
+}
+
+/**
+ * Manual stamp by a manager or owner, found by search (no proof the customer
+ * is present, so not available to ordinary staff).
+ */
+export async function createManualStamp(params: {
+  businessId: string;
+  actorUserId: string;
+  loyaltyCardId: string;
+  branchId: string;
+  idempotencyKey: string;
+}): Promise<StampResult> {
+  const card = await LoyaltyCard.findOne({
+    _id: params.loyaltyCardId,
+    businessId: params.businessId,
+    status: LOYALTY_CARD_STATUS.ACTIVE,
+  });
+  if (!card) throw ApiError.notFound("Loyalty card not found for this business");
+
+  return createStaffStamp({
+    ...params,
+    card,
+    source: STAMP_SOURCE.ADMIN,
+    auditAction: AUDIT_ACTIONS.STAMP_ISSUED_MANUAL,
+  });
+}
+
+/**
+ * Counter stamp: staff read the short code on the customer's card (scanned
+ * or typed). The code is spent inside the stamp transaction, so it can never
+ * give two stamps, and an old screenshot of it does not work.
+ */
+export async function createCounterStamp(params: {
+  businessId: string;
+  actorUserId: string;
+  code: string;
+  branchId: string;
+  idempotencyKey: string;
+}): Promise<StampResult> {
+  const counterCode = await CounterCode.findOne({
+    code: params.code,
+    businessId: params.businessId,
+  });
+
+  // A retry after the code was spent still returns the original stamp.
+  if (counterCode?.consumedAt) {
+    const customerId = counterCode.customerId.toString();
+    if (await Stamp.exists({ customerId, idempotencyKey: params.idempotencyKey })) {
+      return buildResultForExistingStamp(customerId, params.idempotencyKey);
+    }
+  }
+  if (!counterCode || counterCode.consumedAt || counterCode.expiresAt < new Date()) {
+    throw invalidCounterCode();
+  }
+
+  const card = await LoyaltyCard.findOne({
+    _id: counterCode.loyaltyCardId,
+    businessId: params.businessId,
+    status: LOYALTY_CARD_STATUS.ACTIVE,
+  });
+  if (!card) throw invalidCounterCode();
+
+  return createStaffStamp({
+    businessId: params.businessId,
+    actorUserId: params.actorUserId,
+    card,
+    branchId: params.branchId,
+    idempotencyKey: params.idempotencyKey,
+    source: STAMP_SOURCE.STAFF,
+    auditAction: AUDIT_ACTIONS.STAMP_ISSUED_COUNTER,
+    beforeWrite: async (session) => {
+      const spent = await CounterCode.findOneAndUpdate(
+        { _id: counterCode._id, consumedAt: null },
+        { $set: { consumedAt: new Date() } },
+        { session },
+      );
+      if (!spent) throw invalidCounterCode();
+    },
+  });
+}
+
+function invalidCounterCode() {
+  return new ApiError(
+    400,
+    "COUNTER_CODE_INVALID",
+    "That code is not valid any more. Ask the customer to open their card again.",
+  );
 }
 
 export async function listCustomerStamps(customerId: string, limit = 50) {

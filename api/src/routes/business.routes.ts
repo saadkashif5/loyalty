@@ -26,6 +26,11 @@ import {
 import { getCustomerHandler, listCustomersHandler } from "@/modules/customers/customers.controller";
 import { onboardingHandler } from "@/modules/businesses/businesses.controller";
 import {
+  counterStampHandler,
+  lookupCounterCodeHandler,
+} from "@/modules/counter/counter.controller";
+import fraudRoutes from "@/modules/fraud/fraud.routes";
+import {
   createManualStampHandler,
   listBusinessStampsHandler,
 } from "@/modules/stamps/stamps.controller";
@@ -130,6 +135,22 @@ router.get(
   requireBusinessRole({ permission: BUSINESS_PERMISSIONS.CUSTOMER_VIEW }),
   getCustomerHandler,
 );
+
+// Counter mode: stamp a customer who shows their card's code.
+router.post(
+  "/counter/lookup",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.STAMP_ISSUE_COUNTER }),
+  lookupCounterCodeHandler,
+);
+router.post(
+  "/counter/stamp",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.STAMP_ISSUE_COUNTER }),
+  requireIdempotencyKey,
+  counterStampHandler,
+);
+
+// Alerts about suspicious stamping.
+router.use("/fraud-flags", fraudRoutes);
 
 // Setup checklist for the onboarding wizard.
 router.get(

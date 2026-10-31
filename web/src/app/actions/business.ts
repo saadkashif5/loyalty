@@ -18,6 +18,11 @@ function text(formData: FormData, name: string): string | undefined {
   return value || undefined;
 }
 
+function optionalNumber(formData: FormData, name: string): number | undefined {
+  const value = text(formData, name);
+  return value === undefined ? undefined : Number(value);
+}
+
 /** Everything under the business re-renders, so the setup checklist and lists stay current. */
 function refresh(businessId: string) {
   revalidatePath(`/b/${businessId}`, "layout");
@@ -109,6 +114,7 @@ export async function createProgramAction(
         description: text(formData, "description"),
         requiredStamps: Number(formData.get("requiredStamps")),
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps") ?? 5),
+        maxStampsPerDay: Number(formData.get("maxStampsPerDay") ?? 3),
       },
     }),
   );
@@ -129,6 +135,7 @@ export async function updateProgramAction(
         terms: text(formData, "terms") ?? "",
         requiredStamps: Number(formData.get("requiredStamps")),
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps")),
+        maxStampsPerDay: Number(formData.get("maxStampsPerDay")),
         status: text(formData, "status"),
       },
     }),
@@ -149,6 +156,7 @@ export async function createRewardAction(
         description: text(formData, "description"),
         type: text(formData, "type") ?? "FREE_ITEM",
         requiredStamps: Number(formData.get("requiredStamps")),
+        validForDays: optionalNumber(formData, "validForDays"),
       },
     }),
   );
@@ -168,6 +176,7 @@ export async function updateRewardAction(
         description: text(formData, "description") ?? "",
         type: text(formData, "type"),
         requiredStamps: Number(formData.get("requiredStamps")),
+        validForDays: optionalNumber(formData, "validForDays"),
         status: text(formData, "status"),
       },
     }),
@@ -288,4 +297,110 @@ export async function acceptStaffInviteAction(businessId: string): Promise<void>
 export async function declineStaffInviteAction(businessId: string): Promise<void> {
   await apiFetch(`/businesses/${businessId}/members/decline`, { method: "POST" });
   revalidatePath("/businesses");
+}
+
+// ---- Counter mode, manual stamps and alerts --------------------------------------------
+
+export interface CounterLookup {
+  customer: { name: string; phone: string | null; email: string | null };
+  card: { program: string; stampCount: number; requiredStamps: number };
+  expiresAt: string;
+}
+
+export interface CounterState {
+  error?: string;
+  code?: string;
+  lookup?: CounterLookup;
+  done?: { stampCount: number; requiredStamps: number; rewards: string[] };
+}
+
+/** Step one: show staff whose card this is before anything is recorded. */
+export async function lookupCounterAction(
+  businessId: string,
+  _prev: CounterState,
+  formData: FormData,
+): Promise<CounterState> {
+  const code = String(formData.get("code") ?? "")
+    .trim()
+    .toUpperCase();
+  try {
+    const lookup = await apiFetch<CounterLookup>(`/businesses/${businessId}/counter/lookup`, {
+      method: "POST",
+      body: { code },
+    });
+    return { code, lookup };
+  } catch (error) {
+    return { error: messageFrom(error, "That code did not work.") };
+  }
+}
+
+interface StampResponse {
+  card: { stampCount: number; requiredStamps: number };
+  unlockedRewards: Array<{ rewardName: string }>;
+}
+
+/** Step two: add the stamp. The idempotency key comes from the form, so a double tap is one stamp. */
+export async function counterStampAction(
+  businessId: string,
+  prev: CounterState,
+  formData: FormData,
+): Promise<CounterState> {
+  try {
+    const result = await apiFetch<StampResponse>(`/businesses/${businessId}/counter/stamp`, {
+      method: "POST",
+      body: { code: prev.code, branchId: text(formData, "branchId") },
+      idempotencyKey: text(formData, "idempotencyKey"),
+    });
+    refresh(businessId);
+    return {
+      done: {
+        stampCount: result.card.stampCount,
+        requiredStamps: result.card.requiredStamps,
+        rewards: result.unlockedRewards.map((r) => r.rewardName),
+      },
+    };
+  } catch (error) {
+    return { ...prev, error: messageFrom(error, "Could not add the stamp.") };
+  }
+}
+
+/** Managers and owners: stamp a customer found by search. */
+export async function manualStampAction(
+  businessId: string,
+  loyaltyCardId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return run(businessId, "Could not add the stamp.", () =>
+    apiFetch(`/businesses/${businessId}/stamps/manual`, {
+      method: "POST",
+      body: { loyaltyCardId, branchId: text(formData, "branchId") },
+      idempotencyKey: text(formData, "idempotencyKey"),
+    }),
+  );
+}
+
+export async function reviewFlagAction(
+  businessId: string,
+  flagId: string,
+  status: "DISMISSED" | "CONFIRMED",
+): Promise<void> {
+  await apiFetch(`/businesses/${businessId}/fraud-flags/${flagId}`, {
+    method: "PATCH",
+    body: { status },
+  });
+  refresh(businessId);
+}
+
+export async function updateStaffCapAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return run(businessId, "Could not save the limit.", () =>
+    apiFetch(`/businesses/${businessId}`, {
+      method: "PATCH",
+      body: { staffDailyStampCap: Number(formData.get("staffDailyStampCap")) },
+    }),
+  );
 }

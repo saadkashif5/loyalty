@@ -184,3 +184,76 @@ export async function revokeOtherSessionsAction(): Promise<void> {
   await apiFetch("/auth/sessions/revoke-others", { method: "POST" });
   revalidatePath("/account/security");
 }
+
+// ---- Sign in with an emailed code (no password) --------------------------------------
+// For people who first joined as customers and never set a password. The
+// dashboard never creates accounts this way: owners arrive by invitation.
+
+export interface CodeLoginState {
+  step: "email" | "code" | "mfa";
+  email?: string;
+  challengeId?: string;
+  mfaToken?: string;
+  error?: string;
+  notice?: string;
+}
+
+type VerifyResult =
+  | { status: "NAME_REQUIRED" }
+  | { status: "MFA_REQUIRED"; mfaToken: string }
+  | { status: "SIGNED_IN"; accessToken: string; refreshToken: string };
+
+export async function codeLoginAction(
+  prev: CodeLoginState,
+  formData: FormData,
+): Promise<CodeLoginState> {
+  const next = safeNext(formData.get("next"));
+
+  if (prev.step === "email" || formData.get("intent") === "resend") {
+    const email = String(formData.get("email") ?? prev.email ?? "").trim();
+    const { ok, payload } = await postAuth("/auth/email-code", { email });
+    if (!ok || !payload?.success) {
+      return { step: "email", email, error: payload?.error?.message ?? "Could not send the code." };
+    }
+    return {
+      step: "code",
+      email,
+      challengeId: payload.data.challengeId,
+      notice: `We sent a 6-digit code to ${email}.`,
+    };
+  }
+
+  if (prev.step === "mfa") {
+    const { ok, payload } = await postAuth("/auth/login/mfa", {
+      mfaToken: prev.mfaToken,
+      code: String(formData.get("code") ?? "").replace(/\s/g, ""),
+    });
+    if (!ok || !payload?.success) {
+      return { ...prev, error: payload?.error?.message ?? "That code did not work." };
+    }
+    await setSessionCookies(payload.data);
+    redirect(next);
+  }
+
+  const { ok, payload } = await postAuth("/auth/email-code/verify", {
+    challengeId: prev.challengeId,
+    code: String(formData.get("code") ?? "").replace(/\s/g, ""),
+  });
+  if (!ok || !payload?.success) {
+    return {
+      ...prev,
+      notice: undefined,
+      error: payload?.error?.message ?? "That code did not work.",
+    };
+  }
+
+  const result = payload.data as VerifyResult;
+  if (result.status === "NAME_REQUIRED") {
+    return { step: "email", error: "No dashboard account uses this email." };
+  }
+  if (result.status === "MFA_REQUIRED") {
+    return { step: "mfa", mfaToken: result.mfaToken };
+  }
+  await setSessionCookies(result);
+  redirect(next);
+}

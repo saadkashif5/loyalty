@@ -43,9 +43,11 @@ export async function getCardDetail(customerId: string, cardId: string) {
 
   const [recentStamps, availableRewards] = await Promise.all([
     Stamp.find({ loyaltyCardId: card._id }).sort({ createdAt: -1 }).limit(10),
+    // Past-date rewards are not offered even before the expiry job marks them.
     Redemption.find({
       loyaltyCardId: card._id,
       status: REDEMPTION_STATUS.PENDING,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
     }).populate("rewardId"),
   ]);
 

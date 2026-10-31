@@ -16,10 +16,14 @@ const redemptionSchema = new Schema(
     },
     redeemedAt: { type: Date },
     redeemedBy: { type: Schema.Types.ObjectId, ref: "User" }, // staff member who validated it
+    expiresAt: { type: Date, default: null },
+    reminderSentAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
 
 redemptionSchema.index({ businessId: 1, createdAt: -1 });
+// The expiry reminder job scans pending rewards by expiry date.
+redemptionSchema.index({ status: 1, expiresAt: 1 });
 
 export const Redemption = model("Redemption", redemptionSchema, "redemptions");

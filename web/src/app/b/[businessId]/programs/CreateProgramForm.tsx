@@ -34,8 +34,11 @@ export function CreateProgramForm({ businessId }: { businessId: string }) {
         <Field label="Minutes between stamps">
           <Input name="minMinutesBetweenStamps" type="number" min={0} max={1440} defaultValue={5} />
         </Field>
+        <Field label="Most stamps per card per day">
+          <Input name="maxStampsPerDay" type="number" min={1} max={50} defaultValue={3} />
+        </Field>
         <p className="text-xs text-slate-500">
-          A cooldown stops the same customer collecting several stamps from one purchase.
+          The cooldown and daily limit stop one purchase turning into several stamps.
         </p>
         <ErrorText>{state.error}</ErrorText>
         <SubmitButton />

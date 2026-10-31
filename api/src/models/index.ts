@@ -15,3 +15,5 @@ export * from "./AuditLog";
 export * from "./BusinessInvitation";
 export * from "./Lead";
 export * from "./OtpChallenge";
+export * from "./CounterCode";
+export * from "./FraudFlag";

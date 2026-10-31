@@ -22,6 +22,8 @@ const rewardSchema = new Schema(
     expiresAt: { type: Date },
     terms: { type: String },
     redemptionLimit: { type: Number, default: 1 }, // per loyalty card, unless configured otherwise
+    // Days the customer has to use it once unlocked; unset means it never expires.
+    validForDays: { type: Number, min: 1 },
   },
   { timestamps: true },
 );

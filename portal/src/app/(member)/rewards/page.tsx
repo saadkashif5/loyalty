@@ -8,6 +8,7 @@ interface Redemption {
   redemptionCode: string;
   createdAt: string;
   redeemedAt?: string;
+  expiresAt?: string | null;
   loyaltyCardId: string;
   rewardId: { name: string } | null;
   businessId: { name: string } | null;
@@ -15,8 +16,11 @@ interface Redemption {
 
 export default async function RewardsPage() {
   const redemptions = await apiFetch<Redemption[]>("/redemptions/me");
-  const ready = redemptions.filter((r) => r.status === "PENDING");
-  const used = redemptions.filter((r) => r.status !== "PENDING");
+  const now = Date.now();
+  const usable = (r: Redemption) =>
+    r.status === "PENDING" && (!r.expiresAt || new Date(r.expiresAt).getTime() > now);
+  const ready = redemptions.filter(usable);
+  const used = redemptions.filter((r) => !usable(r));
 
   return (
     <>
@@ -32,7 +36,10 @@ export default async function RewardsPage() {
             <Card className="flex items-center justify-between gap-4 border-brand-500">
               <div>
                 <p className="font-semibold">{r.rewardId?.name ?? "Reward"}</p>
-                <p className="text-sm text-slate-500">{r.businessId?.name}</p>
+                <p className="text-sm text-slate-500">
+                  {r.businessId?.name}
+                  {r.expiresAt ? ` · use by ${formatDate(r.expiresAt)}` : ""}
+                </p>
               </div>
               <span className="font-mono text-lg tracking-widest">{r.redemptionCode}</span>
             </Card>

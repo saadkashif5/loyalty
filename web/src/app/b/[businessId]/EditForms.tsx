@@ -36,7 +36,7 @@ export interface EditableProgram {
   terms?: string;
   requiredStamps: number;
   status: string;
-  settings?: { minMinutesBetweenStamps?: number };
+  settings?: { minMinutesBetweenStamps?: number; maxStampsPerDay?: number };
 }
 
 export function EditProgramForm({
@@ -59,7 +59,7 @@ export function EditProgramForm({
       <Field label="Description">
         <Textarea name="description" rows={2} defaultValue={program.description} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Field label="Stamps per card">
           <Input
             name="requiredStamps"
@@ -78,6 +78,16 @@ export function EditProgramForm({
             max={1440}
             required
             defaultValue={program.settings?.minMinutesBetweenStamps ?? 5}
+          />
+        </Field>
+        <Field label="Most stamps per day">
+          <Input
+            name="maxStampsPerDay"
+            type="number"
+            min={1}
+            max={50}
+            required
+            defaultValue={program.settings?.maxStampsPerDay ?? 3}
           />
         </Field>
         <StatusSelect value={program.status} activeLabel="Running" />
@@ -102,6 +112,7 @@ export interface EditableReward {
   type: string;
   requiredStamps: number;
   status: string;
+  validForDays?: number;
 }
 
 export function EditRewardForm({
@@ -147,6 +158,15 @@ export function EditRewardForm({
         </Field>
         <StatusSelect value={reward.status} activeLabel="Available" />
       </div>
+      <Field label="Days to use it once unlocked (blank = never expires)">
+        <Input
+          name="validForDays"
+          type="number"
+          min={1}
+          max={365}
+          defaultValue={reward.validForDays}
+        />
+      </Field>
       <ErrorText>{state.error}</ErrorText>
       <SavedText show={state.saved} />
       <Submit />

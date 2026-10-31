@@ -95,6 +95,11 @@ function StaffHome({ businessId }: { businessId: string }) {
   const links = [
     { href: "/redeem", title: "Redeem a reward", text: "Enter the code a customer shows you." },
     {
+      href: "/counter",
+      title: "Add a stamp",
+      text: "For a customer whose phone cannot tap the stamper.",
+    },
+    {
       href: "/customers",
       title: "Find a customer",
       text: "Search by name or the last digits of their phone.",
@@ -105,7 +110,7 @@ function StaffHome({ businessId }: { businessId: string }) {
   return (
     <>
       <PageHeader title="Counter" description="What you can do from here." />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {links.map((link) => (
           <Link key={link.href} href={`/b/${businessId}${link.href}`}>
             <Card className="h-full transition hover:border-brand-500">

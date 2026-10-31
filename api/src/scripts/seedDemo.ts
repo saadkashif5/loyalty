@@ -64,12 +64,13 @@ async function main(): Promise<void> {
   });
   const branchId = branch._id.toString();
 
-  // No cooldown while seeding; restored to the usual 5 minutes below.
+  // No cooldown or daily cap while seeding; both restored below.
   const program = await createProgram(businessId, ownerId, {
     name: "Chai Card",
     description: "Collect 6 stamps: free samosa at 3, free chai at 6.",
     requiredStamps: 6,
     minMinutesBetweenStamps: 0,
+    maxStampsPerDay: 50,
   });
   const programId = program._id.toString();
 
@@ -111,7 +112,10 @@ async function main(): Promise<void> {
     }
   }
 
-  await updateProgram(businessId, programId, ownerId, { minMinutesBetweenStamps: 5 });
+  await updateProgram(businessId, programId, ownerId, {
+    minMinutesBetweenStamps: 5,
+    maxStampsPerDay: 3,
+  });
 
   console.log("Demo data created. Password for every demo account:", DEMO_PASSWORD);
   console.log(`  Owner:     ${OWNER_EMAIL}`);

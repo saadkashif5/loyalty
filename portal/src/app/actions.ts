@@ -1,5 +1,6 @@
 "use server";
 
+import QRCode from "qrcode";
 import { redirect } from "next/navigation";
 import { ApiRequestError, apiFetch, idempotencyKeyFor } from "@/lib/api";
 import {
@@ -153,4 +154,27 @@ export async function collectStampAction(cardId: string): Promise<void> {
   }
   await clearPendingTap();
   redirect(target);
+}
+
+// ---- Counter code --------------------------------------------------------------------
+
+export interface CounterCodeResult {
+  code?: string;
+  qrDataUrl?: string;
+  expiresAt?: string;
+  error?: string;
+}
+
+/** The short code staff scan or type when the customer's phone cannot tap. */
+export async function getCounterCodeAction(cardId: string): Promise<CounterCodeResult> {
+  try {
+    const { code, expiresAt } = await apiFetch<{ code: string; expiresAt: string }>(
+      `/loyalty-cards/${encodeURIComponent(cardId)}/counter-code`,
+      { method: "POST" },
+    );
+    const qrDataUrl = await QRCode.toDataURL(code, { margin: 1, width: 220 });
+    return { code, qrDataUrl, expiresAt };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not get a code. Please try again.") };
+  }
 }

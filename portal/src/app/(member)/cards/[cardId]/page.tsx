@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { apiFetch } from "@/lib/api";
 import { Card, Notice, StampDots, formatDate } from "@/components/ui";
+import { CounterCodePanel } from "@/components/CounterCodePanel";
 
 interface CardDetail {
   card: {
@@ -15,6 +16,7 @@ interface CardDetail {
     _id: string;
     redemptionCode: string;
     createdAt: string;
+    expiresAt?: string | null;
     rewardId: { name: string; description?: string } | null;
   }>;
 }
@@ -31,6 +33,7 @@ const RESULTS: Record<string, { tone: "success" | "info"; text: string }> = {
 // Why a tap did not give a stamp, in the customer's terms.
 const ERRORS: Record<string, string> = {
   STAMP_COOLDOWN: "You already got a stamp here a moment ago. One stamp per visit.",
+  DAILY_STAMP_LIMIT: "You have collected today's stamps for this card. Come back tomorrow!",
   TAP_EXPIRED: "That tap expired. Tap the stamper again to collect your stamp.",
   TAP_ALREADY_USED: "That tap was already used. Tap the stamper again.",
   NOT_ENROLLED: "Join this shop's card first, then tap again.",
@@ -82,6 +85,8 @@ export default async function CardPage({
         ) : null}
       </Card>
 
+      {card.status === "ACTIVE" ? <CounterCodePanel cardId={card._id} /> : null}
+
       {rewards.map((reward) => (
         <Card key={reward._id} className="space-y-3 border-brand-500 text-center">
           <p className="text-sm font-medium uppercase tracking-wide text-brand-600">Your reward</p>
@@ -89,7 +94,10 @@ export default async function CardPage({
           {/* A data URL generated on the server; next/image adds nothing here. */}
           <img src={reward.qr} alt="" width={160} height={160} className="mx-auto" />
           <p className="font-mono text-2xl tracking-[0.3em]">{reward.redemptionCode}</p>
-          <p className="text-xs text-slate-500">Show this code to the staff to redeem.</p>
+          <p className="text-xs text-slate-500">
+            Show this code to the staff to redeem.
+            {reward.expiresAt ? ` Use by ${formatDate(reward.expiresAt)}.` : ""}
+          </p>
         </Card>
       ))}
 

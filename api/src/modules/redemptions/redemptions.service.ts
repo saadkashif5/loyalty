@@ -62,6 +62,7 @@ export async function requestRedemption(
     businessId: card.businessId,
     redemptionCode: generateRedemptionCode(),
     status: REDEMPTION_STATUS.PENDING,
+    expiresAt: reward.validForDays ? new Date(Date.now() + reward.validForDays * 86_400_000) : null,
   });
 
   await recordAudit({
@@ -86,11 +87,13 @@ export async function validateRedemption(params: {
   redemptionCode: string;
   branchId?: string;
 }) {
+  const now = new Date();
   const redemption = await Redemption.findOneAndUpdate(
     {
       redemptionCode: params.redemptionCode,
       businessId: params.businessId,
       status: REDEMPTION_STATUS.PENDING,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
     },
     {
       $set: {
@@ -112,6 +115,21 @@ export async function validateRedemption(params: {
 
     if (existing?.status === REDEMPTION_STATUS.REDEEMED) {
       throw ApiError.conflict("This reward has already been redeemed");
+    }
+    if (
+      existing?.expiresAt &&
+      existing.expiresAt <= now &&
+      (existing.status === REDEMPTION_STATUS.PENDING ||
+        existing.status === REDEMPTION_STATUS.EXPIRED)
+    ) {
+      if (existing.status === REDEMPTION_STATUS.PENDING) {
+        await Redemption.updateOne(
+          { _id: existing._id, status: REDEMPTION_STATUS.PENDING },
+          { $set: { status: REDEMPTION_STATUS.EXPIRED } },
+        );
+      }
+      const date = existing.expiresAt.toLocaleDateString("en-PK", { timeZone: "Asia/Karachi" });
+      throw new ApiError(409, "REWARD_EXPIRED", `This reward expired on ${date}.`);
     }
     throw ApiError.notFound("No valid reward found for this code");
   }

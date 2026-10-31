@@ -84,6 +84,9 @@ export function CreateRewardForm({
             required
           />
         </Field>
+        <Field label="Days to use it (blank = never expires)">
+          <Input name="validForDays" type="number" min={1} max={365} placeholder="e.g. 30" />
+        </Field>
         <ErrorText>{state.error}</ErrorText>
         <SubmitButton />
       </form>

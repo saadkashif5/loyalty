@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useCallback, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { validateRedemptionAction } from "@/app/actions/business";
+import { QrScanner } from "@/components/QrScanner";
 import { Button, Card, ErrorText, Field, Input, Select } from "@/components/ui";
 
 function SubmitButton() {
@@ -23,12 +24,23 @@ export function RedeemForm({
 }) {
   const action = validateRedemptionAction.bind(null, businessId);
   const [state, formAction] = useActionState(action, {});
+  const formRef = useRef<HTMLFormElement>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
+
+  // The reward QR on the customer's card holds just the code.
+  const onScan = useCallback((value: string) => {
+    if (!codeRef.current) return;
+    codeRef.current.value = value.toUpperCase();
+    formRef.current?.requestSubmit();
+  }, []);
 
   return (
     <Card>
-      <form action={formAction} className="space-y-4">
+      <form ref={formRef} action={formAction} className="space-y-4">
+        <QrScanner onScan={onScan} />
         <Field label="Redemption code">
           <Input
+            ref={codeRef}
             name="redemptionCode"
             required
             autoFocus

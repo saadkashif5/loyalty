@@ -14,6 +14,8 @@ export const createProgramSchema = z
     terms: z.string().max(5000).optional(),
     /** Minimum minutes between two stamps on the same card. Anti-abuse (§14). */
     minMinutesBetweenStamps: z.number().int().min(0).max(1440).default(5),
+    /** Most stamps one card can get in a day (Pakistan time). Anti-abuse. */
+    maxStampsPerDay: z.number().int().min(1).max(50).default(3),
   })
   .refine((data) => !data.endDate || !data.startDate || data.endDate > data.startDate, {
     message: "endDate must be after startDate",
@@ -30,6 +32,7 @@ export const updateProgramSchema = z.object({
   endDate: z.coerce.date().optional(),
   terms: z.string().max(5000).optional(),
   minMinutesBetweenStamps: z.number().int().min(0).max(1440).optional(),
+  maxStampsPerDay: z.number().int().min(1).max(50).optional(),
 });
 export type UpdateProgramInput = z.infer<typeof updateProgramSchema>;
 
@@ -43,6 +46,8 @@ export const createRewardSchema = z.object({
   expiresAt: z.coerce.date().optional(),
   terms: z.string().max(5000).optional(),
   redemptionLimit: z.number().int().min(1).default(1),
+  /** Days a customer has to use the reward once unlocked; none means it never expires. */
+  validForDays: z.number().int().min(1).max(365).optional(),
 });
 export type CreateRewardInput = z.infer<typeof createRewardSchema>;
 
@@ -92,3 +97,22 @@ export const validateRedemptionSchema = z.object({
   branchId: objectId.optional(),
 });
 export type ValidateRedemptionInput = z.infer<typeof validateRedemptionSchema>;
+
+// Counter mode: the code a customer's card shows, read by staff.
+export const counterCodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z2-9]{8}$/, "Enter the 8-character code from the customer's card"),
+});
+export type CounterCodeInput = z.infer<typeof counterCodeSchema>;
+
+export const counterStampSchema = counterCodeSchema.extend({ branchId: objectId });
+export type CounterStampInput = z.infer<typeof counterStampSchema>;
+
+export const reviewFraudFlagSchema = z.object({
+  status: z.enum(["DISMISSED", "CONFIRMED"]),
+  note: z.string().max(500).optional(),
+});
+export type ReviewFraudFlagInput = z.infer<typeof reviewFraudFlagSchema>;

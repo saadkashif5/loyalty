@@ -8,6 +8,7 @@ const NAV: Array<{ href: string; label: string; permission?: PlatformPermission 
   { href: "/businesses", label: "Businesses", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
   { href: "/leads", label: "Leads", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
   { href: "/devices", label: "Stampers", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
+  { href: "/alerts", label: "Alerts", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
   { href: "/users", label: "Users", permission: PLATFORM_PERMISSIONS.USER_VIEW },
   { href: "/audit", label: "Audit log", permission: PLATFORM_PERMISSIONS.AUDIT_VIEW },
   { href: "/team", label: "Team", permission: PLATFORM_PERMISSIONS.TEAM_MANAGE },

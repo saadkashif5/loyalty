@@ -146,6 +146,9 @@ const STATUS_STYLES: Record<string, string> = {
   REVOKED: "bg-red-50 text-red-700",
   REJECTED: "bg-red-50 text-red-700",
   EXPIRED: "bg-slate-100 text-slate-600",
+  OPEN: "bg-amber-50 text-amber-700",
+  DISMISSED: "bg-slate-100 text-slate-600",
+  CONFIRMED: "bg-red-50 text-red-700",
   REPLACED: "bg-slate-100 text-slate-600",
   DISABLED: "bg-slate-100 text-slate-600",
 };

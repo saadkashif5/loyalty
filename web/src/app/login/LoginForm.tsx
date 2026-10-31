@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { loginAction } from "@/app/actions/auth";
+import { codeLoginAction, loginAction, type CodeLoginState } from "@/app/actions/auth";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
@@ -17,6 +17,9 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction] = useActionState(loginAction, {});
   const [useRecovery, setUseRecovery] = useState(false);
+  const [withCode, setWithCode] = useState(false);
+
+  if (withCode) return <CodeLogin next={next} onBack={() => setWithCode(false)} />;
 
   if (state.mfaToken) {
     return (
@@ -74,6 +77,79 @@ export function LoginForm({ next }: { next: string }) {
         </Field>
         <ErrorText>{state.error}</ErrorText>
         <SubmitButton label="Sign in" pendingLabel="Signing in…" />
+        <button
+          type="button"
+          onClick={() => setWithCode(true)}
+          className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+        >
+          No password? Email me a code instead
+        </button>
+      </form>
+    </Card>
+  );
+}
+
+const CODE_START: CodeLoginState = { step: "email" };
+
+function CodeLogin({ next, onBack }: { next: string; onBack: () => void }) {
+  const [state, formAction] = useActionState(codeLoginAction, CODE_START);
+
+  return (
+    <Card>
+      <form action={formAction} className="space-y-4">
+        <input type="hidden" name="next" value={next} />
+        {state.notice ? <p className="text-sm text-slate-600">{state.notice}</p> : null}
+
+        {state.step === "email" ? (
+          <Field label="Email">
+            <Input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              defaultValue={state.email}
+            />
+          </Field>
+        ) : (
+          <Field
+            label={
+              state.step === "mfa" ? "Code from your authenticator app" : "Code from the email"
+            }
+          >
+            <Input
+              name="code"
+              required
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="\d{6}"
+              maxLength={6}
+              autoFocus
+            />
+          </Field>
+        )}
+        <ErrorText>{state.error}</ErrorText>
+        <SubmitButton
+          label={state.step === "email" ? "Email me a code" : "Continue"}
+          pendingLabel="Please wait…"
+        />
+        {state.step === "code" ? (
+          <button
+            type="submit"
+            name="intent"
+            value="resend"
+            formNoValidate
+            className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+          >
+            Send a new code
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+        >
+          Use my password instead
+        </button>
       </form>
     </Card>
   );

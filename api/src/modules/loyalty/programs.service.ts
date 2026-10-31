@@ -9,12 +9,12 @@ export async function createProgram(
   actorUserId: string,
   input: CreateProgramInput,
 ) {
-  const { minMinutesBetweenStamps, ...rest } = input;
+  const { minMinutesBetweenStamps, maxStampsPerDay, ...rest } = input;
 
   const program = await LoyaltyProgram.create({
     ...rest,
     businessId,
-    settings: { minMinutesBetweenStamps },
+    settings: { minMinutesBetweenStamps, maxStampsPerDay },
   });
 
   await recordAudit({
@@ -44,7 +44,7 @@ export async function updateProgram(
   actorUserId: string,
   input: UpdateProgramInput,
 ) {
-  const { minMinutesBetweenStamps, ...rest } = input;
+  const { minMinutesBetweenStamps, maxStampsPerDay, ...rest } = input;
 
   if (input.requiredStamps !== undefined) {
     const largest = await Reward.findOne({ programId, businessId, status: "ACTIVE" })
@@ -60,6 +60,9 @@ export async function updateProgram(
   const update: Record<string, unknown> = { ...rest };
   if (minMinutesBetweenStamps !== undefined) {
     update["settings.minMinutesBetweenStamps"] = minMinutesBetweenStamps;
+  }
+  if (maxStampsPerDay !== undefined) {
+    update["settings.maxStampsPerDay"] = maxStampsPerDay;
   }
 
   const program = await LoyaltyProgram.findOneAndUpdate({ _id: programId, businessId }, update, {

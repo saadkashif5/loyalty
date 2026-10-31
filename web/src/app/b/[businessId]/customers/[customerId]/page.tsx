@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { BUSINESS_PERMISSIONS } from "@taptapsell/constants";
 import { apiFetch } from "@/lib/api";
+import { can, getMembership } from "@/lib/membership";
+import { ManualStampForm } from "./ManualStampForm";
 import { Card, PageHeader, StatusBadge, formatDate } from "@/components/ui";
 
 interface CustomerDetail {
@@ -27,7 +30,12 @@ interface CustomerDetail {
   }>;
 }
 
-const SOURCE_LABEL: Record<string, string> = { NFC: "Tap", QR: "QR", ADMIN: "Added by staff" };
+const SOURCE_LABEL: Record<string, string> = {
+  NFC: "Tap",
+  QR: "QR",
+  STAFF: "Counter code",
+  ADMIN: "Added by a manager",
+};
 
 export default async function CustomerPage({
   params,
@@ -35,8 +43,16 @@ export default async function CustomerPage({
   params: Promise<{ businessId: string; customerId: string }>;
 }) {
   const { businessId, customerId } = await params;
-  const detail = await apiFetch<CustomerDetail>(
-    `/businesses/${businessId}/customers/${customerId}`,
+  const [detail, { role, branchIds }, allBranches] = await Promise.all([
+    apiFetch<CustomerDetail>(`/businesses/${businessId}/customers/${customerId}`),
+    getMembership(businessId),
+    apiFetch<Array<{ _id: string; name: string; status: string }>>(
+      `/businesses/${businessId}/branches`,
+    ),
+  ]);
+  const canStamp = can(role, BUSINESS_PERMISSIONS.STAMP_ISSUE_MANUAL);
+  const branches = allBranches.filter(
+    (b) => b.status === "ACTIVE" && (branchIds.length === 0 || branchIds.includes(b._id)),
   );
 
   return (
@@ -65,6 +81,9 @@ export default async function CustomerPage({
             <p className="text-xs text-slate-500">
               Joined {formatDate(card.joinedAt)} · last stamp {formatDate(card.lastStampAt)}
             </p>
+            {canStamp && card.status === "ACTIVE" ? (
+              <ManualStampForm businessId={businessId} cardId={card.cardId} branches={branches} />
+            ) : null}
           </Card>
         ))}
       </div>

@@ -97,6 +97,9 @@ const STATUS_STYLES: Record<string, string> = {
   REDEEMED: "bg-emerald-50 text-emerald-700",
   INACTIVE: "bg-slate-100 text-slate-600",
   DISABLED: "bg-slate-100 text-slate-600",
+  DISMISSED: "bg-slate-100 text-slate-600",
+  CONFIRMED: "bg-red-50 text-red-700",
+  EXPIRED: "bg-slate-100 text-slate-600",
 };
 
 export function StatusBadge({ status }: { status: string }) {
