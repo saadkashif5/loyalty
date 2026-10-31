@@ -27,6 +27,16 @@ export const AUDIT_ACTIONS = {
   REDEMPTION_COMPLETED: "redemption.completed",
   STAMP_ISSUED_MANUAL: "stamp.issued_manual",
   SUSPICIOUS_STAMP_ATTEMPT: "stamp.suspicious_attempt",
+  MFA_ENABLED: "user.mfa_enabled",
+  MFA_DISABLED: "user.mfa_disabled",
+  MFA_RECOVERY_CODE_USED: "user.mfa_recovery_code_used",
+  USER_SIGNED_OUT: "user.signed_out_everywhere",
+  PLATFORM_ROLE_CHANGED: "platform.role_changed",
+  INVITATION_CREATED: "invitation.created",
+  INVITATION_RESENT: "invitation.resent",
+  INVITATION_REVOKED: "invitation.revoked",
+  INVITATION_ACCEPTED: "invitation.accepted",
+  LEAD_UPDATED: "lead.updated",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

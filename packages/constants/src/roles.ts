@@ -2,6 +2,8 @@
 export const PLATFORM_ROLES = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
+  SUPPORT: "SUPPORT",
+  FINANCE: "FINANCE",
 } as const;
 
 export type PlatformRole = (typeof PLATFORM_ROLES)[keyof typeof PLATFORM_ROLES];

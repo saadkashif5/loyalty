@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 
 interface FormState {
@@ -10,29 +9,6 @@ interface FormState {
 
 function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiRequestError ? error.message : fallback;
-}
-
-export async function createBusinessAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  let businessId: string;
-
-  try {
-    const business = await apiFetch<{ _id: string }>("/businesses", {
-      method: "POST",
-      body: {
-        name: String(formData.get("name") ?? ""),
-        category: String(formData.get("category") ?? "OTHER"),
-        description: String(formData.get("description") ?? "") || undefined,
-      },
-    });
-    businessId = business._id;
-  } catch (error) {
-    return { error: messageFrom(error, "Could not create the business.") };
-  }
-
-  redirect(`/b/${businessId}`);
 }
 
 export async function createBranchAction(

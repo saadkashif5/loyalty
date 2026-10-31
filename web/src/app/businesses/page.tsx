@@ -30,11 +30,14 @@ export default async function BusinessesPage() {
       <PageHeader
         title="Your businesses"
         description="Pick a business to manage its loyalty programs, stampers and rewards."
-        action={<LinkButton href="/businesses/new">Add business</LinkButton>}
+        action={<LinkButton href="/account/security">Security</LinkButton>}
       />
 
       {valid.length === 0 ? (
-        <EmptyState>You are not part of any business yet. Create one to get started.</EmptyState>
+        <EmptyState>
+          You do not manage a business yet. Businesses join TapTapSell by invitation: open the link
+          in the invitation you received, or ask the business owner to add you as staff.
+        </EmptyState>
       ) : (
         <ul className="space-y-3">
           {valid.map((m) => (

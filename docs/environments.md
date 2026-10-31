@@ -19,6 +19,9 @@ In `staging` and `production` the API exits at start-up if:
 
 - `REDIS_URL` is missing,
 - `CORS_ORIGINS` is empty,
+- `MFA_ENCRYPTION_KEY` is missing (32 random bytes, base64; it encrypts two-step
+  verification secrets at rest — losing it means every user must set up two-step
+  verification again),
 - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` are the same value.
 
 In every environment both JWT secrets must be at least 32 characters, and

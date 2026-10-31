@@ -1,16 +1,28 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "@/middleware/auth";
-import { requirePlatformRole } from "@/middleware/requirePlatformRole";
+import { requirePlatformPermission } from "@/middleware/requirePlatformPermission";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
-import { PLATFORM_ROLES } from "@taptapsell/constants";
+import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
+import {
+  addTeamMemberSchema,
+  createBusinessWithOwnerSchema,
+  updateLeadSchema,
+  updateTeamMemberSchema,
+} from "@taptapsell/validation";
 import * as service from "./admin.service";
+import * as invitations from "@/modules/invitations/invitations.service";
+import * as leads from "@/modules/leads/leads.service";
 import { registerDevicesHandler, assignDeviceHandler } from "@/modules/devices/devices.controller";
 
+// Mounted at /api/v1/admin. Every route names the platform permission it needs;
+// requirePlatformPermission also insists on two-step verification.
 const router = Router();
+const P = PLATFORM_PERMISSIONS;
+const can = requirePlatformPermission;
 
-router.use(requireAuth, requirePlatformRole(PLATFORM_ROLES.ADMIN));
+router.use(requireAuth);
 
 function pagination(query: Record<string, unknown>) {
   return {
@@ -26,13 +38,17 @@ const statusSchema = z.object({
 
 router.get(
   "/overview",
+  can(P.ANALYTICS_VIEW),
   asyncHandler(async (_req, res) => {
     sendSuccess(res, await service.getPlatformOverview());
   }),
 );
 
+// ---- Businesses and owner invitations --------------------------------------
+
 router.get(
   "/businesses",
+  can(P.BUSINESS_VIEW),
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
     const status = typeof req.query.status === "string" ? req.query.status : undefined;
@@ -41,8 +57,21 @@ router.get(
   }),
 );
 
+// Businesses join by invitation only: this creates the business and invites its owner.
+router.post(
+  "/businesses",
+  can(P.BUSINESS_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = createBusinessWithOwnerSchema.parse(req.body);
+    sendSuccess(res, await invitations.createBusinessWithInvitation(req.userId!, input), {
+      status: 201,
+    });
+  }),
+);
+
 router.patch(
   "/businesses/:businessId/status",
+  can(P.BUSINESS_MANAGE),
   asyncHandler(async (req, res) => {
     const { status, reason } = statusSchema.parse(req.body);
     sendSuccess(
@@ -53,7 +82,56 @@ router.patch(
 );
 
 router.get(
+  "/businesses/:businessId/invitations",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await invitations.listInvitations(req.params.businessId));
+  }),
+);
+
+router.post(
+  "/invitations/:invitationId/resend",
+  can(P.BUSINESS_MANAGE),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await invitations.resendInvitation(req.userId!, req.params.invitationId));
+  }),
+);
+
+router.post(
+  "/invitations/:invitationId/revoke",
+  can(P.BUSINESS_MANAGE),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await invitations.revokeInvitation(req.userId!, req.params.invitationId));
+  }),
+);
+
+// ---- Leads ------------------------------------------------------------------
+
+router.get(
+  "/leads",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    const { page, limit } = pagination(req.query);
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const { items, total } = await leads.listLeads({ status, page, limit });
+    sendSuccess(res, items, { meta: { page, limit, total } });
+  }),
+);
+
+router.patch(
+  "/leads/:leadId",
+  can(P.BUSINESS_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = updateLeadSchema.parse(req.body);
+    sendSuccess(res, await leads.updateLead(req.userId!, req.params.leadId, input));
+  }),
+);
+
+// ---- Users --------------------------------------------------------------------
+
+router.get(
   "/customers",
+  can(P.USER_VIEW),
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
     const query = typeof req.query.q === "string" ? req.query.q : undefined;
@@ -64,23 +142,65 @@ router.get(
 
 router.patch(
   "/customers/:userId/status",
+  can(P.USER_MANAGE),
   asyncHandler(async (req, res) => {
     const { status } = statusSchema.parse(req.body);
     sendSuccess(res, await service.setUserStatus(req.params.userId, req.userId!, status));
   }),
 );
 
-// Device fleet management: minting and assignment are platform operations.
-router.post("/devices", registerDevicesHandler);
-router.patch("/devices/:deviceId/assign", assignDeviceHandler);
+router.post(
+  "/users/:userId/sign-out",
+  can(P.USER_MANAGE),
+  asyncHandler(async (req, res) => {
+    await service.signOutUser(req.userId!, req.params.userId);
+    sendSuccess(res, { signedOut: true });
+  }),
+);
+
+// ---- Stamper fleet ------------------------------------------------------------
+
+router.post("/devices", can(P.DEVICE_MANAGE), registerDevicesHandler);
+router.patch("/devices/:deviceId/assign", can(P.DEVICE_MANAGE), assignDeviceHandler);
+
+// ---- Audit log ----------------------------------------------------------------
 
 router.get(
   "/audit-logs",
+  can(P.AUDIT_VIEW),
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
     const businessId = typeof req.query.businessId === "string" ? req.query.businessId : undefined;
     const { items, total } = await service.listAuditLogs({ businessId, page, limit });
     sendSuccess(res, items, { meta: { page, limit, total } });
+  }),
+);
+
+// ---- Platform team ------------------------------------------------------------
+
+router.get(
+  "/team",
+  can(P.TEAM_MANAGE),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await service.listTeam());
+  }),
+);
+
+router.post(
+  "/team",
+  can(P.TEAM_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = addTeamMemberSchema.parse(req.body);
+    sendSuccess(res, await service.addTeamMember(req.userId!, input), { status: 201 });
+  }),
+);
+
+router.patch(
+  "/team/:userId",
+  can(P.TEAM_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = updateTeamMemberSchema.parse(req.body);
+    sendSuccess(res, await service.updateTeamMember(req.userId!, req.params.userId, input));
   }),
 );
 

@@ -3,7 +3,6 @@ import { requireAuth } from "@/middleware/auth";
 import { requireBusinessRole } from "@/middleware/requireBusinessRole";
 import { BUSINESS_PERMISSIONS } from "@taptapsell/constants";
 import {
-  createBusinessHandler,
   listMyBusinessesHandler,
   getBusinessHandler,
   updateBusinessHandler,
@@ -13,7 +12,8 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.post("/", createBusinessHandler);
+// No create route: businesses are created by the platform and owners join by
+// invitation (POST /admin/businesses, then /invitations/:token/accept).
 router.get("/", listMyBusinessesHandler);
 
 router.get(

@@ -1,8 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import { BusinessMember } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { mfaSetupRequired } from "@/middleware/auth";
 import {
   BUSINESS_ROLE_HIERARCHY,
+  BUSINESS_ROLES,
   DEFAULT_ROLE_PERMISSIONS,
   MEMBER_STATUS,
   type BusinessPermission,
@@ -49,6 +51,12 @@ export function requireBusinessRole(options: Options = {}) {
     if (!member || member.status !== MEMBER_STATUS.ACTIVE) {
       // Same error for "not a member" and "disabled member" — avoids leaking membership existence.
       next(ApiError.forbidden("You do not have access to this business"));
+      return;
+    }
+
+    // Owners control the whole tenant, so they must use two-step verification.
+    if (member.role === BUSINESS_ROLES.OWNER && !req.mfaEnabled) {
+      next(mfaSetupRequired());
       return;
     }
 

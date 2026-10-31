@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import type { ApiResponse } from "@taptapsell/types";
 import { getAccessToken } from "./session";
 
@@ -46,6 +47,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (!response.ok || !payload || payload.success === false) {
     const error = payload && payload.success === false ? payload.error : null;
+    // Owners and platform users must turn on two-step verification before anything else.
+    if (error?.code === "MFA_SETUP_REQUIRED") redirect("/account/security?welcome=1");
     throw new ApiRequestError(
       response.status,
       error?.code ?? "UNKNOWN",

@@ -31,6 +31,11 @@ npm run dev:api
 npm run dev:web
 ```
 
+Sign in at `http://localhost:3000/login` as the Super Admin and turn on two-step
+verification at `/account/security`; admin API routes refuse platform users
+until it is on. Businesses join by invitation: `POST /api/v1/admin/businesses`
+creates the business and returns an invite link for its owner.
+
 The API requires MongoDB. Transactions are used for the stamp flow, so the
 database must be a replica set — MongoDB Atlas is one by default; a local
 standalone `mongod` is not. Redis is optional in development (rate limits fall

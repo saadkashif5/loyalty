@@ -251,7 +251,7 @@ Engineering
       happens on the next push_
 - [~] ESLint + Prettier + commit hooks; dependency, secret and SAST scanning in CI
       — _ESLint 9, Prettier, EditorConfig and a lint-staged pre-commit hook in place; `npm audit`
-      (0 vulnerabilities after upgrading Next.js 14→16, React 18→19, zod 3→4), gitleaks, CodeQL
+      (after upgrading Next.js 14→16, React 18→19, zod 3→4: no high or critical; 5 moderate in Sentry's build-time source-map plugin (`glob`/`minimatch`), which only runs with `withSentryConfig` and is not used here), gitleaks, CodeQL
       and Dependabot configured, pending the first GitHub run_
 - [ ] Repo layout for multiple apps: `api`, `worker`, `portal`, `dashboard` (current `web`), `admin`,
       shared `packages/*` — _deferred to Phase 1, when the admin console is the first new app_
@@ -293,26 +293,40 @@ Decisions (Architecture Decision Records in `docs/adr/`)
 database or curl.
 
 Platform roles and security
-- [ ] Platform permission matrix: `SUPER_ADMIN` (everything), `ADMIN` (operations), `SUPPORT`
-      (read-only plus limited actions), `FINANCE` (billing only)
-- [ ] Mandatory TOTP MFA for all platform users; session list and remote sign-out
-- [ ] Admin console behind Cloudflare Access or IP allowlist
+- [x] Platform permission matrix: `SUPER_ADMIN` (everything), `ADMIN` (operations), `SUPPORT`
+      (read-only plus limited actions), `FINANCE` (billing only) — _`PLATFORM_PERMISSIONS` in
+      `packages/constants`; every `/admin` route names its permission; team management API
+      (`/admin/team`): add, change, remove, never your own role; removal ends sessions_
+- [x] Mandatory TOTP MFA for all platform users; session list and remote sign-out — _TOTP (RFC
+      6238 vectors tested), secrets sealed with AES-256-GCM, codes never accepted twice, 10
+      single-use recovery codes; admin routes return `MFA_SETUP_REQUIRED` until it is on; also
+      mandatory for business owners. Sessions: list, sign out one, sign out all others; admin force
+      sign-out; suspension ends sessions_
+- [ ] Admin console behind Cloudflare Access or IP allowlist — _infrastructure; with the admin app_
 
 Business invitations
-- [ ] `business_invitations` collection: hashed single-use token, 7-day expiry, plan and trial preset
-- [ ] Delivery by email and WhatsApp; resend and revoke
-- [ ] Accept page: set password, verify phone, enrol MFA, land in onboarding wizard
-- [ ] Remove self-serve `POST /businesses` for ordinary users; marketing-site "request access" form
-      feeds a lead list in the admin console
+- [~] `business_invitations` collection: hashed single-use token, 7-day expiry, plan and trial preset
+      — _built; plan and trial preset wait for Phase 3 plans_
+- [~] Delivery by email and WhatsApp; resend and revoke — _resend (new link, old one dies) and
+      revoke built; the invite link is returned to the platform team to share by hand until an email
+      and WhatsApp provider is chosen_
+- [~] Accept page: set password, verify phone, enrol MFA, land in onboarding wizard — _`/invite/[token]`
+      handles new accounts, existing accounts (must sign in first) and wrong-account cases, then
+      sends owners to set up MFA; phone is stored but not yet verified (needs Phase 2 OTP); wizard not
+      built_
+- [x] Remove self-serve `POST /businesses` for ordinary users; marketing-site "request access" form
+      feeds a lead list in the admin console — _route removed (`/admin/businesses` creates and
+      invites); public `POST /leads` with Pakistani mobile validation; leads list, notes, status and
+      automatic "converted" on invite. Marketing-site form itself not built_
 
 Admin console
-- [ ] Overview: tenants by status, active stampers, stamps today, signups
+- [~] Overview: tenants by status, active stampers, stamps today, signups — _API has totals; no UI_
 - [ ] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
       members, subscription and audit trail; activate, suspend and restore with reason
 - [ ] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
       (provisioned → shipped → active → revoked/replaced), print labels and QR
-- [ ] Users: search customers and business users; suspend/restore; force sign-out
-- [ ] Audit log viewer with filters
+- [~] Users: search customers and business users; suspend/restore; force sign-out — _API done; no UI_
+- [~] Audit log viewer with filters — _API (filter by business); no UI_
 - [ ] Support "view as business" — read-only, time-limited, banner shown, fully audited
 
 Business dashboard

@@ -10,6 +10,8 @@ import tapsRoutes from "@/modules/taps/taps.routes";
 import redemptionsRoutes from "@/modules/redemptions/redemptions.routes";
 import notificationsRoutes from "@/modules/notifications/notifications.routes";
 import adminRoutes from "@/modules/admin/admin.routes";
+import invitationsRoutes from "@/modules/invitations/invitations.routes";
+import leadsRoutes from "@/modules/leads/leads.routes";
 
 const router = Router();
 
@@ -19,6 +21,10 @@ router.use("/users", usersRoutes);
 
 // Public discovery + QR stamper landing (unauthenticated)
 router.use("/discover", discoveryRoutes);
+
+// Owner invitations (link holder) and the "request access" form
+router.use("/invitations", invitationsRoutes);
+router.use("/leads", leadsRoutes);
 
 // Business dashboard surface
 router.use("/businesses", businessesRoutes);

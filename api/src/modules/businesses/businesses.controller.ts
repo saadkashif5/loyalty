@@ -1,14 +1,8 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
-import { createBusinessSchema, updateBusinessSchema } from "@taptapsell/validation";
+import { updateBusinessSchema } from "@taptapsell/validation";
 import * as service from "./businesses.service";
-
-export const createBusinessHandler = asyncHandler(async (req: Request, res: Response) => {
-  const input = createBusinessSchema.parse(req.body);
-  const business = await service.createBusiness(req.userId!, input);
-  sendSuccess(res, business, { status: 201 });
-});
 
 export const listMyBusinessesHandler = asyncHandler(async (req: Request, res: Response) => {
   const businesses = await service.listMyBusinesses(req.userId!);

@@ -10,7 +10,12 @@ process.env.RATE_LIMIT_MAX = "10000";
 
 // Tests need a replica set, because the stamp flow uses multi-document
 // transactions. `docker compose up -d` from the repo root provides one.
-const TEST_URI = process.env.MONGODB_TEST_URI ?? "mongodb://localhost:27017/taptapsell_test";
+// Test files run in parallel and every test wipes the database afterwards, so
+// each worker gets its own database.
+const BASE_URI = process.env.MONGODB_TEST_URI ?? "mongodb://localhost:27017/taptapsell_test";
+const workerUrl = new URL(BASE_URI);
+workerUrl.pathname = `${workerUrl.pathname.replace(/\/$/, "") || "/taptapsell_test"}_${process.env.VITEST_POOL_ID ?? "0"}`;
+const TEST_URI = workerUrl.toString();
 process.env.MONGODB_URI = TEST_URI;
 
 beforeAll(async () => {

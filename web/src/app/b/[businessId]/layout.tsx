@@ -29,9 +29,14 @@ export default async function BusinessLayout({
           <Link href="/businesses" className="text-sm font-semibold">
             TapTapSell Loyalty
           </Link>
-          <form action={logoutAction}>
-            <button className="text-sm text-slate-500 hover:text-slate-900">Sign out</button>
-          </form>
+          <div className="flex items-center gap-4">
+            <Link href="/account/security" className="text-sm text-slate-500 hover:text-slate-900">
+              Security
+            </Link>
+            <form action={logoutAction}>
+              <button className="text-sm text-slate-500 hover:text-slate-900">Sign out</button>
+            </form>
+          </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-px">
           {NAV.map((item) => (

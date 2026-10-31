@@ -20,6 +20,18 @@ const userSchema = new Schema(
       enum: Object.values(USER_STATUS),
       default: USER_STATUS.ACTIVE,
     },
+    // Two-step verification (TOTP). Mandatory for platform users and business
+    // owners. Secrets are sealed with utils/secretBox and never selected by default.
+    mfa: {
+      enabled: { type: Boolean, default: false },
+      enabledAt: { type: Date },
+      secret: { type: String, select: false },
+      pendingSecret: { type: String, select: false },
+      // Last accepted time step; a code is never accepted twice.
+      lastUsedStep: { type: Number, select: false },
+      // SHA-256 of each unused recovery code.
+      recoveryCodeHashes: { type: [String], select: false, default: undefined },
+    },
     notificationPreferences: {
       push: { type: Boolean, default: true },
       email: { type: Boolean, default: true },

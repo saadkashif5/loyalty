@@ -1,30 +1,40 @@
 import bcrypt from "bcryptjs";
 import { User, type UserDocument } from "@/models";
 import { ApiError } from "@/utils/ApiError";
-import type { RegisterInput, LoginInput } from "@taptapsell/validation";
+import type { RegisterInput, LoginInput, MfaLoginInput } from "@taptapsell/validation";
 import {
   issueRefreshToken,
   rotateRefreshToken,
   revokeRefreshToken,
   signAccessToken,
+  signMfaChallenge,
+  verifyMfaChallenge,
 } from "./token.service";
+import { verifySecondFactor } from "./mfa.service";
 
 const SALT_ROUNDS = 12;
 
-interface AuthContext {
+export interface AuthContext {
   userAgent?: string;
   ip?: string;
 }
 
-interface AuthTokens {
+export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
 }
 
-async function issueTokenPair(user: UserDocument, ctx: AuthContext): Promise<AuthTokens> {
-  const accessToken = signAccessToken(user.id);
-  const refreshToken = await issueRefreshToken(user.id, ctx);
-  return { accessToken, refreshToken };
+export type LoginResult =
+  | { mfaRequired: false; user: UserDocument; tokens: AuthTokens }
+  | { mfaRequired: true; mfaToken: string };
+
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
+export async function issueTokenPair(userId: string, ctx: AuthContext): Promise<AuthTokens> {
+  const { raw, sessionId } = await issueRefreshToken(userId, ctx);
+  return { accessToken: signAccessToken(userId, sessionId), refreshToken: raw };
 }
 
 export async function register(input: RegisterInput, ctx: AuthContext = {}) {
@@ -33,19 +43,18 @@ export async function register(input: RegisterInput, ctx: AuthContext = {}) {
     throw ApiError.conflict("An account with this email already exists");
   }
 
-  const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
   const user = await User.create({
     name: input.name,
     email: input.email,
     phone: input.phone,
-    passwordHash,
+    passwordHash: await hashPassword(input.password),
   });
 
-  const tokens = await issueTokenPair(user, ctx);
+  const tokens = await issueTokenPair(user.id, ctx);
   return { user, tokens };
 }
 
-export async function login(input: LoginInput, ctx: AuthContext = {}) {
+export async function login(input: LoginInput, ctx: AuthContext = {}): Promise<LoginResult> {
   const user = await User.findOne({ email: input.email }).select("+passwordHash");
   // Constant-shaped response regardless of which check fails, to avoid user enumeration.
   if (!user) {
@@ -61,7 +70,31 @@ export async function login(input: LoginInput, ctx: AuthContext = {}) {
     throw ApiError.forbidden("This account is not active");
   }
 
-  const tokens = await issueTokenPair(user, ctx);
+  // The password alone is not enough: no tokens until the second factor passes.
+  if (user.mfa?.enabled) {
+    return { mfaRequired: true, mfaToken: signMfaChallenge(user.id) };
+  }
+
+  const tokens = await issueTokenPair(user.id, ctx);
+  return { mfaRequired: false, user, tokens };
+}
+
+export async function completeMfaLogin(input: MfaLoginInput, ctx: AuthContext = {}) {
+  let userId: string;
+  try {
+    userId = verifyMfaChallenge(input.mfaToken);
+  } catch {
+    throw ApiError.unauthorized("Your sign-in expired. Please enter your password again.");
+  }
+
+  const user = await User.findById(userId);
+  if (!user || user.status !== "ACTIVE") {
+    throw ApiError.forbidden("This account is not active");
+  }
+
+  await verifySecondFactor(userId, { code: input.code, recoveryCode: input.recoveryCode });
+
+  const tokens = await issueTokenPair(userId, ctx);
   return { user, tokens };
 }
 
@@ -71,7 +104,7 @@ export async function refresh(rawRefreshToken: string, ctx: AuthContext = {}) {
     throw ApiError.unauthorized("Invalid or expired refresh token");
   }
 
-  const accessToken = signAccessToken(result.userId);
+  const accessToken = signAccessToken(result.userId, result.sessionId);
   return { accessToken, refreshToken: result.newRawToken };
 }
 

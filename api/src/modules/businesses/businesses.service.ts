@@ -6,7 +6,7 @@ import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { BUSINESS_ROLES, MEMBER_STATUS, BUSINESS_STATUS } from "@taptapsell/constants";
 import type { CreateBusinessInput, UpdateBusinessInput } from "@taptapsell/validation";
 
-async function generateUniqueSlug(name: string): Promise<string> {
+export async function generateUniqueSlug(name: string): Promise<string> {
   const base = slugify(name) || "business";
   if (!(await Business.exists({ slug: base }))) return base;
 

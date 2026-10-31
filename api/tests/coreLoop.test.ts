@@ -1,20 +1,8 @@
-import request from "supertest";
 import { describe, expect, it, beforeEach } from "vitest";
-import { createApp } from "@/app";
 import { AuditLog, Business, NfcDevice, User } from "@/models";
+import { createBusiness } from "@/modules/businesses/businesses.service";
 import { BUSINESS_STATUS } from "@taptapsell/constants";
-
-const app = createApp();
-const api = () => request(app);
-
-async function registerUser(email: string) {
-  const res = await api()
-    .post("/api/v1/auth/register")
-    .send({ name: "Test User", email, password: "correct-horse-battery" });
-
-  expect(res.status).toBe(201);
-  return { token: res.body.data.accessToken as string, userId: res.body.data.user.id as string };
-}
+import { api, enableMfa, registerUser } from "./helpers";
 
 interface Fixture {
   ownerToken: string;
@@ -30,15 +18,13 @@ async function seedBusinessWithProgram(): Promise<Fixture> {
   const owner = await registerUser("owner@example.com");
   const customer = await registerUser("customer@example.com");
 
-  const businessRes = await api()
-    .post("/api/v1/businesses")
-    .set("Authorization", `Bearer ${owner.token}`)
-    .send({ name: "Chai Wala Cafe", category: "CAFE" });
-  expect(businessRes.status).toBe(201);
-  const businessId = businessRes.body.data._id as string;
-
-  // Platform verification would normally do this; stamping requires an active business.
+  // Owners join by invitation (covered in platform.test.ts); here the business
+  // is created directly with its owner, and the owner turns on two-step
+  // verification as every owner must.
+  const business = await createBusiness(owner.userId, { name: "Chai Wala Cafe", category: "CAFE" });
+  const businessId = business._id.toString();
   await Business.updateOne({ _id: businessId }, { status: BUSINESS_STATUS.ACTIVE });
+  await enableMfa(owner.token);
 
   const branchRes = await api()
     .post(`/api/v1/businesses/${businessId}/branches`)

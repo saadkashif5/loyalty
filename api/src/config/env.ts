@@ -20,6 +20,18 @@ const envSchema = z
     JWT_REFRESH_TTL: z.string().default("30d"),
 
     CORS_ORIGINS: z.string().default(""),
+    // Business dashboard origin, used to build invitation links.
+    DASHBOARD_URL: z.url().default("http://localhost:3000"),
+
+    // 32 random bytes, base64. Encrypts MFA secrets at rest. Required in
+    // staging and production; development and tests derive a key instead.
+    MFA_ENCRYPTION_KEY: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z
+        .string()
+        .refine((v) => Buffer.from(v, "base64").length === 32, "Must be 32 bytes, base64-encoded")
+        .optional(),
+    ),
 
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
@@ -39,6 +51,13 @@ const envSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["CORS_ORIGINS"],
+        message: "Required in staging and production",
+      });
+    }
+    if (!e.MFA_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["MFA_ENCRYPTION_KEY"],
         message: "Required in staging and production",
       });
     }

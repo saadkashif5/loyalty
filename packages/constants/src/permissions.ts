@@ -1,4 +1,4 @@
-import { BUSINESS_ROLES, type BusinessRole } from "./roles";
+import { BUSINESS_ROLES, PLATFORM_ROLES, type BusinessRole, type PlatformRole } from "./roles";
 
 // Central permission matrix per PRD §5.2 — enforced by authorization middleware,
 // never left to individual controllers to decide ad hoc.
@@ -66,4 +66,41 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<BusinessRole, BusinessPermission[]
     BUSINESS_PERMISSIONS.REDEMPTION_VIEW,
     BUSINESS_PERMISSIONS.DEVICE_REPORT_PROBLEM,
   ],
+};
+
+// Platform team permissions (ROADMAP Phase 1). Platform roles never grant
+// access to a business's own dashboard routes; those use BUSINESS_PERMISSIONS.
+export const PLATFORM_PERMISSIONS = {
+  BUSINESS_VIEW: "platform:business:view",
+  BUSINESS_MANAGE: "platform:business:manage",
+  USER_VIEW: "platform:user:view",
+  USER_MANAGE: "platform:user:manage",
+  DEVICE_MANAGE: "platform:device:manage",
+  AUDIT_VIEW: "platform:audit:view",
+  ANALYTICS_VIEW: "platform:analytics:view",
+  BILLING_VIEW: "platform:billing:view",
+  BILLING_MANAGE: "platform:billing:manage",
+  TEAM_MANAGE: "platform:team:manage",
+} as const;
+
+export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[keyof typeof PLATFORM_PERMISSIONS];
+
+const P = PLATFORM_PERMISSIONS;
+
+export const DEFAULT_PLATFORM_ROLE_PERMISSIONS: Record<PlatformRole, PlatformPermission[]> = {
+  [PLATFORM_ROLES.SUPER_ADMIN]: Object.values(PLATFORM_PERMISSIONS),
+  // Day-to-day operations: onboarding, stampers, account actions.
+  [PLATFORM_ROLES.ADMIN]: [
+    P.BUSINESS_VIEW,
+    P.BUSINESS_MANAGE,
+    P.USER_VIEW,
+    P.USER_MANAGE,
+    P.DEVICE_MANAGE,
+    P.AUDIT_VIEW,
+    P.ANALYTICS_VIEW,
+    P.BILLING_VIEW,
+  ],
+  // Read-only, for answering customer and business questions.
+  [PLATFORM_ROLES.SUPPORT]: [P.BUSINESS_VIEW, P.USER_VIEW, P.AUDIT_VIEW, P.ANALYTICS_VIEW],
+  [PLATFORM_ROLES.FINANCE]: [P.BUSINESS_VIEW, P.BILLING_VIEW, P.BILLING_MANAGE, P.ANALYTICS_VIEW],
 };

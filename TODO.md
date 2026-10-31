@@ -17,12 +17,12 @@ has been considered and **deferred**._
 |---|---|
 | Monorepo scaffold, shared packages | Built (npm workspaces) |
 | Tooling | ESLint 9, Prettier, EditorConfig, lint-staged pre-commit hook; CI, CodeQL, gitleaks and Dependabot configured (first GitHub run pending a push) |
-| Dependencies | `npm audit --omit=dev`: 0 vulnerabilities (Next.js 16, React 19, zod 4) |
+| Dependencies | `npm audit --omit=dev`: no high or critical; 5 moderate in Sentry's build-time source-map plugin (`glob`/`minimatch`), which only runs with `withSentryConfig` and is not used here |
 | Backend foundation (config, helmet/CORS, request id, pino logging, errors, rate limiting, idempotency) | Built; rate limits use Redis when `REDIS_URL` is set; Sentry when `SENTRY_DSN` is set |
 | API production build | Bundled with tsup; `node dist/server.js` starts and serves requests |
 | Mongoose models + indexes | Built |
-| Auth (register/login/refresh/logout, bcrypt, rotating hashed refresh tokens with reuse revocation) | Built — no password reset, email/OTP verification or profile update |
-| RBAC (per-business membership, role hierarchy, permission matrix, platform roles) | Built |
+| Auth (register/login/refresh/logout, bcrypt, rotating hashed refresh tokens with reuse revocation) | Built, plus TOTP two-step verification with recovery codes (mandatory for platform users and owners) and session list/remote sign-out — no password reset, email/OTP verification or profile update |
+| RBAC (per-business membership, role hierarchy, permission matrix; platform roles SUPER_ADMIN/ADMIN/SUPPORT/FINANCE with their own permission matrix) | Built |
 | Businesses, branches, members (invite/accept/update), programs, cards, devices, rewards, redemptions | Built |
 | Stamp flow (atomic transaction, cooldown, idempotency, tiered reward unlock, manual stamp route) | Built |
 | Device lifecycle (mint, assign, activate, revoke, replace, suspend with business) | Built |
@@ -30,9 +30,10 @@ has been considered and **deferred**._
 | Analytics (overview, stamps/day, near-completion), platform admin API, audit log, public discovery + stamper resolve | Built |
 | Notifications | Persisted + list/read/preferences only — no push delivery |
 | Business web dashboard (Next.js 16) — auth, overview, programs, rewards, devices, branches, staff, activity, redeem | Built, `next build` passes. Create-only forms (no edit UI); no customers page, settings or analytics charts beyond 14-day bars |
+| Owner onboarding | Invite-only: platform creates the business and invites the owner; `/invite/[token]` accept page; self-serve business creation removed; public lead form (`POST /leads`) |
 | Platform admin dashboard UI | Not started (API only) |
 | Customer mobile app (Expo) — auth, cards, card detail, NFC scan, rewards, discover, join, profile | Written, **not yet installed or run**; frozen per ROADMAP (customer portal replaces it) |
-| Integration test suite (`api/tests/coreLoop.test.ts`) | **24/24 passing** against the Docker replica set (2026-10-31) |
+| Integration test suite (`api/tests/coreLoop.test.ts`, `api/tests/platform.test.ts`) | **49/49 passing** against the Docker replica set; each test worker uses its own database |
 | Seed scripts | `seed:admin` (Super Admin), `seed:demo` (demo café, stamper, customers) |
 | Push notifications, QR stamping, campaigns, subscriptions, account deletion, password reset, deployment | Not started |
 
@@ -615,7 +616,7 @@ actions) have not been submitted in a browser; no NFC hardware has been tested.
 - [ ] Rate limiting verified under load
 - [ ] CORS policy reviewed
 - [x] Secure headers verified (CSP, HSTS, etc.)
-- [x] Dependency vulnerability scan — _`npm audit` in CI and Dependabot; 0 production vulnerabilities_
+- [x] Dependency vulnerability scan — _`npm audit` in CI (fails on high/critical) and Dependabot; currently no high or critical_
 - [ ] Manual pentest-style review of tenant isolation
 - [ ] Manual review of NFC/QR spoofing resistance
 
