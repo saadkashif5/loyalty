@@ -26,6 +26,12 @@ const envSchema = z
       (v) => (v === "" ? undefined : v),
       z.string().min(32, "Must be at least 32 characters").optional(),
     ),
+    // Email delivery. "log" prints messages to the console (development only);
+    // "smtp" sends through any SMTP provider (Gmail, SES, Brevo, ...).
+    EMAIL_TRANSPORT: z.enum(["log", "smtp"]).default("log"),
+    SMTP_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+    EMAIL_FROM: z.string().default("TapTapSell <no-reply@taptapsell.local>"),
+
     // Business dashboard origin, used to build invitation links.
     DASHBOARD_URL: z.url().default("http://localhost:3000"),
 
@@ -58,6 +64,13 @@ const envSchema = z
         code: "custom",
         path: ["CORS_ORIGINS"],
         message: "Required in staging and production",
+      });
+    }
+    if (e.EMAIL_TRANSPORT !== "smtp" || !e.SMTP_URL) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_TRANSPORT"],
+        message: "Staging and production must send real email: EMAIL_TRANSPORT=smtp with SMTP_URL",
       });
     }
     if (!e.INTERNAL_API_SECRET) {

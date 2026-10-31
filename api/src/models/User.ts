@@ -6,7 +6,10 @@ const userSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 },
     email: { type: String, required: true, trim: true, lowercase: true, unique: true },
     phone: { type: String, trim: true, unique: true, sparse: true },
-    passwordHash: { type: String, required: true, select: false },
+    // Absent for customers, who sign in with a code sent to their email.
+    passwordHash: { type: String, select: false },
+    // Set when the person proves they receive mail at this address (email code sign-in).
+    emailVerifiedAt: { type: Date },
     avatar: { type: String },
     // Platform-level role (SUPER_ADMIN/ADMIN), distinct from business_members
     // roles. Absent for ordinary customers/business users.

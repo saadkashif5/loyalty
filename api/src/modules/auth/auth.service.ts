@@ -61,7 +61,8 @@ export async function login(input: LoginInput, ctx: AuthContext = {}): Promise<L
     throw ApiError.unauthorized("Invalid email or password");
   }
 
-  const valid = await bcrypt.compare(input.password, user.passwordHash);
+  // Email-code accounts have no password; they fail the same way as a wrong one.
+  const valid = user.passwordHash ? await bcrypt.compare(input.password, user.passwordHash) : false;
   if (!valid) {
     throw ApiError.unauthorized("Invalid email or password");
   }

@@ -8,9 +8,12 @@ import {
   refreshTokenSchema,
   mfaCodeSchema,
   mfaLoginSchema,
+  requestEmailCodeSchema,
+  verifyEmailCodeSchema,
 } from "@taptapsell/validation";
 import * as authService from "./auth.service";
 import * as mfaService from "./mfa.service";
+import * as emailCode from "./emailCode.service";
 import { listActiveSessions, revokeOtherSessions, revokeSession } from "./token.service";
 import { toPublicUser } from "./auth.serializer";
 
@@ -104,4 +107,17 @@ export const revokeSessionHandler = asyncHandler(async (req: Request, res: Respo
 export const revokeOtherSessionsHandler = asyncHandler(async (req: Request, res: Response) => {
   const count = await revokeOtherSessions(req.userId!, req.sessionId!);
   sendSuccess(res, { revoked: count });
+});
+
+// ---- Email code sign-in (customers) -------------------------------------------
+
+export const requestEmailCodeHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = requestEmailCodeSchema.parse(req.body);
+  sendSuccess(res, await emailCode.requestEmailCode(input));
+});
+
+export const verifyEmailCodeHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = verifyEmailCodeSchema.parse(req.body);
+  const result = await emailCode.verifyEmailCode(input, context(req));
+  sendSuccess(res, result, { status: result.status === "SIGNED_IN" && result.created ? 201 : 200 });
 });

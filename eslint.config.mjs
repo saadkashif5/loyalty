@@ -15,6 +15,7 @@ export default tseslint.config(
       "mobile/**",
       "web/next-env.d.ts",
       "admin/next-env.d.ts",
+      "portal/next-env.d.ts",
     ],
   },
   js.configs.recommended,
@@ -33,7 +34,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["web/**/*.{ts,tsx}", "admin/**/*.{ts,tsx}"],
+    files: ["web/**/*.{ts,tsx}", "admin/**/*.{ts,tsx}", "portal/**/*.{ts,tsx}"],
     languageOptions: {
       globals: { ...globals.browser },
     },

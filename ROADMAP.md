@@ -110,7 +110,12 @@ mode** in the dashboard. The customer shows a rotating signed QR from their port
 them up by phone number, and staff grant the stamp. These stamps are attributed to the staff member,
 capped per day and audited.
 
-### D2. Customer identity: phone number + OTP
+### D2. Customer identity: email code now, phone + OTP later
+
+> **Decision (2026-10-31):** for now customers sign up and sign in with a **6-digit code sent by
+> email** (no password). Phone OTP over WhatsApp/SMS, described below, comes later; the email
+> service and code flow are built so another channel can be added beside them.
+
 
 - Pakistani customers expect phone-based sign-up. The phone number is normalised to E.164 (+92…).
 - Codes are sent over **WhatsApp (authentication template) first, SMS fallback**. This is cheaper and has
@@ -132,7 +137,7 @@ capped per day and audited.
 
 | Subdomain | App | Users | Notes |
 |---|---|---|---|
-| `tap.taptapsell.pk` | Customer portal (PWA) | Customers | Tiny bundle, cookie session, Urdu/English |
+| `tap.taptapsell.pk` (placeholder) | Customer portal (`portal/`) | Customers | Tiny bundle, cookie session, Urdu/English |
 | `business.taptapsell.pk` | Business dashboard | Owners, managers, staff | Responsive: staff use it on phones at the counter |
 | _To be decided_ | Platform console (`admin/`) | Super Admin, admins | MFA + Cloudflare Access/IP allowlist; isolated deploy |
 | `api.taptapsell.pk` | REST API | All of the above | Stateless, horizontally scaled |
@@ -339,13 +344,26 @@ Admin console
 - [x] Platform team page — _add by email, change role, remove (signs them out); own role locked_
 
 Business dashboard
-- [ ] Onboarding wizard: profile, logo upload (object storage, signed URLs, image validation),
-      first branch, first program, first reward, staff invites
-- [ ] Edit screens for programs, rewards and branches; activate/deactivate toggles
-- [ ] Staff management: invite, accept-invite page, change role, disable, branch scoping enforced
-- [ ] Customers page: paginated, masked phone, card progress, history
-- [ ] Device activation, revoke and "report lost stamper"
-- [ ] Suspended business sees a read-only dashboard with a clear reason
+- [~] Onboarding wizard: profile, logo upload (object storage, signed URLs, image validation),
+      first branch, first program, first reward, staff invites — _`/setup` wizard and an overview
+      checklist (details → branch → program → reward → stamper → optional staff), driven by
+      `GET /onboarding`. Logo upload waits for object storage_
+- [x] Edit screens for programs, rewards and branches; activate/deactivate toggles — _also a
+      business Settings page_
+- [x] Staff management: invite, accept-invite page, change role, disable, branch scoping enforced —
+      _invitations listed on "Your businesses" with accept/decline; branch limits enforced on manual
+      stamps, reward validation, stamper activation and activity lists_
+- [x] Customers page: paginated, masked phone, card progress, history — _search by name or last
+      phone digits; customer page shows cards, stamps and rewards at this business only_
+- [x] Device activation, revoke and "report lost stamper" — _any staff member can report; "lost"
+      revokes at once_
+- [x] Suspended business sees a read-only dashboard with a clear reason — _API refuses every change
+      with `BUSINESS_SUSPENDED` and the reason; the dashboard shows a banner_
+- [x] Role-aware dashboard — _navigation per role; cashiers get a counter home instead of analytics_
+- [x] Dashboard sessions renew in the background (15-minute access tokens no longer sign people out)
+- [x] Real client address passed from the dashboard and console to the API (shared secret), so rate
+      limits and session records are per user, not per server; per-account and per-challenge sign-in
+      limits added (generous per-address limits for carrier-grade NAT on Pakistani mobile networks)
 
 **Exit:** a test business is invited, onboarded, configured and has an active stamper, entirely
 through the UI. Cross-tenant tests pass for every business route.
@@ -365,24 +383,33 @@ Secure taps (server)
       accepted only for `STATIC` stampers
 - [x] NTAG 21x UID + counter mirror verifier
 - [ ] Admin action to reset a stamper's bound UID and counter (after a tag is re-written or replaced)
-- [ ] Portal route `/t/:deviceIdentifier` that forwards the URL's query parameters to `POST /taps`
+- [x] Portal route `/t/:deviceIdentifier` that forwards the URL's query parameters to `POST /taps`
 - [ ] Before public launch: NTAG 424 DNA (SUN) verifier, per-tag keys derived from a KMS master
       key, key rotation procedure
 
 Customer authentication
-- [ ] Phone OTP: request and verify endpoints; 6-digit codes, 5-minute expiry, 5 attempts, stored
-      hashed in Redis; per-phone, per-IP and per-prefix limits; CAPTCHA (e.g. Turnstile) on request to
-      stop SMS-pumping fraud
-- [ ] Cookie sessions for the portal (httpOnly, Secure, SameSite=Lax) with CSRF tokens on writes
+- [x] Email code sign-up and sign-in (replaces phone OTP for now): one flow for both; 6-digit
+      code, 5-minute expiry, 5 attempts, only the newest code works, 60-second resend cooldown, HMAC
+      of the code stored (MongoDB TTL collection; Redis in Phase 4); same answer whether or not an
+      account exists; per-email and per-address limits; still asks for the authenticator code when
+      two-step verification is on. Email goes through one service: console in development, any SMTP
+      provider in production (required there)
+- [ ] Phone OTP over WhatsApp/SMS, with per-prefix limits and CAPTCHA — _later, per D2_
+- [x] Cookie sessions for the portal (httpOnly, Secure, SameSite=Lax) — _server actions carry
+      Next.js's built-in origin check; background renewal like the other apps_
 - [ ] Account deletion and data export for customers
 
 Customer portal (PWA)
-- [ ] Tap landing: business branding, program explanation, sign up or log in, join
-- [ ] First tap = join (optional "welcome stamp" per program); later taps = stamp
-- [ ] Live card update with clear success and error states (cooldown, not enrolled, stamper inactive,
-      business unavailable, offline)
-- [ ] "My cards": every business the customer has joined, each card separate
-- [ ] Rewards: unlocked rewards with code and QR to show staff; history
+- [x] Tap landing: business branding, program explanation, sign up or log in, join — _`/t/<id>`
+      route handler verifies the tap; signed-out or new customers go to `/join` with the tap held
+      for 5 minutes_
+- [x] First tap = join; later taps = stamp — _a signed-in member gets the stamp straight from the
+      tap; a member whose session had ended can collect it after signing in. No welcome stamp yet_
+- [~] Live card update with clear success and error states (cooldown, not enrolled, stamper inactive,
+      business unavailable, offline) — _plain-language results on the card and a tap-error page;
+      offline handling not built_
+- [x] "My cards": every business the customer has joined, each card separate
+- [x] Rewards: unlocked rewards with code and QR to show staff; history
 - [ ] Web NFC listening inside the page on Android Chrome
 - [ ] Urdu and English (RTL support), PKR formatting, Asia/Karachi time
 - [ ] Notification centre; consent for WhatsApp messages per business
@@ -395,7 +422,7 @@ Counter mode for businesses (mobile web)
 - [ ] Optional manager approval for stamps above a threshold
 
 Programs and rewards
-- [ ] Multiple reward tiers per program (fix the current single-threshold logic)
+- [x] Multiple reward tiers per program (fix the current single-threshold logic) — _done in Phase 0_
 - [ ] Stamp expiry and reward expiry options; reward-expiring reminder job
 
 Fraud controls
@@ -470,6 +497,8 @@ Scalability
 - [ ] Shard-key plan documented and validated on a staging cluster
 - [ ] Autoscaling, at least two availability zones, zero-downtime deploys
 - [ ] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run
+- [ ] Tune per-address rate limits with real traffic (carrier-grade NAT puts many customers
+      behind one address); confirm `CLIENT_IP_HEADER` for the chosen host
 
 Security
 - [ ] Threat model per surface (portal, dashboard, admin, API, stamper, payments)

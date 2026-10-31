@@ -14,6 +14,8 @@ import {
   listSessionsHandler,
   revokeSessionHandler,
   revokeOtherSessionsHandler,
+  requestEmailCodeHandler,
+  verifyEmailCodeHandler,
 } from "./auth.controller";
 
 const router = Router();
@@ -46,6 +48,22 @@ const mfaChallengeLimiter = createRateLimiter({
   failuresOnly: true,
   key: (req) => String(req.body?.mfaToken ?? "").slice(-64),
 });
+
+// Codes sent per email address: enough for a few retries, too few to spam an inbox.
+const emailCodeLimiter = createRateLimiter({
+  name: "email-code",
+  windowMs: 60 * 60_000,
+  max: 6,
+  key: (req) =>
+    String(req.body?.email ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 254),
+});
+
+// Customers sign up and sign in with a code sent by email (no password).
+router.post("/email-code", authRateLimiter, emailCodeLimiter, requestEmailCodeHandler);
+router.post("/email-code/verify", authRateLimiter, verifyEmailCodeHandler);
 
 router.post("/register", authRateLimiter, registerHandler);
 router.post("/login", authRateLimiter, loginAccountLimiter, loginHandler);

@@ -18,3 +18,19 @@ export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1),
 });
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+
+// ---- Email code sign-in (customers) ------------------------------------------
+// One flow for signing up and signing in: request a code, then verify it. A
+// name is needed only when no account exists for the email yet.
+
+export const requestEmailCodeSchema = z.object({
+  email: z.email().max(254),
+});
+export type RequestEmailCodeInput = z.infer<typeof requestEmailCodeSchema>;
+
+export const verifyEmailCodeSchema = z.object({
+  challengeId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid sign-in request"),
+  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code from the email"),
+  name: z.string().trim().min(1).max(120).optional(),
+});
+export type VerifyEmailCodeInput = z.infer<typeof verifyEmailCodeSchema>;

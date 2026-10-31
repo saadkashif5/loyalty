@@ -1,0 +1,60 @@
+import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import { Card, formatDate } from "@/components/ui";
+
+interface Redemption {
+  _id: string;
+  status: string;
+  redemptionCode: string;
+  createdAt: string;
+  redeemedAt?: string;
+  loyaltyCardId: string;
+  rewardId: { name: string } | null;
+  businessId: { name: string } | null;
+}
+
+export default async function RewardsPage() {
+  const redemptions = await apiFetch<Redemption[]>("/redemptions/me");
+  const ready = redemptions.filter((r) => r.status === "PENDING");
+  const used = redemptions.filter((r) => r.status !== "PENDING");
+
+  return (
+    <>
+      <h1 className="text-lg font-semibold">Rewards</h1>
+
+      {ready.length === 0 ? (
+        <Card className="text-center text-sm text-slate-600">
+          No rewards waiting. Keep collecting stamps!
+        </Card>
+      ) : (
+        ready.map((r) => (
+          <Link key={r._id} href={`/cards/${r.loyaltyCardId}`} className="block">
+            <Card className="flex items-center justify-between gap-4 border-brand-500">
+              <div>
+                <p className="font-semibold">{r.rewardId?.name ?? "Reward"}</p>
+                <p className="text-sm text-slate-500">{r.businessId?.name}</p>
+              </div>
+              <span className="font-mono text-lg tracking-widest">{r.redemptionCode}</span>
+            </Card>
+          </Link>
+        ))
+      )}
+
+      {used.length > 0 ? (
+        <Card>
+          <p className="mb-2 font-semibold">Used</p>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {used.map((r) => (
+              <li key={r._id} className="flex justify-between gap-4 py-2">
+                <span>
+                  {r.rewardId?.name} · {r.businessId?.name}
+                </span>
+                <span className="text-slate-500">{formatDate(r.redeemedAt ?? r.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+    </>
+  );
+}

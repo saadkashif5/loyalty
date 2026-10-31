@@ -33,6 +33,9 @@ jobs:
       - run: npm run build:admin
         env:
           API_BASE_URL: http://localhost:4000/api/v1
+      - run: npm run build:portal
+        env:
+          API_BASE_URL: http://localhost:4000/api/v1
 
   test:
     name: Integration tests

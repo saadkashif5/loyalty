@@ -9,6 +9,7 @@ taptapsell-loyalty/
 ├── api/          Node.js + TypeScript REST API (modular monolith)
 ├── web/          Next.js business dashboard (owners, managers, staff)
 ├── admin/        Next.js platform console (TapTapSell team only)
+├── portal/       Next.js customer portal (opened by tapping a stamper)
 ├── mobile/       React Native (Expo) customer app
 ├── packages/
 │   ├── constants/    roles, permissions, statuses shared across apps
@@ -17,7 +18,7 @@ taptapsell-loyalty/
 └── docs/         provisioning and environment guides
 ```
 
-`api`, `web`, `admin` and `packages/*` are npm workspaces. `mobile` is kept outside the
+`api`, `web`, `admin`, `portal` and `packages/*` are npm workspaces. `mobile` is kept outside the
 workspace set so Metro resolves its dependencies without symlink workarounds.
 
 ## Getting started
@@ -31,12 +32,18 @@ npm run seed:demo --workspace=api      # demo café, stamper DEMO01, three custo
 npm run dev:api
 npm run dev:web                        # business dashboard on :3000
 npm run dev:admin                      # platform console on :3001
+npm run dev:portal                     # customer portal on :3002
 ```
 
 Sign in to the console at `http://localhost:3001` as the Super Admin; it asks
 for two-step verification to be set up first. Businesses join by invitation:
 **Businesses → Invite a business** creates the business and gives you a link
 for its owner, who accepts it on the business dashboard.
+
+Customers open the portal by tapping a stamper (`/t/<stamper id>?m=...`, see
+[docs/stamper-provisioning.md](docs/stamper-provisioning.md)) and sign in with a
+code sent to their email. In development the email is printed in the API's
+console instead of being sent.
 
 The API requires MongoDB. Transactions are used for the stamp flow, so the
 database must be a replica set — MongoDB Atlas is one by default; a local
@@ -52,7 +59,7 @@ back to memory) and required in staging and production. See
 | `npm run format` / `npm run format:check` | Prettier |
 | `npm run typecheck` | TypeScript in every workspace |
 | `npm test` | Integration tests (needs `docker compose up -d`) |
-| `npm run build:api` / `build:web` / `build:admin` | Production builds |
+| `npm run build:api` / `build:web` / `build:admin` / `build:portal` | Production builds |
 
 A pre-commit hook runs ESLint and Prettier on staged files. CI runs all of the
 above plus a dependency audit, secret scanning and CodeQL on every push and

@@ -14,3 +14,4 @@ export * from "./Notification";
 export * from "./AuditLog";
 export * from "./BusinessInvitation";
 export * from "./Lead";
+export * from "./OtpChallenge";

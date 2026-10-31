@@ -31,9 +31,11 @@ has been considered and **deferred**._
 | Notifications | Persisted + list/read/preferences only — no push delivery |
 | Business web dashboard (Next.js 16) — auth, overview, programs, rewards, devices, branches, staff, activity, redeem | Built, `next build` passes. Create-only forms (no edit UI); no customers page, settings or analytics charts beyond 14-day bars |
 | Owner onboarding | Invite-only: platform creates the business and invites the owner; `/invite/[token]` accept page; self-serve business creation removed; public lead form (`POST /leads`) |
+| Customer portal (`portal/`, Phase 2) | Built: tap route (verify tap → stamp for members, hold tap for others), join page, email code sign-up/sign-in, my cards, card page with stamp progress and reward QR, rewards, profile, tap-error page, background session renewal. Not built: Urdu, Web NFC, offline handling, counter mode, fraud flags |
+| Business dashboard (Phase 1) | Role-aware navigation; setup wizard + checklist; settings; edit programs/rewards/branches; staff roles, disable and branch limits; staff invitation accept/decline; customers list (masked) and detail; report a stamper problem (lost = revoked); read-only suspended mode with reason; background session renewal |
 | Platform admin console (`admin/`, separate Next.js app) | Built: sign-in with two-step, overview, businesses (search, invite, detail, suspend/restore, invitations, assign stamper), leads, stamper fleet (mint, list), users, audit log, team, own security. Not built: view-as-business, labels/QR printing |
 | Customer mobile app (Expo) — auth, cards, card detail, NFC scan, rewards, discover, join, profile | Written, **not yet installed or run**; frozen per ROADMAP (customer portal replaces it) |
-| Integration test suite (`api/tests/coreLoop.test.ts`, `api/tests/platform.test.ts`) | **49/49 passing** against the Docker replica set; each test worker uses its own database |
+| Integration test suite (`api/tests/coreLoop.test.ts`, `platform.test.ts`, `dashboard.test.ts`, `emailCode.test.ts`) | **66/66 passing** against the Docker replica set; each test worker uses its own database |
 | Seed scripts | `seed:admin` (Super Admin), `seed:demo` (demo café, stamper, customers) |
 | Push notifications, QR stamping, campaigns, subscriptions, account deletion, password reset, deployment | Not started |
 
