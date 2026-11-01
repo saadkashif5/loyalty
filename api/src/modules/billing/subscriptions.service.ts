@@ -33,11 +33,14 @@ import {
   issueInvoice,
   listInvoices,
   periodPrice,
+  reissueOpenInvoice,
+  renewalPrice,
   settleInvoice,
 } from "./invoices.service";
+import { quotePlanChange } from "./planQuote";
 import { getPaymentDetails } from "./settings.service";
 
-function snapshot(plan: PlanDocument) {
+export function snapshot(plan: PlanDocument) {
   return {
     planId: plan._id,
     code: plan.code,
@@ -82,7 +85,7 @@ export async function startTrial(businessId: unknown, session: ClientSession) {
   await subscription.save({ session });
 }
 
-async function getSubscriptionOrThrow(businessId: string) {
+export async function getSubscriptionOrThrow(businessId: string) {
   const subscription = await Subscription.findOne({ businessId });
   if (!subscription) throw ApiError.notFound("This business has no subscription");
   return subscription;
@@ -96,7 +99,10 @@ async function liftBillingSuspension(businessId: string) {
   }
 }
 
-/** Takes effect at once. (Proration arrives with invoices.) */
+/**
+ * The team's plan change: takes effect at once, with no proration. Add a
+ * charge by hand if the difference should be billed.
+ */
 export async function changePlan(
   actorUserId: string,
   businessId: string,
@@ -105,10 +111,15 @@ export async function changePlan(
   const subscription = await getSubscriptionOrThrow(businessId);
   const plan = await findActivePlan(input.planCode);
   const from = subscription.plan.code;
+  if (await PaymentProof.exists({ businessId, status: "PENDING" })) {
+    throw ApiError.conflict("Review the waiting receipt first: it was paid against the old price");
+  }
 
   subscription.plan = snapshot(plan) as never;
   if (input.billingCycle) subscription.billingCycle = input.billingCycle;
+  subscription.scheduledChange = null;
   await subscription.save();
+  await reissueOpenInvoice(subscription, actorUserId, "Replaced after a plan change");
 
   await recordAudit({
     actorUserId,
@@ -281,6 +292,17 @@ export async function emailOwners(businessId: string, subject: string, text: str
   }
 }
 
+const CHURN_WINDOW_DAYS = 30;
+const TRIAL_WINDOW_DAYS = 90;
+
+function trialsInWindow(now: number) {
+  return { trialEndsAt: { $gte: new Date(now - TRIAL_WINDOW_DAYS * DAY_MS), $lte: new Date(now) } };
+}
+
+function percent(part: number, whole: number): number | null {
+  return whole === 0 ? null : Math.round((part / whole) * 1000) / 10;
+}
+
 /** Everything the owner's Billing page shows. */
 export async function getBillingSummary(businessId: string) {
   const subscription = await Subscription.findOne({ businessId });
@@ -296,7 +318,17 @@ export async function getBillingSummary(businessId: string) {
 
   return {
     subscription,
-    nextPaymentPkr: openInvoice?.totalPkr ?? (subscription ? periodPrice(subscription) : null),
+    nextPaymentPkr: openInvoice?.totalPkr ?? (subscription ? renewalPrice(subscription) : null),
+    planChanges: subscription
+      ? Object.fromEntries(
+          plans.flatMap((plan) =>
+            (["MONTHLY", "ANNUAL"] as const).map((cycle) => [
+              `${plan.code}:${cycle}`,
+              quotePlanChange(subscription, plan, cycle, usage),
+            ]),
+          ),
+        )
+      : {},
     openInvoice,
     invoices,
     proofs,
@@ -309,7 +341,17 @@ export async function getBillingSummary(businessId: string) {
 
 /** The platform team's view of revenue and collections. */
 export async function getFinanceOverview() {
-  const [byStatus, active, overdue, recentPayments, collectedThisMonth] = await Promise.all([
+  const now = Date.now();
+  const [
+    byStatus,
+    active,
+    overdue,
+    recentPayments,
+    collectedThisMonth,
+    cancelledRecently,
+    trialsEnded,
+    trialsConverted,
+  ] = await Promise.all([
     Subscription.aggregate<{ _id: string; count: number }>([
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
@@ -331,10 +373,24 @@ export async function getFinanceOverview() {
       },
       { $group: { _id: null, total: { $sum: "$amountPkr" } } },
     ]),
+    Subscription.countDocuments({
+      cancelledAt: { $gte: new Date(now - CHURN_WINDOW_DAYS * DAY_MS) },
+    }),
+    Subscription.countDocuments(trialsInWindow(now)),
+    Subscription.countDocuments({ ...trialsInWindow(now), currentPeriodEnd: { $ne: null } }),
   ]);
 
   const counts = Object.fromEntries(byStatus.map((s) => [s._id, s.count]));
   const mrrPkr = active.reduce((sum, s) => sum + monthlyValue(s.plan, s.billingCycle), 0);
+  const mrrByPlan = new Map<string, { plan: string; businesses: number; mrrPkr: number }>();
+  for (const s of active) {
+    const row = mrrByPlan.get(s.plan.code) ?? { plan: s.plan.name, businesses: 0, mrrPkr: 0 };
+    row.businesses += 1;
+    row.mrrPkr += monthlyValue(s.plan, s.billingCycle);
+    mrrByPlan.set(s.plan.code, row);
+  }
+  const paying =
+    (counts.ACTIVE ?? 0) + (counts.PAST_DUE ?? 0) + (counts.SUSPENDED ?? 0) + cancelledRecently;
 
   return {
     counts: {
@@ -346,6 +402,10 @@ export async function getFinanceOverview() {
     },
     mrrPkr,
     arrPkr: mrrPkr * 12,
+    mrrByPlan: [...mrrByPlan.values()].sort((a, b) => b.mrrPkr - a.mrrPkr),
+    churnPercent: percent(cancelledRecently, paying),
+    trialConversionPercent: percent(trialsConverted, trialsEnded),
+    trialsEnded,
     collectedThisMonthPkr: collectedThisMonth[0]?.total ?? 0,
     overdue: overdue.map((s) => ({
       subscriptionId: s._id,

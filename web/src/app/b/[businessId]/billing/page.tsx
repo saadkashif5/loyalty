@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import { Card, PageHeader, StatusBadge, formatDate } from "@/components/ui";
+import { CancelChangeForm, ChangePlanButton, type PlanChangeQuote } from "./PlanActions";
 import { UploadReceiptForm } from "./UploadReceiptForm";
 
 interface Limits {
@@ -35,8 +36,15 @@ interface Billing {
     trialEndsAt: string | null;
     currentPeriodEnd: string | null;
     graceEndsAt: string | null;
+    pendingCharges: Array<{ _id: string; description: string; amountPkr: number }>;
+    scheduledChange: {
+      plan: { name: string };
+      billingCycle: "MONTHLY" | "ANNUAL";
+      effectiveAt: string;
+    } | null;
   } | null;
   nextPaymentPkr: number | null;
+  planChanges: Record<string, PlanChangeQuote>;
   openInvoice: Invoice | null;
   invoices: Invoice[];
   proofs: Array<{
@@ -160,6 +168,17 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
           </p>
         ) : null}
 
+        {sub.scheduledChange ? (
+          <div className="space-y-2 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            <p>
+              You move to the {sub.scheduledChange.plan.name} plan (
+              {sub.scheduledChange.billingCycle === "ANNUAL" ? "yearly" : "monthly"}) on{" "}
+              {formatDate(sub.scheduledChange.effectiveAt)}.
+            </p>
+            <CancelChangeForm businessId={businessId} />
+          </div>
+        ) : null}
+
         <div className="grid gap-2 sm:grid-cols-5">
           {LIMITS.map(([key, label]) => {
             const limit = sub.plan.limits[key];
@@ -201,6 +220,19 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
             We email an invoice a week before it is due.
           </p>
         )}
+
+        {sub.pendingCharges.length > 0 ? (
+          <div className="text-sm">
+            <p className="font-medium">On your next invoice</p>
+            <ul className="text-slate-600">
+              {sub.pendingCharges.map((charge) => (
+                <li key={charge._id}>
+                  {charge.description}: {pkr(charge.amountPkr)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <PaymentDetails details={billing.paymentDetails} reference={open?.number} />
 
@@ -287,7 +319,11 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
                   <span className="ml-2 text-xs font-normal text-brand-600">your plan</span>
                 ) : null}
               </p>
-              <p className="text-sm">{pkr(plan.priceMonthlyPkr)} / month</p>
+              <p className="text-sm">
+                {annual
+                  ? `${pkr(plan.priceAnnualPkr)} / year`
+                  : `${pkr(plan.priceMonthlyPkr)} / month`}
+              </p>
               <ul className="space-y-0.5 text-xs text-slate-600">
                 {LIMITS.map(([key, label]) => (
                   <li key={key}>
@@ -298,12 +334,30 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
                   <li key={f}>{f}</li>
                 ))}
               </ul>
+              {billing.planChanges[`${plan.code}:${sub.billingCycle}`] ? (
+                <ChangePlanButton
+                  businessId={businessId}
+                  planCode={plan.code}
+                  billingCycle={sub.billingCycle as "MONTHLY" | "ANNUAL"}
+                  label={`Switch to ${plan.name}`}
+                  quote={billing.planChanges[`${plan.code}:${sub.billingCycle}`]!}
+                />
+              ) : null}
             </Card>
           ))}
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          To change plan, contact the TapTapSell team. Annual billing is the price of 10 months.
-        </p>
+        {billing.planChanges[`${sub.plan.code}:${annual ? "MONTHLY" : "ANNUAL"}`] ? (
+          <div className="mt-3 space-y-1">
+            <p className="text-xs text-slate-500">Annual billing is the price of 10 months.</p>
+            <ChangePlanButton
+              businessId={businessId}
+              planCode={sub.plan.code}
+              billingCycle={annual ? "MONTHLY" : "ANNUAL"}
+              label={annual ? "Switch to monthly billing" : "Switch to annual billing"}
+              quote={billing.planChanges[`${sub.plan.code}:${annual ? "MONTHLY" : "ANNUAL"}`]!}
+            />
+          </div>
+        ) : null}
       </section>
 
       {billing.payments.length > 0 ? (

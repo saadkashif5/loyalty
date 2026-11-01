@@ -121,6 +121,14 @@ export const uploadProofSchema = z.object({
 });
 export type UploadProofInput = z.infer<typeof uploadProofSchema>;
 
+export const addChargeSchema = z.object({
+  kind: z.enum(["HARDWARE", "OTHER"]),
+  description: z.string().trim().min(3).max(200),
+  quantity: z.number().int().min(1).max(1000).default(1),
+  unitPkr: z.number().int().min(1).max(10_000_000),
+});
+export type AddChargeInput = z.infer<typeof addChargeSchema>;
+
 export const rejectProofSchema = z.object({
   reason: z.string().trim().min(3).max(500),
 });

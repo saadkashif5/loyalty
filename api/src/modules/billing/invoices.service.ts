@@ -7,6 +7,7 @@ import {
   type SubscriptionDocument,
 } from "@/models";
 import { INVOICE_STATUS } from "@/models/Invoice";
+import { CHARGE_KIND } from "@/models/Subscription";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { SUBSCRIPTION_STATUS, type BillingCycle } from "@taptapsell/constants";
@@ -41,6 +42,20 @@ export function periodPrice(subscription: {
     : subscription.plan.priceMonthlyPkr;
 }
 
+/** The plan and cycle a period starting at `from` is billed on, counting any scheduled change. */
+function termsFor(subscription: SubscriptionDocument, from: Date) {
+  const scheduled = subscription.scheduledChange;
+  if (scheduled && from >= scheduled.effectiveAt) {
+    return { plan: scheduled.plan, billingCycle: scheduled.billingCycle };
+  }
+  return { plan: subscription.plan, billingCycle: subscription.billingCycle };
+}
+
+/** What the next renewal costs before tax, on the plan the business will be on by then. */
+export function renewalPrice(subscription: SubscriptionDocument) {
+  return periodPrice(termsFor(subscription, nextPeriodStart(subscription)));
+}
+
 /** Where the next paid period starts: after any remaining paid time or trial, else today. */
 export function nextPeriodStart(subscription: SubscriptionDocument, now: Date = new Date()): Date {
   const candidates = [now];
@@ -60,9 +75,10 @@ function formatDay(d: Date) {
 }
 
 /**
- * Bills the next period(s). A business has at most one open invoice: asking
- * again returns it. Discount and tax are applied in whole rupees. A total of
- * zero (a complimentary account) settles itself straight away.
+ * Bills the next period(s) plus any pending charges. A business has at most
+ * one open invoice: asking again returns it. Discount and tax are applied in
+ * whole rupees; hardware is never discounted. A total of zero (a complimentary
+ * account) settles itself straight away.
  */
 export async function issueInvoice(
   subscription: SubscriptionDocument,
@@ -73,8 +89,9 @@ export async function issueInvoice(
 
   const now = new Date();
   const periods = options.periods ?? 1;
-  const cycle = subscription.billingCycle as BillingCycle;
   const periodStart = nextPeriodStart(subscription, now);
+  const terms = termsFor(subscription, periodStart);
+  const cycle = terms.billingCycle as BillingCycle;
   const periodEnd = addPeriods(periodStart, cycle, periods);
 
   const [settings, business] = await Promise.all([
@@ -82,10 +99,15 @@ export async function issueInvoice(
     Business.findById(subscription.businessId).select("name contact"),
   ]);
 
-  const unitPkr = periodPrice(subscription);
-  const subtotalPkr = unitPkr * periods;
+  const unitPkr = periodPrice(terms);
+  const charges = subscription.pendingCharges;
+  const planPkr = unitPkr * periods;
+  const hardwarePkr = charges
+    .filter((c) => c.kind === CHARGE_KIND.HARDWARE)
+    .reduce((sum, c) => sum + c.amountPkr, 0);
+  const subtotalPkr = planPkr + charges.reduce((sum, c) => sum + c.amountPkr, 0);
   const discountPercent = subscription.discountPercent ?? 0;
-  const discountPkr = Math.round((subtotalPkr * discountPercent) / 100);
+  const discountPkr = Math.round(((subtotalPkr - hardwarePkr) * discountPercent) / 100);
   const taxable = subtotalPkr - discountPkr;
   const taxRatePercent = settings.taxRatePercent ?? 0;
   const taxPkr = Math.round((taxable * taxRatePercent) / 100);
@@ -101,14 +123,21 @@ export async function issueInvoice(
     periodEnd,
     periods,
     billingCycle: cycle,
-    planCode: subscription.plan.code,
+    planCode: terms.plan.code,
     lines: [
       {
-        description: `${subscription.plan.name} plan, ${cycle === "ANNUAL" ? "yearly" : "monthly"}: ${formatDay(periodStart)} to ${formatDay(periodEnd)}`,
+        description: `${terms.plan.name} plan, ${cycle === "ANNUAL" ? "yearly" : "monthly"}: ${formatDay(periodStart)} to ${formatDay(periodEnd)}`,
         quantity: periods,
         unitPkr,
-        amountPkr: subtotalPkr,
+        amountPkr: planPkr,
       },
+      ...charges.map((c) => ({
+        description: c.description,
+        quantity: c.quantity,
+        unitPkr: c.unitPkr,
+        amountPkr: c.amountPkr,
+        chargeKind: c.kind,
+      })),
     ],
     subtotalPkr,
     discountPercent,
@@ -132,6 +161,13 @@ export async function issueInvoice(
       phone: business?.contact?.phone,
     },
   });
+
+  if (charges.length > 0) {
+    await Subscription.updateOne(
+      { _id: subscription._id },
+      { $pull: { pendingCharges: { _id: { $in: charges.map((c) => c._id) } } } },
+    );
+  }
 
   await recordAudit({
     actorUserId: options.actorUserId ?? undefined,
@@ -199,6 +235,7 @@ export async function voidInvoice(actorUserId: string, invoiceId: string, reason
     { new: true },
   );
   if (!invoice) throw ApiError.conflict("Only an unpaid invoice can be voided");
+  await returnCharges(invoice);
 
   await recordAudit({
     actorUserId,
@@ -209,6 +246,37 @@ export async function voidInvoice(actorUserId: string, invoiceId: string, reason
     metadata: { number: invoice.number, reason },
   });
   return invoice;
+}
+
+/** Charges on a voided invoice are still owed: they go back for the next one. */
+async function returnCharges(invoice: InvoiceDocument) {
+  const charges = invoice.lines
+    .filter((line) => line.chargeKind)
+    .map((line) => ({
+      kind: line.chargeKind,
+      description: line.description,
+      quantity: line.quantity,
+      unitPkr: line.unitPkr,
+      amountPkr: line.amountPkr,
+    }));
+  if (charges.length === 0) return;
+  await Subscription.updateOne(
+    { _id: invoice.subscriptionId },
+    { $push: { pendingCharges: { $each: charges } } },
+  );
+}
+
+/** Replaces the open invoice, if any, so it reflects the current plan and charges. */
+export async function reissueOpenInvoice(
+  subscription: SubscriptionDocument,
+  actorUserId: string,
+  reason: string,
+) {
+  const open = await findOpenInvoice(subscription._id);
+  if (!open) return null;
+  await voidInvoice(actorUserId, String(open._id), reason);
+  const fresh = await Subscription.findById(subscription._id);
+  return fresh ? issueInvoice(fresh, { periods: open.periods, actorUserId }) : null;
 }
 
 export async function listInvoices(businessId: string, limit = 24) {

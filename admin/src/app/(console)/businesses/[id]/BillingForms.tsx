@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
+  addChargeAction,
   changeSubscriptionPlanAction,
   extendTrialAction,
   recordPaymentAction,
@@ -127,6 +128,34 @@ export function RecordPaymentForm({
       </div>
       <ErrorText>{state.error}</ErrorText>
       <Submit label="Record payment" />
+    </form>
+  );
+}
+
+export function AddChargeForm({ businessId }: { businessId: string }) {
+  const [state, action] = useActionState(addChargeAction.bind(null, businessId), {});
+  return (
+    <form action={action} className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-4">
+        <Field label="Type">
+          <Select name="kind" defaultValue="HARDWARE">
+            <option value="HARDWARE">Hardware</option>
+            <option value="OTHER">Other</option>
+          </Select>
+        </Field>
+        <Field label="Description">
+          <Input name="description" required minLength={3} placeholder="NFC stamper" />
+        </Field>
+        <Field label="Quantity">
+          <Input name="quantity" type="number" min={1} defaultValue={1} required />
+        </Field>
+        <Field label="Unit price (PKR)">
+          <Input name="unitPkr" type="number" min={1} required />
+        </Field>
+      </div>
+      <Submit label="Add to next invoice" />
+      <ErrorText>{state.error}</ErrorText>
+      <Done show={state.done} text="Added. Hardware is never discounted." />
     </form>
   );
 }

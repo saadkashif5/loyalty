@@ -409,6 +409,28 @@ export async function updateStaffCapAction(
 
 // ---- Billing ------------------------------------------------------------------
 
+export async function changePlanAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return run(businessId, "Could not change the plan.", () =>
+    apiFetch(`/businesses/${businessId}/billing/plan`, {
+      method: "POST",
+      body: {
+        planCode: text(formData, "planCode"),
+        billingCycle: text(formData, "billingCycle"),
+      },
+    }),
+  );
+}
+
+export async function cancelPlanChangeAction(businessId: string): Promise<FormState> {
+  return run(businessId, "Could not cancel the plan change.", () =>
+    apiFetch(`/businesses/${businessId}/billing/scheduled-change`, { method: "DELETE" }),
+  );
+}
+
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 
 /** Sends a bank or Raast receipt for an open invoice; Finance reviews it. */

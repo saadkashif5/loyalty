@@ -3,7 +3,7 @@ import { INVOICE_STATUS } from "@/models/Invoice";
 import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { applyBusinessStatus } from "@/modules/businesses/businesses.service";
-import { emailOwners, periodPrice } from "@/modules/billing/subscriptions.service";
+import { emailOwners } from "@/modules/billing/subscriptions.service";
 import {
   CANCEL_AFTER_SUSPENDED_DAYS,
   DAY_MS,
@@ -11,7 +11,7 @@ import {
   INVOICE_LEAD_DAYS,
   REMIND_BEFORE_DAYS,
 } from "@/modules/billing/billing.config";
-import { findOpenInvoice, issueInvoice } from "@/modules/billing/invoices.service";
+import { findOpenInvoice, issueInvoice, renewalPrice } from "@/modules/billing/invoices.service";
 import { getPaymentDetails } from "@/modules/billing/settings.service";
 import { SUBSCRIPTION_STATUS } from "@taptapsell/constants";
 
@@ -30,8 +30,36 @@ function day(d: Date) {
  * the current status, and each reminder is sent once (lastReminderKey).
  */
 export async function runSubscriptionJob(now: Date = new Date()) {
-  const result = { invoiced: 0, pastDue: 0, suspended: 0, cancelled: 0, reminded: 0 };
+  const result = {
+    planChanged: 0,
+    invoiced: 0,
+    pastDue: 0,
+    suspended: 0,
+    cancelled: 0,
+    reminded: 0,
+  };
   const soon = new Date(now.getTime() + REMIND_BEFORE_DAYS * DAY_MS);
+
+  // Scheduled downgrades and cycle changes whose paid period has ended.
+  const changing = await Subscription.find({ "scheduledChange.effectiveAt": { $lte: now } }).limit(
+    BATCH,
+  );
+  for (const sub of changing) {
+    const change = sub.scheduledChange!;
+    const moved = await Subscription.updateOne(
+      { _id: sub._id, "scheduledChange.effectiveAt": change.effectiveAt },
+      { $set: { plan: change.plan, billingCycle: change.billingCycle, scheduledChange: null } },
+    );
+    if (moved.modifiedCount !== 1) continue;
+    result.planChanged += 1;
+    await recordAudit({
+      businessId: sub.businessId as unknown as string,
+      action: AUDIT_ACTIONS.SUBSCRIPTION_PLAN_CHANGED,
+      resourceType: "Subscription",
+      resourceId: sub._id as unknown as string,
+      metadata: { from: sub.plan.code, to: change.plan.code, billingCycle: change.billingCycle },
+    });
+  }
 
   // 0. Invoices: a week before a trial or period ends, and for anyone overdue without one.
   const billBy = new Date(now.getTime() + INVOICE_LEAD_DAYS * DAY_MS);
@@ -74,8 +102,8 @@ export async function runSubscriptionJob(now: Date = new Date()) {
         ? `Your TapTapSell trial ends on ${day(end)}`
         : `Your TapTapSell plan renews on ${day(end)}`,
       `${trial ? "Your free trial" : "Your current period"} ends on ${day(end)}. ` +
-        `To keep stamping without interruption, pay PKR ${periodPrice(sub).toLocaleString("en-PK")} ` +
-        `for the ${sub.plan.name} plan. See Billing in your dashboard for how to pay.`,
+        `To keep stamping without interruption, pay PKR ${renewalPrice(sub).toLocaleString("en-PK")} ` +
+        `for your plan. See Billing in your dashboard for how to pay.`,
     );
     result.reminded += 1;
   }
@@ -104,7 +132,7 @@ export async function runSubscriptionJob(now: Date = new Date()) {
       String(sub.businessId),
       "Your TapTapSell payment is due",
       `Your ${sub.status === SUBSCRIPTION_STATUS.TRIALING ? "trial" : "plan"} has ended. ` +
-        `Please pay PKR ${periodPrice(sub).toLocaleString("en-PK")} by ${day(graceEndsAt)}; ` +
+        `Please pay PKR ${renewalPrice(sub).toLocaleString("en-PK")} by ${day(graceEndsAt)}; ` +
         "after that, stamping stops until payment arrives.",
     );
   }

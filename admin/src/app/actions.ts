@@ -417,6 +417,33 @@ export async function changeSubscriptionPlanAction(
   }
 }
 
+export async function addChargeAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/charges`, {
+      method: "POST",
+      body: {
+        kind: text(formData, "kind"),
+        description: text(formData, "description"),
+        quantity: Number(formData.get("quantity")),
+        unitPkr: Number(formData.get("unitPkr")),
+      },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not add the charge.") };
+  }
+}
+
+export async function removeChargeAction(businessId: string, chargeId: string): Promise<void> {
+  await apiFetch(`/admin/businesses/${businessId}/charges/${chargeId}`, { method: "DELETE" });
+  refreshBilling(businessId);
+}
+
 export async function extendTrialAction(
   businessId: string,
   _prev: FormState,

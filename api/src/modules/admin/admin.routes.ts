@@ -6,6 +6,7 @@ import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
 import {
+  addChargeSchema,
   addTeamMemberSchema,
   billingSettingsSchema,
   changeSubscriptionPlanSchema,
@@ -28,6 +29,7 @@ import * as fraud from "@/modules/fraud/fraud.service";
 import * as plans from "@/modules/billing/plans.service";
 import * as billing from "@/modules/billing/subscriptions.service";
 import * as invoices from "@/modules/billing/invoices.service";
+import * as planChange from "@/modules/billing/planChange.service";
 import * as proofs from "@/modules/billing/proofs.service";
 import { renderInvoicePdf } from "@/modules/billing/invoicePdf.service";
 import { invoicesCsv } from "@/modules/billing/export.service";
@@ -204,6 +206,27 @@ router.patch(
   asyncHandler(async (req, res) => {
     const input = changeSubscriptionPlanSchema.parse(req.body);
     sendSuccess(res, await billing.changePlan(req.userId!, req.params.businessId, input));
+  }),
+);
+
+// Extras for the next invoice: stampers, replacements.
+router.post(
+  "/businesses/:businessId/charges",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = addChargeSchema.parse(req.body);
+    sendSuccess(res, await planChange.addCharge(req.userId!, req.params.businessId, input), {
+      status: 201,
+    });
+  }),
+);
+
+router.delete(
+  "/businesses/:businessId/charges/:chargeId",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { businessId, chargeId } = req.params;
+    sendSuccess(res, await planChange.removeCharge(req.userId!, businessId, chargeId));
   }),
 );
 

@@ -19,6 +19,10 @@ interface Overview {
   mrrPkr: number;
   arrPkr: number;
   collectedThisMonthPkr: number;
+  mrrByPlan: Array<{ plan: string; businesses: number; mrrPkr: number }>;
+  churnPercent: number | null;
+  trialConversionPercent: number | null;
+  trialsEnded: number;
   overdue: Array<{
     subscriptionId: string;
     business: { _id: string; name: string } | null;
@@ -56,6 +60,17 @@ export default async function FinancePage() {
         <Stat label="Collected this month" value={formatPkr(data.collectedThisMonthPkr)} />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Stat
+          label="Churn, last 30 days"
+          value={data.churnPercent === null ? "—" : `${data.churnPercent}%`}
+        />
+        <Stat
+          label={`Trial conversion, last 90 days (${data.trialsEnded} ended)`}
+          value={data.trialConversionPercent === null ? "—" : `${data.trialConversionPercent}%`}
+        />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-5">
         <Stat label="On trial" value={data.counts.TRIALING} />
         <Stat label="Paying" value={data.counts.ACTIVE} />
@@ -63,6 +78,22 @@ export default async function FinancePage() {
         <Stat label="Suspended (unpaid)" value={data.counts.SUSPENDED} />
         <Stat label="Cancelled" value={data.counts.CANCELLED} />
       </div>
+
+      {data.mrrByPlan.length > 0 ? (
+        <Card>
+          <h2 className="mb-3 font-semibold">Revenue by plan</h2>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {data.mrrByPlan.map((row) => (
+              <li key={row.plan} className="flex flex-wrap justify-between gap-3 py-2">
+                <span>
+                  {row.plan} · {row.businesses} paying
+                </span>
+                <span className="text-slate-500">{formatPkr(row.mrrPkr)} / month</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="mb-3 font-semibold">Export invoices for the accountant</h2>

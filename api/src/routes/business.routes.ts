@@ -31,13 +31,14 @@ import {
 } from "@/modules/counter/counter.controller";
 import fraudRoutes from "@/modules/fraud/fraud.routes";
 import { getBillingSummary } from "@/modules/billing/subscriptions.service";
+import { cancelScheduledChange, changeOwnPlan } from "@/modules/billing/planChange.service";
 import { getInvoice } from "@/modules/billing/invoices.service";
 import { renderInvoicePdf } from "@/modules/billing/invoicePdf.service";
 import { MAX_PROOF_BYTES, uploadProof } from "@/modules/billing/proofs.service";
 import { singleUpload } from "@/middleware/upload";
 import { createRateLimiter } from "@/middleware/rateLimit";
 import { ApiError } from "@/utils/ApiError";
-import { uploadProofSchema } from "@taptapsell/validation";
+import { changeSubscriptionPlanSchema, uploadProofSchema } from "@taptapsell/validation";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
 import {
@@ -165,6 +166,30 @@ router.get(
   requireBusinessRole({ permission: BUSINESS_PERMISSIONS.BUSINESS_MANAGE_BILLING }),
   asyncHandler(async (req, res) => {
     sendSuccess(res, await getBillingSummary(req.businessId!));
+  }),
+);
+
+// Allowed while suspended for non-payment: a smaller plan may be what gets them paying.
+router.post(
+  "/billing/plan",
+  requireBusinessRole({
+    permission: BUSINESS_PERMISSIONS.BUSINESS_MANAGE_BILLING,
+    billingSuspension: "pay",
+  }),
+  asyncHandler(async (req, res) => {
+    const input = changeSubscriptionPlanSchema.parse(req.body);
+    sendSuccess(res, await changeOwnPlan(req.userId!, req.businessId!, input));
+  }),
+);
+
+router.delete(
+  "/billing/scheduled-change",
+  requireBusinessRole({
+    permission: BUSINESS_PERMISSIONS.BUSINESS_MANAGE_BILLING,
+    billingSuspension: "pay",
+  }),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await cancelScheduledChange(req.userId!, req.businessId!));
   }),
 );
 

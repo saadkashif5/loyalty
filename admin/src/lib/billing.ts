@@ -36,6 +36,12 @@ export interface SubscriptionInfo {
   currentPeriodEnd: string | null;
   graceEndsAt: string | null;
   suspendedAt: string | null;
+  pendingCharges: Array<{ _id: string; kind: string; description: string; amountPkr: number }>;
+  scheduledChange: {
+    plan: { name: string };
+    billingCycle: "MONTHLY" | "ANNUAL";
+    effectiveAt: string;
+  } | null;
 }
 
 export interface PaymentInfo {

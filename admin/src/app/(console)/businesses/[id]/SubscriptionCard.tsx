@@ -1,13 +1,14 @@
 import { LIMIT_LABELS, type BillingSummary, type Plan } from "@/lib/billing";
 import { Card, SecondaryButton, StatusBadge, formatDate, formatPkr } from "@/components/ui";
 import {
+  AddChargeForm,
   ChangePlanForm,
   DiscountForm,
   ExtendTrialForm,
   RecordPaymentForm,
   VoidInvoiceForm,
 } from "./BillingForms";
-import { issueInvoiceAction } from "@/app/actions";
+import { issueInvoiceAction, removeChargeAction } from "@/app/actions";
 
 export function SubscriptionCard({
   businessId,
@@ -56,6 +57,13 @@ export function SubscriptionCard({
         <StatusBadge status={sub.status} />
       </div>
 
+      {sub.scheduledChange ? (
+        <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">
+          Moves to {sub.scheduledChange.plan.name} ({sub.scheduledChange.billingCycle.toLowerCase()}
+          ) on {formatDate(sub.scheduledChange.effectiveAt)}. A plan change here cancels this.
+        </p>
+      ) : null}
+
       <div className="grid gap-2 text-sm sm:grid-cols-5">
         {LIMIT_LABELS.map(([key, label]) => (
           <div key={key} className="rounded-md bg-slate-50 px-3 py-2">
@@ -89,6 +97,32 @@ export function SubscriptionCard({
               suggestedAmount={billing.openInvoice?.totalPkr ?? billing.nextPaymentPkr}
             />
           </div>
+        </div>
+      ) : null}
+
+      {canManage || sub.pendingCharges.length > 0 ? (
+        <div className="space-y-3 border-t border-slate-100 pt-4">
+          <h3 className="text-sm font-semibold">Charges for the next invoice</h3>
+          {sub.pendingCharges.length > 0 ? (
+            <ul className="divide-y divide-slate-100 text-sm">
+              {sub.pendingCharges.map((charge) => (
+                <li
+                  key={charge._id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-2"
+                >
+                  <span>
+                    {charge.description} · {formatPkr(charge.amountPkr)}
+                  </span>
+                  {canManage ? (
+                    <form action={removeChargeAction.bind(null, businessId, charge._id)}>
+                      <SecondaryButton type="submit">Remove</SecondaryButton>
+                    </form>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {canManage ? <AddChargeForm businessId={businessId} /> : null}
         </div>
       ) : null}
 

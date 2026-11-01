@@ -1,4 +1,5 @@
 import { Schema, model, type HydratedDocument, type InferSchemaType } from "mongoose";
+import { CHARGE_KIND } from "./Subscription";
 
 export const INVOICE_STATUS = { ISSUED: "ISSUED", PAID: "PAID", VOID: "VOID" } as const;
 
@@ -8,6 +9,8 @@ const lineSchema = new Schema(
     quantity: { type: Number, required: true, min: 1 },
     unitPkr: { type: Number, required: true },
     amountPkr: { type: Number, required: true },
+    // Set on a line that came from the subscription's pending charges.
+    chargeKind: { type: String, enum: Object.values(CHARGE_KIND) },
   },
   { _id: false },
 );

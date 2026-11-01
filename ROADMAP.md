@@ -471,7 +471,7 @@ TRIALING ──► ACTIVE ──(invoice overdue)──► PAST_DUE ──(grace
       date and during grace; automatic suspension; reactivation on payment — _`npm run jobs`: invoice emailed with bank/Raast details 7 days before trial/period end, reminders 3 days before, past due → 7-day grace → suspended → cancelled after 90 days (open invoices voided), owners emailed at each step_
 - [x] Suspension stops stamping and puts the dashboard in read-only mode with a billing page;
       customers see "temporarily unavailable" (policy for pending rewards: see open decisions) — _billing suspensions are marked BILLING, lift automatically on payment, and keep reward redemption open for 30 days; a suspension by the team is unaffected by payment_
-- [~] Upgrade takes effect immediately with prorated charge; downgrade at period end — _plan changes by the team take effect at once; proration and owner self-service wait for invoices_
+- [x] Upgrade takes effect immediately with prorated charge; downgrade at period end — _owners switch from Billing: monthly upgrades start at once and the difference for the days left goes on the next invoice; downgrades and cycle changes wait for the period end and can be cancelled; annual upgrades go through the team; a plan too small for current branches, programs, stampers or staff is refused. Changes by the team apply at once with no proration_
 - [x] Annual billing option with discount — _annual cycle at the price of 10 months_
 
 Invoices and payments
@@ -481,14 +481,14 @@ Invoices and payments
 - [x] Bank transfer / Raast with proof upload and admin approval — _owner uploads a photo or PDF (5 MB, type checked by content, not name) against the open invoice, even while suspended for non-payment; console Receipts page to open, approve (records the payment) or reject with a reason (owner emailed). Files are kept on local disk (`STORAGE_DIR`) until object storage is set up_
 - [x] Manual payment entry (cash, cheque) by `FINANCE` or `SUPER_ADMIN`, audited — _bank transfer, Raast, cash, cheque; paid time starts after any remaining trial or paid period; owner emailed a receipt_
 - [~] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds — _trial extensions (also revive an expired, never-paid trial); a percentage discount per business on future invoices (100% = complimentary, invoices settle themselves); void an unpaid invoice with a reason. Coupons, credit notes and refunds not built_
-- [ ] Hardware charges (stamper fee, replacement fee) as invoice line items
+- [x] Hardware charges (stamper fee, replacement fee) as invoice line items — _Finance adds charges from the business page; they join the open or next invoice, are never discounted, and return to pending if that invoice is voided_
 
 Owner billing page
-- [~] Current plan, usage against limits, next invoice, invoices list, pay now, change plan — _Billing page with plan, status, usage, open invoice with PDF, bank/Raast details, receipt upload and its review status, invoices and payments lists, plan comparison; banners for trial ending, overdue and billing suspension. Card "pay now" (needs the gateway) and self-service plan change not built_
+- [~] Current plan, usage against limits, next invoice, invoices list, pay now, change plan — _Billing page with plan, status, usage, open invoice with PDF, bank/Raast details, receipt upload and its review status, invoices and payments lists, plan comparison with self-service switching; banners for trial ending, overdue and billing suspension. Card "pay now" needs the gateway_
 
 Super Admin finance console
-- [~] MRR, ARR, active / trialing / past-due / suspended counts, churn, trial conversion — _MRR, ARR, collected this month, counts by status; churn and trial conversion not built_
-- [~] Overdue list with ageing and one-click reminders; revenue by plan and city — _overdue list with due date and suspension date; reminders are automatic; revenue by plan/city not built_
+- [x] MRR, ARR, active / trialing / past-due / suspended counts, churn, trial conversion — _also collected this month; churn over 30 days, trial conversion over 90 days_
+- [~] Overdue list with ageing and one-click reminders; revenue by plan and city — _overdue list with due date and suspension date; reminders are automatic; revenue by plan built, by city not_
 - [x] CSV export for the accountant — _invoices by issue date with subtotal, discount, tax, total and payment; Excel-safe (UTF-8 BOM, cells that could run as formulas are neutralised)_
 
 **Exit:** in staging, with the gateway sandbox, a business moves through trial → active → past due →
