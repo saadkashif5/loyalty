@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { ApiError } from "@/utils/ApiError";
+import { env } from "@/config/env";
 import { mfaSetupRequired } from "@/middleware/auth";
 import {
   DEFAULT_PLATFORM_ROLE_PERMISSIONS,
@@ -16,7 +17,7 @@ export function requirePlatformPermission(permission: PlatformPermission) {
       next(ApiError.forbidden());
       return;
     }
-    if (!req.mfaEnabled) {
+    if (!req.mfaEnabled && !env.SKIP_MFA) {
       next(mfaSetupRequired());
       return;
     }

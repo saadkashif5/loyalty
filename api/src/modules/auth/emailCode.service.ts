@@ -166,7 +166,8 @@ export async function verifyEmailCode(
   }
 
   // The email code replaces the password, not the second factor.
-  if (user.mfa?.enabled) return { status: "MFA_REQUIRED", mfaToken: signMfaChallenge(user.id) };
+  if (user.mfa?.enabled && !env.SKIP_MFA)
+    return { status: "MFA_REQUIRED", mfaToken: signMfaChallenge(user.id) };
 
   const tokens = await issueTokenPair(user.id, ctx);
   return { status: "SIGNED_IN", created, user: toPublicUser(user), ...tokens };

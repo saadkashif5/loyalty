@@ -1,3 +1,4 @@
+import { env } from "@/config/env";
 import bcrypt from "bcryptjs";
 import { User, type UserDocument } from "@/models";
 import { ApiError } from "@/utils/ApiError";
@@ -72,7 +73,7 @@ export async function login(input: LoginInput, ctx: AuthContext = {}): Promise<L
   }
 
   // The password alone is not enough: no tokens until the second factor passes.
-  if (user.mfa?.enabled) {
+  if (user.mfa?.enabled && !env.SKIP_MFA) {
     return { mfaRequired: true, mfaToken: signMfaChallenge(user.id) };
   }
 

@@ -39,7 +39,7 @@ has been considered and **deferred**._
 | Customer mobile app (Expo) — auth, cards, card detail, NFC scan, rewards, discover, join, profile | Written, **not yet installed or run**; frozen per ROADMAP (customer portal replaces it) |
 | Integration test suite (`api/tests/coreLoop.test.ts`, `platform.test.ts`, `dashboard.test.ts`, `emailCode.test.ts`, `counter.test.ts`, `billing.test.ts`, `invoices.test.ts`, `planChange.test.ts`, `tenantIsolation.test.ts`, `scrub.test.ts`, `cache.test.ts`) | **135/135 passing** against the Docker replica set; each test worker uses its own database |
 | Seed scripts | `seed:admin` (Super Admin), `seed:demo` (demo café, stamper, customers) |
-| Push notifications, QR stamping, campaigns, subscriptions, account deletion, password reset, deployment | Not started |
+| Push notifications, QR stamping, campaigns, account deletion, password reset, deployment | Not started |
 
 **Not yet verified:** no staging or production environment exists; no NFC hardware has been
 tested. In real Chrome, only plan switching, receipt upload and receipt approval have been clicked

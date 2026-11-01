@@ -9,6 +9,8 @@ process.env.JWT_ACCESS_SECRET = "test-access-secret-that-is-long-enough-1234";
 process.env.JWT_REFRESH_SECRET = "test-refresh-secret-that-is-long-enough-1234";
 process.env.CORS_ORIGINS = "http://localhost:3000";
 process.env.RATE_LIMIT_MAX = "10000";
+// Two-step verification is always tested, whatever a local .env says.
+process.env.SKIP_MFA = "false";
 process.env.INTERNAL_API_SECRET = "test-internal-secret-that-is-long-enough";
 process.env.STORAGE_DIR = path.join(os.tmpdir(), "taptapsell-test-storage");
 

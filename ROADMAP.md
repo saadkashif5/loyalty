@@ -9,6 +9,29 @@ The platform owner (Super Admin) controls who gets onboarded and whether they ha
 
 ---
 
+## Where things stand (2026-11-01)
+
+Development is paused while the platform is reviewed by hand. `[x]` means built, `[~]` means partly
+built (the note says what is missing), `[ ]` means not started.
+
+| Phase | Status | What is left |
+|---|---|---|
+| 0 Foundation | Mostly done | Decisions in §10: OTP providers, hosting; CI has not run on a push |
+| 1 Console and onboarding | Mostly done | View as business, label printing, logo upload, email and WhatsApp delivery of invitations |
+| 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, Urdu, Web NFC, push. Never tested on a real stamper |
+| 3 Billing | Built, except the card gateway | Gateway, coupons, credit notes and refunds, feature flags |
+| 4 Scale and security | In progress | Cursor pagination, threat model, customer-isolation check, staging load test, monitoring, backups, pentest |
+| 5 Pilot and launch | Not started | Needs a hosting decision first |
+
+Automated tests pass and three flows have been clicked through in Chrome (plan switching, receipt
+upload, receipt approval). The rest of the UI has not been tested by hand. No staging environment
+exists.
+
+Where §1, §2 and §3 describe phone sign-in or NTAG 424 DNA, that is the eventual design. What is
+built today is email codes and NTAG 215 (D1, D2).
+
+---
+
 ## 1. What changes from today
 
 | Topic | Built today / PRD assumption | New direction |
@@ -312,14 +335,14 @@ Platform roles and security
 
 Business invitations
 - [~] `business_invitations` collection: hashed single-use token, 7-day expiry, plan and trial preset
-      — _built; plan and trial preset wait for Phase 3 plans_
+      — _built, including plan and trial length_
 - [~] Delivery by email and WhatsApp; resend and revoke — _resend (new link, old one dies) and
       revoke built; the invite link is returned to the platform team to share by hand until an email
       and WhatsApp provider is chosen_
 - [~] Accept page: set password, verify phone, enrol MFA, land in onboarding wizard — _`/invite/[token]`
       handles new accounts, existing accounts (must sign in first) and wrong-account cases, then
-      sends owners to set up MFA; phone is stored but not yet verified (needs Phase 2 OTP); wizard not
-      built_
+      sends owners to set up MFA; phone is stored but not verified (phone OTP comes later, per D2); the
+      setup wizard is built_
 - [x] Remove self-serve `POST /businesses` for ordinary users; marketing-site "request access" form
       feeds a lead list in the admin console — _route removed (`/admin/businesses` creates and
       invites); public `POST /leads` with Pakistani mobile validation; leads list, notes, status and
@@ -333,7 +356,7 @@ Admin console
       members, subscription and audit trail; activate, suspend and restore with reason — _search by
       name/slug/phone, status filter, invite form (also pre-filled from a lead), detail page with
       counts, people, branches, stampers, invitations (new link / revoke) and suspend/restore with a
-      reason. Plan and city filters and subscription wait for Phase 3_
+      reason. Subscription card built; plan and city filters not built_
 - [~] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
       (provisioned → shipped → active → revoked/replaced), print labels and QR — _fleet list with
       filters, mint batches (activation codes shown once), assign from the business page.
@@ -429,7 +452,7 @@ Programs and rewards
 - [~] Stamp expiry and reward expiry options; reward-expiring reminder job — _rewards can be
       valid for N days after unlocking; expired codes are refused at the counter;
       `npm run jobs` marks expired rewards and emails/notifies customers once when
-      3 days are left (run it on a schedule until the Phase 4 worker). Stamp expiry not built_
+      3 days are left (the worker runs it hourly). Stamp expiry not built_
 
 Fraud controls
 - [x] Daily cap per card per business, cooldown per card, velocity rules per device and per staff —

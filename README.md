@@ -30,6 +30,7 @@ cp api/.env.example api/.env           # then fill in real values
 npm run seed:admin --workspace=api     # needs SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD
 npm run seed:demo --workspace=api      # demo café, stamper DEMO01, three customers
 npm run dev:api
+npm run worker --workspace=api         # sends owner email, runs hourly jobs
 npm run dev:web                        # business dashboard on :3000
 npm run dev:admin                      # platform console on :3001
 npm run dev:portal                     # customer portal on :3002
@@ -42,8 +43,9 @@ for its owner, who accepts it on the business dashboard.
 
 Customers open the portal by tapping a stamper (`/t/<stamper id>?m=...`, see
 [docs/stamper-provisioning.md](docs/stamper-provisioning.md)) and sign in with a
-code sent to their email. In development the email is printed in the API's
-console instead of being sent.
+code sent to their email. In development emails are printed instead of being
+sent: sign-in codes in the API's console, owner and reward emails in the
+worker's.
 
 The API requires MongoDB. Transactions are used for the stamp flow, so the
 database must be a replica set — MongoDB Atlas is one by default; a local

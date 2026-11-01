@@ -3,6 +3,7 @@ import { isValidObjectId } from "mongoose";
 import { Business, BusinessMember } from "@/models";
 import { runAsTenant } from "@/models/tenantGuard";
 import { ApiError } from "@/utils/ApiError";
+import { env } from "@/config/env";
 import { mfaSetupRequired } from "@/middleware/auth";
 import { REDEEM_DURING_BILLING_SUSPENSION_DAYS } from "@/modules/billing/billing.config";
 import {
@@ -88,7 +89,7 @@ export function requireBusinessRole(options: Options = {}) {
     }
 
     // Owners control the whole tenant, so they must use two-step verification.
-    if (member.role === BUSINESS_ROLES.OWNER && !req.mfaEnabled) {
+    if (member.role === BUSINESS_ROLES.OWNER && !req.mfaEnabled && !env.SKIP_MFA) {
       next(mfaSetupRequired());
       return;
     }

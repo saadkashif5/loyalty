@@ -308,7 +308,7 @@ export async function acceptInvitation(
   return {
     user: toPublicUser(user),
     businessId: invitation.businessId.toString(),
-    mfaSetupRequired: !user.mfa?.enabled,
+    mfaSetupRequired: !user.mfa?.enabled && !env.SKIP_MFA,
     ...(tokens ?? {}),
   };
 }

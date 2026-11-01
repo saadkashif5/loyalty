@@ -48,6 +48,13 @@ const envSchema = z
         .optional(),
     ),
 
+    // Local testing only: two-step verification is neither required nor asked
+    // for at sign-in. The API refuses to start with this in staging or production.
+    SKIP_MFA: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   })
@@ -55,6 +62,13 @@ const envSchema = z
   .superRefine((e, ctx) => {
     if (!["staging", "production"].includes(e.NODE_ENV)) return;
 
+    if (e.SKIP_MFA) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SKIP_MFA"],
+        message: "Must not be set in staging or production",
+      });
+    }
     if (!e.REDIS_URL) {
       ctx.addIssue({
         code: "custom",
