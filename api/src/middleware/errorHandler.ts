@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import type { NextFunction, Request, Response } from "express";
+import { Error as MongooseError } from "mongoose";
 import { ZodError, z } from "zod";
 import { ApiError } from "@/utils/ApiError";
 import { logger } from "@/config/logger";
@@ -21,7 +22,9 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       ? err
       : err instanceof ZodError
         ? ApiError.badRequest("Validation failed", z.flattenError(err))
-        : ApiError.internal();
+        : err instanceof MongooseError.CastError
+          ? ApiError.badRequest("Invalid id")
+          : ApiError.internal();
 
   if (apiError.statusCode >= 500) {
     logger.error({ err, correlationId: req.correlationId, path: req.path }, "Unhandled error");

@@ -1,5 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
+import { isValidObjectId } from "mongoose";
 import { Business, BusinessMember } from "@/models";
+import { runAsTenant } from "@/models/tenantGuard";
 import { ApiError } from "@/utils/ApiError";
 import { mfaSetupRequired } from "@/middleware/auth";
 import { REDEEM_DURING_BILLING_SUSPENSION_DAYS } from "@/modules/billing/billing.config";
@@ -51,7 +53,12 @@ export function requireBusinessRole(options: Options = {}) {
       : [options.permission]
     : [];
 
-  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  // Express 4 ignores a rejected promise from middleware, so failures must reach next().
+  return (req: Request, res: Response, next: NextFunction): void => {
+    authorize(req, res, next).catch(next);
+  };
+
+  async function authorize(req: Request, _res: Response, next: NextFunction): Promise<void> {
     if (!req.userId) {
       next(ApiError.unauthorized());
       return;
@@ -60,6 +67,12 @@ export function requireBusinessRole(options: Options = {}) {
     const businessId = req.params[paramName] ?? req.body?.businessId;
     if (!businessId) {
       next(ApiError.badRequest(`Missing ${paramName}`));
+      return;
+    }
+
+    // Same answer as a business they are not in. Also keeps bad ids away from the queries below.
+    if (!isValidObjectId(businessId)) {
+      next(ApiError.forbidden("You do not have access to this business"));
       return;
     }
 
@@ -131,8 +144,9 @@ export function requireBusinessRole(options: Options = {}) {
     // Owners always see every branch; others are limited to their assigned branches, if any.
     req.branchScope =
       member.role === BUSINESS_ROLES.OWNER ? [] : member.branchIds.map((id) => id.toString());
-    next();
-  };
+    // Everything after this point can only touch this business's data.
+    runAsTenant(String(businessId), next);
+  }
 }
 
 /** Rejects acting at a branch outside the member's assigned branches. */

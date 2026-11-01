@@ -25,15 +25,6 @@ export function UploadReceiptForm({
 }) {
   const [state, action] = useActionState(uploadReceiptAction.bind(null, businessId, invoiceId), {});
 
-  if (state.saved) {
-    return (
-      <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-        Receipt sent. We will check it against our bank statement, usually within one working day,
-        and email you once it is approved.
-      </p>
-    );
-  }
-
   return (
     <form action={action} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">

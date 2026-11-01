@@ -6,9 +6,12 @@ import {
   REFRESH_TOKEN_COOKIE,
 } from "@/lib/cookies";
 import { clientHeadersFrom } from "@/lib/forwarding";
+import { applyContentSecurityPolicy } from "@/lib/security";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000/api/v1";
 
+// Files keep their own headers: receipts are served with a stricter sandbox.
+const isFile = (pathname: string) => pathname.startsWith("/files/");
 function toLogin(request: NextRequest) {
   const response = NextResponse.redirect(new URL("/login", request.url));
   response.cookies.delete(ACCESS_TOKEN_COOKIE);
@@ -19,8 +22,9 @@ function toLogin(request: NextRequest) {
 // Keeps signed-out visitors on the login page, and silently renews the
 // 15-minute access token from the refresh token so the team is not signed out
 // mid-task. The API still authorises every request on its own.
-export async function proxy(request: NextRequest) {
-  if (request.cookies.has(ACCESS_TOKEN_COOKIE)) return NextResponse.next();
+async function renewSession(request: NextRequest) {
+  if (request.cookies.has(ACCESS_TOKEN_COOKIE))
+    return NextResponse.next({ request: { headers: request.headers } });
 
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
   if (!refreshToken) return toLogin(request);
@@ -49,7 +53,17 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+export async function proxy(request: NextRequest) {
+  const policy = applyContentSecurityPolicy(request.headers);
+  const response = request.nextUrl.pathname.startsWith("/login")
+    ? NextResponse.next({ request: { headers: request.headers } })
+    : await renewSession(request);
+  if (!isFile(request.nextUrl.pathname)) {
+    response.headers.set("Content-Security-Policy", policy);
+  }
+  return response;
+}
+
 export const config = {
-  // Everything except the login page and static assets.
-  matcher: ["/((?!login|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

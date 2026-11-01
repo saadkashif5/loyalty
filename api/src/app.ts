@@ -1,9 +1,11 @@
+// First: the tenant guard must be registered before any model is compiled.
+import "@/models";
 import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { env } from "@/config/env";
-import { logger } from "@/config/logger";
+import { logger, logSerializers } from "@/config/logger";
 import { requestId } from "@/middleware/requestId";
 import { clientIp } from "@/middleware/clientIp";
 import { globalRateLimiter } from "@/middleware/rateLimit";
@@ -20,7 +22,8 @@ export function createApp(): Express {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
 
-  app.use(helmet());
+  // Not includeSubDomains: other services may share the parent domain.
+  app.use(helmet({ strictTransportSecurity: { maxAge: 31_536_000, includeSubDomains: false } }));
   app.use(
     cors({
       origin: allowedOrigins.length > 0 ? allowedOrigins : false,
@@ -35,6 +38,7 @@ export function createApp(): Express {
     pinoHttp({
       logger,
       genReqId: (req) => (req as express.Request).correlationId,
+      serializers: logSerializers,
       autoLogging: { ignore: (req) => req.url === "/health" },
     }),
   );

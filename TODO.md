@@ -37,13 +37,13 @@ has been considered and **deferred**._
 | Business dashboard (Phase 1) | Role-aware navigation; setup wizard + checklist; settings; edit programs/rewards/branches; staff roles, disable and branch limits; staff invitation accept/decline; customers list (masked) and detail; report a stamper problem (lost = revoked); read-only suspended mode with reason; background session renewal |
 | Platform admin console (`admin/`, separate Next.js app) | Built: sign-in with two-step, overview, businesses (search, invite, detail, suspend/restore, invitations, assign stamper), leads, stamper fleet (mint, list), users, audit log, team, own security. Not built: view-as-business, labels/QR printing |
 | Customer mobile app (Expo) — auth, cards, card detail, NFC scan, rewards, discover, join, profile | Written, **not yet installed or run**; frozen per ROADMAP (customer portal replaces it) |
-| Integration test suite (`api/tests/coreLoop.test.ts`, `platform.test.ts`, `dashboard.test.ts`, `emailCode.test.ts`, `counter.test.ts`, `billing.test.ts`, `invoices.test.ts`, `planChange.test.ts`) | **107/107 passing** against the Docker replica set; each test worker uses its own database |
+| Integration test suite (`api/tests/coreLoop.test.ts`, `platform.test.ts`, `dashboard.test.ts`, `emailCode.test.ts`, `counter.test.ts`, `billing.test.ts`, `invoices.test.ts`, `planChange.test.ts`, `tenantIsolation.test.ts`, `scrub.test.ts`) | **124/124 passing** against the Docker replica set; each test worker uses its own database |
 | Seed scripts | `seed:admin` (Super Admin), `seed:demo` (demo café, stamper, customers) |
 | Push notifications, QR stamping, campaigns, subscriptions, account deletion, password reset, deployment | Not started |
 
-**Not yet verified:** no staging or production environment exists; after the Next.js 16 upgrade
-every dashboard page was loaded with a real session and showed seeded data, but the forms (server
-actions) have not been submitted in a browser; no NFC hardware has been tested.
+**Not yet verified:** no staging or production environment exists; no NFC hardware has been
+tested. In real Chrome, only plan switching, receipt upload and receipt approval have been clicked
+through; other forms (server actions) have not been submitted in a browser.
 
 ---
 

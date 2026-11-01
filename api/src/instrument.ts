@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { env } from "@/config/env";
+import { scrubText, scrubUrl } from "@/utils/scrub";
 
 // Imported first by server.ts so Sentry can hook modules as they load.
 // Without SENTRY_DSN (development, tests) nothing is sent anywhere.
@@ -15,10 +16,13 @@ if (env.SENTRY_DSN) {
       if (event.request) {
         delete event.request.cookies;
         delete event.request.data;
-        if (event.request.headers) {
-          delete event.request.headers.authorization;
-          delete event.request.headers.cookie;
-        }
+        delete event.request.headers;
+        delete event.request.query_string;
+        if (event.request.url) event.request.url = scrubUrl(event.request.url);
+      }
+      delete event.user;
+      for (const exception of event.exception?.values ?? []) {
+        if (exception.value) exception.value = scrubText(exception.value);
       }
       return event;
     },

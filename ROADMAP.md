@@ -514,11 +514,11 @@ Scalability
 Security
 - [ ] Threat model per surface (portal, dashboard, admin, API, stamper, payments)
 - [ ] OWASP ASVS Level 2 checklist completed
-- [ ] Tenant-isolation data-layer enforcement plus generated cross-tenant tests in CI
+- [x] Tenant-isolation data-layer enforcement plus generated cross-tenant tests in CI — _once `requireBusinessRole` proves access, the rest of the request runs as that business (`api/src/models/tenantGuard.ts`): every read and write on a collection with `businessId` is limited to it, and naming another business is an error. A test walks the real router, so each new business route is checked for no token, another owner and a malformed id. Customer-to-customer isolation is by query filters and not covered by this guard_
 - [ ] Secrets in a secrets manager; SUN master keys in KMS; key rotation runbook
-- [ ] Strict Content-Security-Policy, HSTS, secure cookies on every app
+- [x] Strict Content-Security-Policy, HSTS, secure cookies on every app — _per-response nonce with `strict-dynamic` on dashboard, console and portal, checked in real Chrome: pages hydrate and a script planted in the HTML is blocked. Pages now render per request because of the nonce. HSTS omits `includeSubDomains` because other services share the parent domain. Styles still allow inline_
 - [ ] Append-only audit log shipped to write-once storage
-- [ ] Logs and errors scrubbed of phone numbers, OTPs, tokens and passwords
+- [x] Logs and errors scrubbed of phone numbers, OTPs, tokens and passwords — _request logs are an allow-list (method, path without query, status); no headers, IPs or user agents; invitation tokens removed from paths; emails and Pakistani mobiles removed from error messages and stacks; Sentry events lose headers, query strings and user data_
 - [ ] External penetration test; all critical and high findings fixed
 
 Reliability and operations

@@ -6,6 +6,7 @@ import {
   REFRESH_TOKEN_COOKIE,
 } from "@/lib/cookies";
 import { clientHeadersFrom } from "@/lib/forwarding";
+import { applyContentSecurityPolicy } from "@/lib/security";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000/api/v1";
 const PRIVATE_PREFIXES = ["/cards", "/rewards", "/profile"];
@@ -26,12 +27,15 @@ function toSignIn(request: NextRequest) {
 // Renews the 15-minute access token from the refresh token, so a customer
 // who tapped yesterday is still signed in today. Public pages (the tap link,
 // joining, sign-in) stay open to signed-out visitors.
-export async function proxy(request: NextRequest) {
-  if (request.cookies.has(ACCESS_TOKEN_COOKIE)) return NextResponse.next();
+async function renewSession(request: NextRequest) {
+  if (request.cookies.has(ACCESS_TOKEN_COOKIE))
+    return NextResponse.next({ request: { headers: request.headers } });
 
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
   if (!refreshToken) {
-    return isPrivate(request.nextUrl.pathname) ? toSignIn(request) : NextResponse.next();
+    return isPrivate(request.nextUrl.pathname)
+      ? toSignIn(request)
+      : NextResponse.next({ request: { headers: request.headers } });
   }
 
   const refreshed = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -44,7 +48,7 @@ export async function proxy(request: NextRequest) {
   const payload = refreshed?.ok ? await refreshed.json().catch(() => null) : null;
   if (!payload?.success) {
     if (isPrivate(request.nextUrl.pathname)) return toSignIn(request);
-    const response = NextResponse.next();
+    const response = NextResponse.next({ request: { headers: request.headers } });
     response.cookies.delete(REFRESH_TOKEN_COOKIE);
     return response;
   }
@@ -59,6 +63,13 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: request.headers } });
   response.cookies.set(ACCESS_TOKEN_COOKIE, accessToken, ACCESS_COOKIE_OPTIONS);
   response.cookies.set(REFRESH_TOKEN_COOKIE, nextRefreshToken, REFRESH_COOKIE_OPTIONS);
+  return response;
+}
+
+export async function proxy(request: NextRequest) {
+  const policy = applyContentSecurityPolicy(request.headers);
+  const response = await renewSession(request);
+  response.headers.set("Content-Security-Policy", policy);
   return response;
 }
 
