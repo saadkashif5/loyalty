@@ -7,8 +7,10 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc --noEmit -p tsconfig.json && tsup",
     "start": "node dist/server.js",
+    "worker": "tsx src/worker.ts",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "seed:demo": "tsx src/scripts/seedDemo.ts",
+    "seed:load": "tsx src/scripts/seedLoad.ts",
     "jobs": "tsx src/scripts/runJobs.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"

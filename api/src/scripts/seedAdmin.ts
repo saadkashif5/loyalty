@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { connectDatabase, disconnectDatabase } from "@/config/database";
+import { disconnectRedis } from "@/config/redis";
 import { User } from "@/models";
 import { registerSchema } from "@taptapsell/validation";
 import { PLATFORM_ROLES, USER_STATUS } from "@taptapsell/constants";
@@ -46,4 +47,4 @@ main()
     console.error(err instanceof Error ? err.message : err);
     process.exitCode = 1;
   })
-  .finally(() => disconnectDatabase());
+  .finally(() => Promise.all([disconnectDatabase(), disconnectRedis()]));

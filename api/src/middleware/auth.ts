@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyAccessToken } from "@/modules/auth/token.service";
+import { cached } from "@/services/cache.service";
 import { User } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 
@@ -12,9 +13,21 @@ declare module "express-serve-static-core" {
   }
 }
 
+// Short, as a backstop: suspensions clear this entry as they happen (see User).
+const AUTH_CACHE_SECONDS = 60;
+
 async function authenticate(req: Request, header: string): Promise<void> {
   const payload = verifyAccessToken(header.slice("Bearer ".length));
-  const user = await User.findById(payload.sub).select("status platformRole mfa.enabled");
+  const user = await cached(`auth:${payload.sub}`, AUTH_CACHE_SECONDS, async () => {
+    const found = await User.findById(payload.sub).select("status platformRole mfa.enabled");
+    return (
+      found && {
+        status: found.status,
+        platformRole: found.platformRole,
+        mfaEnabled: Boolean(found.mfa?.enabled),
+      }
+    );
+  });
 
   if (!user || user.status !== "ACTIVE") {
     throw ApiError.unauthorized("Account is not active");
@@ -23,7 +36,7 @@ async function authenticate(req: Request, header: string): Promise<void> {
   req.userId = payload.sub;
   req.sessionId = payload.sid;
   req.platformRole = user.platformRole;
-  req.mfaEnabled = Boolean(user.mfa?.enabled);
+  req.mfaEnabled = user.mfaEnabled;
 }
 
 // Authenticates the request (§29 step 1). Authorization (role/permission/scope)

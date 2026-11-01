@@ -42,6 +42,14 @@ it they use the last `X-Forwarded-For` entry, which is only right when exactly
 one trusted proxy sits in front of them. Never use the first entry: the
 browser controls it.
 
+## Processes
+
+Each environment runs the API and at least one worker (`dist/worker.js`, or
+`npm run worker --workspace=api`). Without a worker, owner and reward emails
+stay queued in `outbox_messages` and scheduled jobs do not run. Several workers
+are safe when Redis is configured. Messages that fail six times are marked
+`DEAD` and kept for review.
+
 ## Uploaded files
 
 Payment receipts that owners upload are saved under `STORAGE_DIR` (default

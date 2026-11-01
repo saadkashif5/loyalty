@@ -1,3 +1,4 @@
+import { invalidatesCache } from "@/services/cache.service";
 import { Schema, model } from "mongoose";
 import { BUSINESS_STATUS } from "@taptapsell/constants";
 
@@ -34,5 +35,10 @@ const businessSchema = new Schema(
   },
   { timestamps: true },
 );
+
+invalidatesCache(businessSchema, {
+  fields: ["status"],
+  keys: (doc) => [`business-status:${String(doc._id)}`],
+});
 
 export const Business = model("Business", businessSchema, "businesses");

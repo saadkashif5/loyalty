@@ -13,6 +13,7 @@ import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
 import { consumeTap, findUsableTap } from "@/modules/taps/taps.service";
+import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { queueNotification } from "@/services/notification.service";
 import { checkDeviceBurst, raiseFlag } from "@/services/fraud.service";
@@ -377,7 +378,10 @@ export async function createStamp(request: StampRequest): Promise<StampResult> {
   );
 
   if (!result.alreadyRecorded) void checkDeviceBurst(device.businessId, device.deviceId);
-  await notifyStamp(request.customerId, result);
+  // In-app history only: the customer already sees the stamp in this response.
+  void notifyStamp(request.customerId, result).catch((err) =>
+    logger.warn({ err }, "Stamp notification failed"),
+  );
   return result;
 }
 

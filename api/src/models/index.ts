@@ -24,4 +24,6 @@ export * from "./Payment";
 export * from "./PlatformSetting";
 export * from "./Counter";
 export * from "./Invoice";
+export * from "./OutboxMessage";
+export * from "./OutboxMessage";
 export * from "./PaymentProof";

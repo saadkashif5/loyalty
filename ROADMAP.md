@@ -501,13 +501,13 @@ suspended → reactivated, with correct invoices and notifications at every step
 **Goal:** prove the platform survives "the masses" and an attacker before public launch.
 
 Scalability
-- [ ] Outbox + worker service for notifications, aggregates, billing jobs and exports
+- [~] Outbox + worker service for notifications, aggregates, billing jobs and exports — _`npm run worker` sends queued email with retries and backoff and runs the hourly jobs, under a Redis lock; owner and reward email go through the outbox; sign-in codes stay direct. Aggregates, exports and push not moved yet_
 - [ ] Pre-aggregated analytics; analytics queries on an analytics node
 - [ ] Cursor pagination on all list endpoints
-- [ ] Redis caches for device resolution, user status and entitlements, with explicit invalidation
+- [~] Redis caches for device resolution, user status and entitlements, with explicit invalidation — _stamper, business status, user status and public business data cached; watched fields clear the entry from a schema hook on every write path, so revocation and suspension apply at once. Entitlements not cached: only read on writes, not on the tap path_
 - [ ] Shard-key plan documented and validated on a staging cluster
 - [ ] Autoscaling, at least two availability zones, zero-downtime deploys
-- [ ] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run
+- [~] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run — _`loadtests/run.sh` runs the tap storm in Docker with a query profile. Laptop results only compare builds; the staging run against a target is still to do, and the other scenarios are not written. See `loadtests/README.md`_
 - [ ] Tune per-address rate limits with real traffic (carrier-grade NAT puts many customers
       behind one address); confirm `CLIENT_IP_HEADER` for the chosen host
 

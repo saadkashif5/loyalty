@@ -1,3 +1,4 @@
+import { invalidatesCache } from "@/services/cache.service";
 import { Schema, model, type InferSchemaType, type HydratedDocument } from "mongoose";
 import { USER_STATUS, PLATFORM_ROLES } from "@taptapsell/constants";
 
@@ -42,6 +43,11 @@ const userSchema = new Schema(
   },
   { timestamps: true },
 );
+
+invalidatesCache(userSchema, {
+  fields: ["status", "platformRole", "mfa"],
+  keys: (doc) => [`auth:${String(doc._id)}`],
+});
 
 export type UserDocument = HydratedDocument<InferSchemaType<typeof userSchema>>;
 

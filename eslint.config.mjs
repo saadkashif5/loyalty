@@ -13,6 +13,7 @@ export default tseslint.config(
       "**/dist/**",
       "**/.next/**",
       "mobile/**",
+      "loadtests/**",
       "web/next-env.d.ts",
       "admin/next-env.d.ts",
       "portal/next-env.d.ts",

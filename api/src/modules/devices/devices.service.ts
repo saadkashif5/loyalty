@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { Branch, Business, NfcDevice } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { cached } from "@/services/cache.service";
 import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { generateActivationCode, generateDeviceIdentifier } from "@/utils/codes";
@@ -187,13 +188,31 @@ interface ResolvedDevice {
   businessId: string;
   branchId: string;
   tagType: TagType;
+  tagUid: string | null;
 }
+
+// Short, as a backstop: revocations clear these entries as they happen (see NfcDevice).
+const DEVICE_CACHE_SECONDS = 30;
 
 // Called on every stamp attempt. The tag identifier alone proves nothing —
 // this is where device status, business status, and branch binding are checked
 // server-side before any stamp can be written (§10.3, §13.1).
 export async function resolveDeviceForStamping(deviceIdentifier: string): Promise<ResolvedDevice> {
-  const device = await NfcDevice.findOne({ deviceIdentifier });
+  const device = await cached(`device:${deviceIdentifier}`, DEVICE_CACHE_SECONDS, async () => {
+    const found = await NfcDevice.findOne({ deviceIdentifier }).select(
+      "status businessId branchId tagType tagUid",
+    );
+    return (
+      found && {
+        deviceId: found._id.toString(),
+        status: found.status,
+        businessId: found.businessId?.toString() ?? null,
+        branchId: found.branchId?.toString() ?? null,
+        tagType: found.tagType as TagType,
+        tagUid: found.tagUid ?? null,
+      }
+    );
+  });
 
   if (!device) {
     throw ApiError.notFound("This stamper is not recognised.");
@@ -205,16 +224,21 @@ export async function resolveDeviceForStamping(deviceIdentifier: string): Promis
     throw ApiError.badRequest("This stamper is not yet set up. Please contact the business.");
   }
 
-  const business = await Business.findById(device.businessId).select("status");
-  if (!business || business.status !== BUSINESS_STATUS.ACTIVE) {
+  const businessStatus = await cached(
+    `business-status:${device.businessId}`,
+    DEVICE_CACHE_SECONDS,
+    async () => (await Business.findById(device.businessId).select("status"))?.status ?? null,
+  );
+  if (businessStatus !== BUSINESS_STATUS.ACTIVE) {
     throw ApiError.badRequest("This business is not currently accepting stamps.");
   }
 
   return {
-    deviceId: device._id.toString(),
-    businessId: device.businessId.toString(),
-    branchId: device.branchId.toString(),
-    tagType: device.tagType as TagType,
+    deviceId: device.deviceId,
+    businessId: device.businessId,
+    branchId: device.branchId,
+    tagType: device.tagType,
+    tagUid: device.tagUid,
   };
 }
 

@@ -1,3 +1,4 @@
+import { invalidatesCache } from "@/services/cache.service";
 import { Schema, model } from "mongoose";
 import { DEVICE_STATUS, TAG_TYPE } from "@taptapsell/constants";
 
@@ -40,5 +41,10 @@ const nfcDeviceSchema = new Schema(
 );
 
 nfcDeviceSchema.index({ businessId: 1, branchId: 1 });
+
+invalidatesCache(nfcDeviceSchema, {
+  fields: ["status", "businessId", "branchId", "tagType"],
+  keys: (doc) => [`device:${String(doc.deviceIdentifier)}`],
+});
 
 export const NfcDevice = model("NfcDevice", nfcDeviceSchema, "nfc_devices");

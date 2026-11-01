@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { connectDatabase, disconnectDatabase } from "@/config/database";
+import { disconnectRedis } from "@/config/redis";
 import { env } from "@/config/env";
 import { Business, NfcDevice, User } from "@/models";
 import { createBusiness } from "@/modules/businesses/businesses.service";
@@ -131,4 +132,4 @@ main()
     console.error(err instanceof Error ? err.message : err);
     process.exitCode = 1;
   })
-  .finally(() => disconnectDatabase());
+  .finally(() => Promise.all([disconnectDatabase(), disconnectRedis()]));

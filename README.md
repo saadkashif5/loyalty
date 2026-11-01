@@ -60,7 +60,9 @@ back to memory) and required in staging and production. See
 | `npm run typecheck` | TypeScript in every workspace |
 | `npm test` | Integration tests (needs `docker compose up -d`) |
 | `npm run build:api` / `build:web` / `build:admin` / `build:portal` | Production builds |
-| `npm run jobs --workspace=api` | Scheduled jobs: subscription lifecycle and reminders, reward expiry (schedule it, e.g. hourly) |
+| `npm run worker --workspace=api` | Background worker: sends queued email and runs the hourly jobs. **Must run alongside the API**, or owner emails will wait in the queue |
+| `npm run jobs --workspace=api` | Runs the scheduled jobs once by hand: subscription lifecycle and reminders, reward expiry |
+| `loadtests/run.sh [script] [users]` | Load test against a throwaway database (needs Docker); see `loadtests/README.md` |
 
 A pre-commit hook runs ESLint and Prettier on staged files. CI runs all of the
 above plus a dependency audit, secret scanning and CodeQL on every push and

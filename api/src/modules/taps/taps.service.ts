@@ -3,6 +3,7 @@ import type { ClientSession } from "mongoose";
 import { NfcDevice, TapToken } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
+import { cached, invalidate } from "@/services/cache.service";
 import { raiseFlag } from "@/services/fraud.service";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
 import { getPublicBusiness } from "@/modules/businesses/discovery.service";
@@ -12,6 +13,9 @@ import { TAP_VERIFIERS, type VerifiedTap } from "./verifiers";
 // Long enough to sign up or log in after a first tap; short enough that a
 // token lifted off a phone is useless soon after the customer leaves.
 const TAP_TOKEN_TTL_MS = 5 * 60_000;
+
+// What the landing page shows. A name change appearing a minute late does no harm.
+const PUBLIC_CACHE_SECONDS = 60;
 
 function hashTapToken(raw: string): string {
   return crypto.createHash("sha256").update(raw).digest("hex");
@@ -65,11 +69,10 @@ export async function recordTap(input: RecordTapInput) {
     throw ApiError.badRequest("This stamper must be used from the TapTapSell app.");
   }
 
-  const stored = await NfcDevice.findById(device.deviceId).select("tagUid");
-  const tap = verifier.verify(input.params, { tagUid: stored?.tagUid ?? null });
+  const tap = verifier.verify(input.params, { tagUid: device.tagUid });
   if (!tap) throw invalidTap();
 
-  if (stored?.tagUid && stored.tagUid !== tap.tagUid) {
+  if (device.tagUid && device.tagUid !== tap.tagUid) {
     await flagSuspiciousTap(device, "TAG_UID_MISMATCH", tap);
     throw invalidTap();
   }
@@ -94,6 +97,9 @@ export async function recordTap(input: RecordTapInput) {
     );
   }
 
+  // The chip is bound now, so the next tap must see its UID.
+  if (!device.tagUid) await invalidate([`device:${input.deviceIdentifier}`]);
+
   const rawToken = crypto.randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + TAP_TOKEN_TTL_MS);
 
@@ -107,7 +113,11 @@ export async function recordTap(input: RecordTapInput) {
     expiresAt,
   });
 
-  const { business, programs } = await getPublicBusiness(device.businessId);
+  const { business, programs } = await cached(
+    `public-business:${device.businessId}`,
+    PUBLIC_CACHE_SECONDS,
+    () => getPublicBusiness(device.businessId),
+  );
   return { tapToken: rawToken, expiresAt, business, programs };
 }
 

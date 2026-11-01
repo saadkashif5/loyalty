@@ -11,7 +11,7 @@ import {
 import { ApiError } from "@/utils/ApiError";
 import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
-import { sendEmail } from "@/services/email.service";
+import { queueEmail } from "@/services/outbox.service";
 import { applyBusinessStatus } from "@/modules/businesses/businesses.service";
 import {
   BUSINESS_ROLES,
@@ -286,7 +286,7 @@ export async function emailOwners(businessId: string, subject: string, text: str
       status: MEMBER_STATUS.ACTIVE,
     }).select("userId");
     const users = await User.find({ _id: { $in: owners.map((o) => o.userId) } }).select("email");
-    for (const user of users) await sendEmail({ to: user.email, subject, text });
+    for (const user of users) await queueEmail({ to: user.email, subject, text });
   } catch (err) {
     logger.warn({ err, businessId }, "Billing email failed");
   }

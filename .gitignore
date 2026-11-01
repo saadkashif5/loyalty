@@ -49,3 +49,6 @@ coverage/
 
 # Private uploads in development
 storage/
+
+# Load test data (contains access tokens)
+loadtests/.data/
