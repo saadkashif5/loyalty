@@ -14,6 +14,7 @@ const auditLogSchema = new Schema(
 );
 
 auditLogSchema.index({ businessId: 1, createdAt: -1 });
+auditLogSchema.index({ createdAt: -1 });
 auditLogSchema.index({ actorUserId: 1, createdAt: -1 });
 
 export const AuditLog = model("AuditLog", auditLogSchema, "audit_logs");

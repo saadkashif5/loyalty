@@ -178,3 +178,23 @@ export async function getCounterCodeAction(cardId: string): Promise<CounterCodeR
     return { error: messageFrom(error, "Could not get a code. Please try again.") };
   }
 }
+
+export interface DeleteAccountState {
+  error?: string;
+}
+
+export async function deleteAccountAction(
+  _prev: DeleteAccountState,
+  formData: FormData,
+): Promise<DeleteAccountState> {
+  if (String(formData.get("confirm") ?? "").trim() !== "DELETE") {
+    return { error: "Type DELETE in capitals to confirm." };
+  }
+  try {
+    await apiFetch("/users/me", { method: "DELETE", body: { confirm: "DELETE" } });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not delete the account." };
+  }
+  await clearSessionCookies();
+  redirect("/?deleted=1");
+}

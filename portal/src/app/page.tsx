@@ -3,11 +3,21 @@ import { redirect } from "next/navigation";
 import { getAccessToken } from "@/lib/session";
 import { Card } from "@/components/ui";
 
-export default async function HomePage() {
-  if (await getAccessToken()) redirect("/cards");
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ deleted?: string }>;
+}) {
+  const { deleted } = await searchParams;
+  if (!deleted && (await getAccessToken())) redirect("/cards");
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-5">
+      {deleted ? (
+        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm text-emerald-800">
+          Your account has been deleted.
+        </p>
+      ) : null}
       <div className="text-center">
         <p className="text-3xl font-bold text-brand-600">TapTapSell</p>
         <p className="mt-2 text-slate-600">Collect stamps at your favourite shops. Earn rewards.</p>

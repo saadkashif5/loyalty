@@ -79,7 +79,9 @@ export function InvitationActions({
       </div>
       {state.inviteUrl ? (
         <div className="space-y-1">
-          <p className="text-xs text-slate-500">New link (the previous one no longer works):</p>
+          <p className="text-xs text-slate-500">
+            New link, emailed to the owner (the previous one no longer works):
+          </p>
           <CopyLink url={state.inviteUrl} />
         </div>
       ) : null}

@@ -5,7 +5,7 @@ import {
   EmptyState,
   Input,
   PageHeader,
-  Pagination,
+  CursorPagination,
   SecondaryButton,
   formatDate,
 } from "@/components/ui";
@@ -24,13 +24,14 @@ export default async function CustomersPage({
   searchParams,
 }: {
   params: Promise<{ businessId: string }>;
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; cursor?: string }>;
 }) {
   const { businessId } = await params;
-  const { q, page } = await searchParams;
+  const { q, cursor } = await searchParams;
 
-  const query = new URLSearchParams({ page: page ?? "1", limit: "25" });
+  const query = new URLSearchParams({ limit: "25" });
   if (q) query.set("q", q);
+  if (cursor) query.set("cursor", cursor);
   const { data, meta } = await apiFetchPage<CustomerRow[]>(
     `/businesses/${businessId}/customers?${query.toString()}`,
   );
@@ -81,12 +82,11 @@ export default async function CustomersPage({
         </div>
       )}
 
-      <Pagination
+      <CursorPagination
         basePath={`/b/${businessId}/customers`}
         params={{ q }}
-        page={meta.page}
-        limit={meta.limit}
-        total={meta.total}
+        nextCursor={meta.nextCursor}
+        isFirstPage={!cursor}
       />
     </>
   );

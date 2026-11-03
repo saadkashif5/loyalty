@@ -1,4 +1,6 @@
-import { BusinessMember, User } from "@/models";
+import { env } from "@/config/env";
+import { queueEmail } from "@/services/outbox.service";
+import { Business, BusinessMember, User } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
@@ -44,6 +46,18 @@ export async function inviteMember(
     resourceType: "BusinessMember",
     resourceId: member._id,
     metadata: { role: input.role, invitedUserId: user._id.toString() },
+  });
+
+  const business = await Business.findById(businessId).select("name");
+  await queueEmail({
+    to: user.email,
+    subject: `You are invited to join ${business?.name ?? "a business"} on TapTapSell`,
+    text: [
+      `Hi ${user.name},`,
+      "",
+      `You have been invited to ${business?.name ?? "a business"} as ${input.role.toLowerCase()}.`,
+      `Sign in to accept: ${env.DASHBOARD_URL.replace(/\/$/, "")}/businesses`,
+    ].join("\n"),
   });
 
   return member;

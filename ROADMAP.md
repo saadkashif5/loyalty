@@ -17,14 +17,14 @@ built (the note says what is missing), `[ ]` means not started.
 | Phase | Status | What is left |
 |---|---|---|
 | 0 Foundation | Mostly done | Decisions in §10: OTP providers, hosting; CI has not run on a push |
-| 1 Console and onboarding | Mostly done | View as business, label printing, logo upload, email and WhatsApp delivery of invitations |
+| 1 Console and onboarding | Mostly done | View as business, label printing, logo upload, WhatsApp delivery of invitations |
 | 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, Urdu, Web NFC, push. Never tested on a real stamper |
 | 3 Billing | Built, except the card gateway | Gateway, coupons, credit notes and refunds, feature flags |
-| 4 Scale and security | In progress | Cursor pagination, threat model, customer-isolation check, staging load test, monitoring, backups, pentest |
+| 4 Scale and security | In progress | Threat model, OWASP checklist, staging load test, monitoring, backups, pentest |
 | 5 Pilot and launch | Not started | Needs a hosting decision first |
 
-Automated tests pass and three flows have been clicked through in Chrome (plan switching, receipt
-upload, receipt approval). The rest of the UI has not been tested by hand. No staging environment
+Automated tests pass. In Chrome: plan switching, receipt upload and approval, password reset on
+both apps, account deletion and data export, and cursor paging. The rest of the UI has not been tested by hand. No staging environment
 exists.
 
 Where §1, §2 and §3 describe phone sign-in or NTAG 424 DNA, that is the eventual design. What is
@@ -336,9 +336,9 @@ Platform roles and security
 Business invitations
 - [~] `business_invitations` collection: hashed single-use token, 7-day expiry, plan and trial preset
       — _built, including plan and trial length_
-- [~] Delivery by email and WhatsApp; resend and revoke — _resend (new link, old one dies) and
-      revoke built; the invite link is returned to the platform team to share by hand until an email
-      and WhatsApp provider is chosen_
+- [~] Delivery by email and WhatsApp; resend and revoke — _owners are emailed their link on invite
+      and on resend (through the outbox), and the link is still shown to the team to share by hand;
+      staff are emailed when invited. WhatsApp waits for a provider_
 - [~] Accept page: set password, verify phone, enrol MFA, land in onboarding wizard — _`/invite/[token]`
       handles new accounts, existing accounts (must sign in first) and wrong-account cases, then
       sends owners to set up MFA; phone is stored but not verified (phone OTP comes later, per D2); the
@@ -420,7 +420,7 @@ Customer authentication
 - [ ] Phone OTP over WhatsApp/SMS, with per-prefix limits and CAPTCHA — _later, per D2_
 - [x] Cookie sessions for the portal (httpOnly, Secure, SameSite=Lax) — _server actions carry
       Next.js's built-in origin check; background renewal like the other apps_
-- [ ] Account deletion and data export for customers
+- [x] Account deletion and data export for customers — _from the portal's profile page: a JSON download of everything held, and deletion with typed confirmation. Deletion erases name, email, phone and password, signs out everywhere, cancels pending rewards and deletes notifications; stamps stay unnamed in each business's records. Staff and team accounts must be removed from those roles first_
 
 Customer portal (PWA)
 - [x] Tap landing: business branding, program explanation, sign up or log in, join — _`/t/<id>`
@@ -526,7 +526,7 @@ suspended → reactivated, with correct invoices and notifications at every step
 Scalability
 - [~] Outbox + worker service for notifications, aggregates, billing jobs and exports — _`npm run worker` sends queued email with retries and backoff and runs the hourly jobs, under a Redis lock; owner and reward email go through the outbox; sign-in codes stay direct. Aggregates, exports and push not moved yet_
 - [ ] Pre-aggregated analytics; analytics queries on an analytics node
-- [ ] Cursor pagination on all list endpoints
+- [~] Cursor pagination on all list endpoints — _lists that grow with customers and activity (business customers, stamps, redemptions, platform users, audit log) page by cursor with matching indexes. Businesses, stampers and leads keep page numbers and counts: they grow with tenants, and the overview uses the counts. Public discovery search still uses pages_
 - [~] Redis caches for device resolution, user status and entitlements, with explicit invalidation — _stamper, business status, user status and public business data cached; watched fields clear the entry from a schema hook on every write path, so revocation and suspension apply at once. Entitlements not cached: only read on writes, not on the tap path_
 - [ ] Shard-key plan documented and validated on a staging cluster
 - [ ] Autoscaling, at least two availability zones, zero-downtime deploys
@@ -535,6 +535,7 @@ Scalability
       behind one address); confirm `CLIENT_IP_HEADER` for the chosen host
 
 Security
+- [x] Customer-to-customer isolation checked — _tests show a customer cannot read another's card, counter code, rewards, stamps or notifications, or claim a reward on another's card_
 - [ ] Threat model per surface (portal, dashboard, admin, API, stamper, payments)
 - [ ] OWASP ASVS Level 2 checklist completed
 - [x] Tenant-isolation data-layer enforcement plus generated cross-tenant tests in CI — _once `requireBusinessRole` proves access, the rest of the request runs as that business (`api/src/models/tenantGuard.ts`): every read and write on a collection with `businessId` is limited to it, and naming another business is an error. A test walks the real router, so each new business route is checked for no token, another owner and a malformed id. Customer-to-customer isolation is by query filters and not covered by this guard_

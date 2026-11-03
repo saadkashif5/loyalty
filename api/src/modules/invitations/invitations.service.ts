@@ -12,6 +12,7 @@ import {
 import { env } from "@/config/env";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
+import { queueEmail } from "@/services/outbox.service";
 import { generateUniqueSlug } from "@/modules/businesses/businesses.service";
 import { hashPassword, issueTokenPair, type AuthContext } from "@/modules/auth/auth.service";
 import { toPublicUser } from "@/modules/auth/auth.serializer";
@@ -128,7 +129,25 @@ export async function createBusinessWithInvitation(
     metadata: { email: input.owner.email, leadId: input.leadId },
   });
 
-  return { business, invitation: toInvitationView(invitation), inviteUrl: inviteUrl(token.raw) };
+  const url = inviteUrl(token.raw);
+  await emailInvitation(input.owner.email, input.owner.name, business.name, url);
+  return { business, invitation: toInvitationView(invitation), inviteUrl: url };
+}
+
+/** The link is also returned to the team, to share by WhatsApp if the email does not arrive. */
+async function emailInvitation(to: string, name: string, businessName: string, url: string) {
+  await queueEmail({
+    to,
+    subject: `You are invited to run ${businessName} on TapTapSell`,
+    text: [
+      `Hi ${name},`,
+      "",
+      `The TapTapSell team has set up ${businessName} for you. Open this link to create your account and start your free trial:`,
+      url,
+      "",
+      "The link works for 7 days.",
+    ].join("\n"),
+  });
 }
 
 export async function listInvitations(businessId: string) {
@@ -160,7 +179,10 @@ export async function resendInvitation(actorUserId: string, invitationId: string
     resourceId: invitation._id,
   });
 
-  return { invitation: toInvitationView(invitation), inviteUrl: inviteUrl(token.raw) };
+  const url = inviteUrl(token.raw);
+  const business = await Business.findById(invitation.businessId).select("name");
+  await emailInvitation(invitation.email, invitation.name, business?.name ?? "your business", url);
+  return { invitation: toInvitationView(invitation), inviteUrl: url };
 }
 
 export async function revokeInvitation(actorUserId: string, invitationId: string) {

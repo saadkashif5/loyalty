@@ -1,3 +1,4 @@
+import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
 import mongoose, { type ClientSession, type Types } from "mongoose";
 import {
   Branch,
@@ -583,19 +584,14 @@ export async function listCustomerStamps(customerId: string, limit = 50) {
 
 export async function listBusinessStamps(
   businessId: string,
-  options: { page: number; limit: number; branchIds?: string[] },
+  options: { branchIds?: string[] } & CursorRequest,
 ) {
   const filter: Record<string, unknown> = { businessId };
   if (options.branchIds?.length) filter.branchId = { $in: options.branchIds };
 
-  const [items, total] = await Promise.all([
-    Stamp.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit)
-      .populate("customerId", "name email"),
-    Stamp.countDocuments(filter),
-  ]);
-
-  return { items, total };
+  const rows = await Stamp.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1)
+    .populate("customerId", "name email");
+  return toPage(rows, options.limit, "createdAt");
 }

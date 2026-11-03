@@ -67,7 +67,8 @@ export { API_BASE_URL };
 
 export interface Page<T> {
   data: T;
-  meta: { page: number; limit: number; total: number };
+  /** page and total on numbered lists; nextCursor on cursor-paged ones. */
+  meta: { page: number; limit: number; total: number; nextCursor?: string | null };
 }
 
 /** For paginated list endpoints, which also return totals. */

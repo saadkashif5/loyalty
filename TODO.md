@@ -21,7 +21,7 @@ has been considered and **deferred**._
 | Backend foundation (config, helmet/CORS, request id, pino logging, errors, rate limiting, idempotency) | Built; rate limits use Redis when `REDIS_URL` is set; Sentry when `SENTRY_DSN` is set |
 | API production build | Bundled with tsup; `node dist/server.js` starts and serves requests |
 | Mongoose models + indexes | Built |
-| Auth (register/login/refresh/logout, bcrypt, rotating hashed refresh tokens with reuse revocation) | Built, plus TOTP two-step verification with recovery codes (mandatory for platform users and owners) and session list/remote sign-out — no password reset, email/OTP verification or profile update |
+| Auth (register/login/refresh/logout, bcrypt, rotating hashed refresh tokens with reuse revocation) | Built, plus TOTP two-step verification with recovery codes (mandatory for platform users and owners) and session list/remote sign-out, and password reset by emailed link on the dashboard and console — no profile update |
 | RBAC (per-business membership, role hierarchy, permission matrix; platform roles SUPER_ADMIN/ADMIN/SUPPORT/FINANCE with their own permission matrix) | Built |
 | Businesses, branches, members (invite/accept/update), programs, cards, devices, rewards, redemptions | Built |
 | Stamp flow (atomic transaction, cooldown, idempotency, tiered reward unlock, manual stamp route) | Built |
@@ -37,9 +37,9 @@ has been considered and **deferred**._
 | Business dashboard (Phase 1) | Role-aware navigation; setup wizard + checklist; settings; edit programs/rewards/branches; staff roles, disable and branch limits; staff invitation accept/decline; customers list (masked) and detail; report a stamper problem (lost = revoked); read-only suspended mode with reason; background session renewal |
 | Platform admin console (`admin/`, separate Next.js app) | Built: sign-in with two-step, overview, businesses (search, invite, detail, suspend/restore, invitations, assign stamper), leads, stamper fleet (mint, list), users, audit log, team, own security. Not built: view-as-business, labels/QR printing |
 | Customer mobile app (Expo) — auth, cards, card detail, NFC scan, rewards, discover, join, profile | Written, **not yet installed or run**; frozen per ROADMAP (customer portal replaces it) |
-| Integration test suite (`api/tests/coreLoop.test.ts`, `platform.test.ts`, `dashboard.test.ts`, `emailCode.test.ts`, `counter.test.ts`, `billing.test.ts`, `invoices.test.ts`, `planChange.test.ts`, `tenantIsolation.test.ts`, `scrub.test.ts`, `cache.test.ts`) | **135/135 passing** against the Docker replica set; each test worker uses its own database |
+| Integration test suite (`api/tests/coreLoop.test.ts`, `platform.test.ts`, `dashboard.test.ts`, `emailCode.test.ts`, `counter.test.ts`, `billing.test.ts`, `invoices.test.ts`, `planChange.test.ts`, `tenantIsolation.test.ts`, `scrub.test.ts`, `cache.test.ts`, `passwordReset.test.ts`, `cursor.test.ts`, `customerIsolation.test.ts`, `account.test.ts`) | **152/152 passing** against the Docker replica set; each test worker uses its own database |
 | Seed scripts | `seed:admin` (Super Admin), `seed:demo` (demo café, stamper, customers) |
-| Push notifications, QR stamping, campaigns, account deletion, password reset, deployment | Not started |
+| Push notifications, QR stamping, campaigns, deployment | Not started |
 
 **Not yet verified:** no staging or production environment exists; no NFC hardware has been
 tested. In real Chrome, only plan switching, receipt upload and receipt approval have been clicked

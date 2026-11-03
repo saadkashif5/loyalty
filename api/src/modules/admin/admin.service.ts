@@ -1,3 +1,4 @@
+import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
 import {
   AuditLog,
   Branch,
@@ -69,7 +70,7 @@ export async function setBusinessStatus(
   return business;
 }
 
-export async function listCustomers(options: { query?: string; page: number; limit: number }) {
+export async function listCustomers(options: { query?: string } & CursorRequest) {
   const filter: Record<string, unknown> = {};
   if (options.query) {
     const escaped = options.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -79,15 +80,10 @@ export async function listCustomers(options: { query?: string; page: number; lim
     ];
   }
 
-  const [items, total] = await Promise.all([
-    User.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit),
-    User.countDocuments(filter),
-  ]);
-
-  return { items, total };
+  const rows = await User.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1);
+  return toPage(rows, options.limit, "createdAt");
 }
 
 export async function setUserStatus(
@@ -116,19 +112,14 @@ export async function setUserStatus(
   return user;
 }
 
-export async function listAuditLogs(options: { businessId?: string; page: number; limit: number }) {
+export async function listAuditLogs(options: { businessId?: string } & CursorRequest) {
   const filter = options.businessId ? { businessId: options.businessId } : {};
 
-  const [items, total] = await Promise.all([
-    AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit)
-      .populate("actorUserId", "name email"),
-    AuditLog.countDocuments(filter),
-  ]);
-
-  return { items, total };
+  const rows = await AuditLog.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1)
+    .populate("actorUserId", "name email");
+  return toPage(rows, options.limit, "createdAt");
 }
 
 export async function getPlatformOverview() {

@@ -37,6 +37,8 @@ const envSchema = z
 
     // Business dashboard origin, used to build invitation links.
     DASHBOARD_URL: z.url().default("http://localhost:3000"),
+    // Platform console origin, used for the team's password reset links.
+    ADMIN_URL: z.url().default("http://localhost:3001"),
 
     // 32 random bytes, base64. Encrypts MFA secrets at rest. Required in
     // staging and production; development and tests derive a key instead.

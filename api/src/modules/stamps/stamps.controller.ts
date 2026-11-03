@@ -1,3 +1,4 @@
+import { cursorParams } from "@/utils/cursor";
 import type { Request, Response } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
@@ -43,16 +44,14 @@ export const listMyStampsHandler = asyncHandler(async (req: Request, res: Respon
 });
 
 export const listBusinessStampsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const paging = cursorParams(req.query);
   const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
   if (branchId) assertBranchInScope(req, branchId);
 
-  const { items, total } = await service.listBusinessStamps(req.businessId!, {
-    page,
-    limit,
+  const { items, nextCursor } = await service.listBusinessStamps(req.businessId!, {
+    ...paging,
     branchIds: branchId ? [branchId] : req.branchScope,
   });
 
-  sendSuccess(res, items, { meta: { page, limit, total } });
+  sendSuccess(res, items, { meta: { limit: paging.limit, nextCursor } });
 });

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { logoutAction } from "@/app/actions";
 import { Card, SecondaryButton } from "@/components/ui";
 import { LoginForm } from "./LoginForm";
@@ -5,9 +6,9 @@ import { LoginForm } from "./LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ denied?: string }>;
+  searchParams: Promise<{ denied?: string; reset?: string }>;
 }) {
-  const { denied } = await searchParams;
+  const { denied, reset } = await searchParams;
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
@@ -27,7 +28,19 @@ export default async function LoginPage({
             </form>
           </Card>
         ) : (
-          <LoginForm />
+          <>
+            {reset ? (
+              <p className="rounded-md bg-emerald-50 px-3 py-2 text-center text-sm text-emerald-800">
+                Password changed. Sign in with your new password.
+              </p>
+            ) : null}
+            <LoginForm />
+            <p className="text-center text-sm">
+              <Link href="/forgot-password" className="text-slate-500 hover:text-slate-900">
+                Forgot your password?
+              </Link>
+            </p>
+          </>
         )}
       </div>
     </main>

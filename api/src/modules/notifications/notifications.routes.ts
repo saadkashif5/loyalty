@@ -1,3 +1,4 @@
+import { ApiError } from "@/utils/ApiError";
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "@/middleware/auth";
@@ -29,6 +30,7 @@ router.post(
       { status: NOTIFICATION_STATUS.READ },
       { new: true },
     );
+    if (!notification) throw ApiError.notFound("Notification not found");
     sendSuccess(res, notification);
   }),
 );

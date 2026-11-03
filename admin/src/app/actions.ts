@@ -595,3 +595,46 @@ export async function saveBillingSettingsAction(
     return { error: messageFrom(error, "Could not save the settings.") };
   }
 }
+
+// ---- Password reset ------------------------------------------------------------
+
+export interface ResetState {
+  error?: string;
+  sent?: boolean;
+}
+
+/** Always reports success: whether an account exists is not given away. */
+export async function forgotPasswordAction(
+  _prev: ResetState,
+  formData: FormData,
+): Promise<ResetState> {
+  const { ok, payload } = await postAuth("/auth/password/forgot", {
+    email: String(formData.get("email") ?? ""),
+    app: "console",
+  });
+  if (!ok) {
+    return {
+      error:
+        payload?.error?.code === "BAD_REQUEST"
+          ? "Enter a valid email address."
+          : "Too many attempts. Please wait a few minutes and try again.",
+    };
+  }
+  return { sent: true };
+}
+
+export async function resetPasswordAction(
+  _prev: ResetState,
+  formData: FormData,
+): Promise<ResetState> {
+  const password = String(formData.get("password") ?? "");
+  if (password !== String(formData.get("confirm") ?? "")) {
+    return { error: "The two passwords do not match." };
+  }
+  const { ok, payload } = await postAuth("/auth/password/reset", {
+    token: String(formData.get("token") ?? ""),
+    password,
+  });
+  if (!ok) return { error: payload?.error?.message ?? "Could not change the password." };
+  redirect("/login?reset=1");
+}

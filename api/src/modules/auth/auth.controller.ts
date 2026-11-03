@@ -10,7 +10,10 @@ import {
   mfaLoginSchema,
   requestEmailCodeSchema,
   verifyEmailCodeSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "@taptapsell/validation";
+import { requestPasswordReset, resetPassword } from "./passwordReset.service";
 import * as authService from "./auth.service";
 import * as mfaService from "./mfa.service";
 import * as emailCode from "./emailCode.service";
@@ -48,6 +51,16 @@ export const refreshHandler = asyncHandler(async (req: Request, res: Response) =
   const { refreshToken } = refreshTokenSchema.parse(req.body);
   const tokens = await authService.refresh(refreshToken, context(req));
   sendSuccess(res, tokens);
+});
+
+export const forgotPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  await requestPasswordReset(forgotPasswordSchema.parse(req.body));
+  sendSuccess(res, { sent: true });
+});
+
+export const resetPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  await resetPassword(resetPasswordSchema.parse(req.body));
+  sendSuccess(res, { reset: true });
 });
 
 export const logoutHandler = asyncHandler(async (req: Request, res: Response) => {

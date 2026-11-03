@@ -219,3 +219,33 @@ export function formatPkr(amount: number | null | undefined): string {
   if (amount === null || amount === undefined) return "—";
   return `PKR ${amount.toLocaleString("en-PK")}`;
 }
+
+/** For lists paged by cursor: forward one page at a time, or back to the start. */
+export function CursorPagination({
+  basePath,
+  params,
+  nextCursor,
+  isFirstPage,
+}: {
+  basePath: string;
+  params: Record<string, string | undefined>;
+  nextCursor?: string | null;
+  isFirstPage: boolean;
+}) {
+  if (!nextCursor && isFirstPage) return null;
+
+  const href = (cursor?: string) => {
+    const query = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (v) query.set(k, v);
+    if (cursor) query.set("cursor", cursor);
+    const qs = query.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
+
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+      {isFirstPage ? <span /> : <Link href={href()}>← Back to newest</Link>}
+      {nextCursor ? <Link href={href(nextCursor)}>Older →</Link> : <span>End of list</span>}
+    </div>
+  );
+}

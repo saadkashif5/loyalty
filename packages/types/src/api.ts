@@ -8,6 +8,8 @@ export interface ApiSuccess<T> {
     page?: number;
     limit?: number;
     total?: number;
+    /** Opaque; pass back as ?cursor= for the next page. null on the last page. */
+    nextCursor?: string | null;
     [key: string]: unknown;
   };
 }

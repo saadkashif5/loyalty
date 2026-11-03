@@ -1,3 +1,4 @@
+import { cursorParams } from "@/utils/cursor";
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "@/middleware/auth";
@@ -44,6 +45,9 @@ const can = requirePlatformPermission;
 
 router.use(requireAuth);
 
+// Page numbers for lists that grow with the number of businesses (businesses,
+// stampers, leads), where counts are cheap and the overview needs them. Lists
+// that grow with customers and activity use cursors (utils/cursor.ts).
 function pagination(query: Record<string, unknown>) {
   return {
     page: Math.max(1, Number(query.page) || 1),
@@ -390,10 +394,10 @@ router.get(
   "/customers",
   can(P.USER_VIEW),
   asyncHandler(async (req, res) => {
-    const { page, limit } = pagination(req.query);
+    const paging = cursorParams(req.query);
     const query = typeof req.query.q === "string" ? req.query.q : undefined;
-    const { items, total } = await service.listCustomers({ query, page, limit });
-    sendSuccess(res, items, { meta: { page, limit, total } });
+    const { items, nextCursor } = await service.listCustomers({ query, ...paging });
+    sendSuccess(res, items, { meta: { limit: paging.limit, nextCursor } });
   }),
 );
 
@@ -442,10 +446,10 @@ router.get(
   "/audit-logs",
   can(P.AUDIT_VIEW),
   asyncHandler(async (req, res) => {
-    const { page, limit } = pagination(req.query);
+    const paging = cursorParams(req.query);
     const businessId = typeof req.query.businessId === "string" ? req.query.businessId : undefined;
-    const { items, total } = await service.listAuditLogs({ businessId, page, limit });
-    sendSuccess(res, items, { meta: { page, limit, total } });
+    const { items, nextCursor } = await service.listAuditLogs({ businessId, ...paging });
+    sendSuccess(res, items, { meta: { limit: paging.limit, nextCursor } });
   }),
 );
 

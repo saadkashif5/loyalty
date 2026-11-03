@@ -21,5 +21,6 @@ const loyaltyCardSchema = new Schema(
 // A customer holds at most one active card per program (§26.2, §27).
 loyaltyCardSchema.index({ customerId: 1, programId: 1 }, { unique: true });
 loyaltyCardSchema.index({ businessId: 1, customerId: 1 });
+loyaltyCardSchema.index({ businessId: 1, lastStampAt: -1, _id: -1 });
 
 export const LoyaltyCard = model("LoyaltyCard", loyaltyCardSchema, "loyalty_cards");

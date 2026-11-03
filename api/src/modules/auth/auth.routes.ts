@@ -16,6 +16,8 @@ import {
   revokeOtherSessionsHandler,
   requestEmailCodeHandler,
   verifyEmailCodeHandler,
+  forgotPasswordHandler,
+  resetPasswordHandler,
 } from "./auth.controller";
 
 const router = Router();
@@ -64,6 +66,20 @@ const emailCodeLimiter = createRateLimiter({
 // Customers sign up and sign in with a code sent by email (no password).
 router.post("/email-code", authRateLimiter, emailCodeLimiter, requestEmailCodeHandler);
 router.post("/email-code/verify", authRateLimiter, verifyEmailCodeHandler);
+
+// Reset links per email address, for the same reason as codes.
+const resetLinkLimiter = createRateLimiter({
+  name: "password-reset",
+  windowMs: 60 * 60_000,
+  max: 5,
+  key: (req) =>
+    String(req.body?.email ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 254),
+});
+router.post("/password/forgot", authRateLimiter, resetLinkLimiter, forgotPasswordHandler);
+router.post("/password/reset", authRateLimiter, resetPasswordHandler);
 
 router.post("/register", authRateLimiter, registerHandler);
 router.post("/login", authRateLimiter, loginAccountLimiter, loginHandler);

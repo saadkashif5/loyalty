@@ -14,6 +14,19 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const forgotPasswordSchema = z.object({
+  email: z.email().max(254),
+  /** Which app the link opens: the business dashboard or the platform console. */
+  app: z.enum(["dashboard", "console"]).default("dashboard"),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(32).max(128),
+  password: z.string().min(8).max(128),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1),
 });

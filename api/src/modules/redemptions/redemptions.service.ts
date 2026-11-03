@@ -1,3 +1,4 @@
+import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
 import { LoyaltyCard, Redemption, Reward } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
@@ -156,20 +157,15 @@ export async function validateRedemption(params: {
 
 export async function listBusinessRedemptions(
   businessId: string,
-  options: { page: number; limit: number; branchIds?: string[] },
+  options: { branchIds?: string[] } & CursorRequest,
 ) {
   const filter: Record<string, unknown> = { businessId };
   if (options.branchIds?.length) filter.branchId = { $in: options.branchIds };
 
-  const [items, total] = await Promise.all([
-    Redemption.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit)
-      .populate("rewardId", "name")
-      .populate("customerId", "name email"),
-    Redemption.countDocuments(filter),
-  ]);
-
-  return { items, total };
+  const rows = await Redemption.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1)
+    .populate("rewardId", "name")
+    .populate("customerId", "name email");
+  return toPage(rows, options.limit, "createdAt");
 }

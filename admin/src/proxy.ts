@@ -10,6 +10,9 @@ import { applyContentSecurityPolicy } from "@/lib/security";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000/api/v1";
 
+// Reachable signed out: signing in, and getting back in after a forgotten password.
+const PUBLIC = /^\/(login|forgot-password|reset-password)(\/|$)/;
+
 // Files keep their own headers: receipts are served with a stricter sandbox.
 const isFile = (pathname: string) => pathname.startsWith("/files/");
 function toLogin(request: NextRequest) {
@@ -55,7 +58,7 @@ async function renewSession(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const policy = applyContentSecurityPolicy(request.headers);
-  const response = request.nextUrl.pathname.startsWith("/login")
+  const response = PUBLIC.test(request.nextUrl.pathname)
     ? NextResponse.next({ request: { headers: request.headers } })
     : await renewSession(request);
   if (!isFile(request.nextUrl.pathname)) {

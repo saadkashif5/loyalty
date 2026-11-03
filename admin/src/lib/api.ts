@@ -22,7 +22,8 @@ interface RequestOptions {
 
 export interface Page<T> {
   data: T;
-  meta: { page: number; limit: number; total: number };
+  /** page and total on numbered lists; nextCursor on cursor-paged ones. */
+  meta: { page: number; limit: number; total: number; nextCursor?: string | null };
 }
 
 async function request<T>(path: string, options: RequestOptions): Promise<ApiSuccess<T>> {

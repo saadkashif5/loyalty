@@ -5,7 +5,7 @@ import {
   EmptyState,
   Input,
   PageHeader,
-  Pagination,
+  CursorPagination,
   SecondaryButton,
   Table,
   Td,
@@ -26,11 +26,12 @@ interface AuditEntry {
 export default async function AuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ businessId?: string; page?: string }>;
+  searchParams: Promise<{ businessId?: string; cursor?: string }>;
 }) {
   await requirePermission(PLATFORM_PERMISSIONS.AUDIT_VIEW);
-  const { businessId, page } = await searchParams;
-  const query = new URLSearchParams({ page: page ?? "1", limit: "50" });
+  const { businessId, cursor } = await searchParams;
+  const query = new URLSearchParams({ limit: "50" });
+  if (cursor) query.set("cursor", cursor);
   if (businessId) query.set("businessId", businessId);
   const { data, meta } = await apiFetchPage<AuditEntry[]>(`/admin/audit-logs?${query.toString()}`);
 
@@ -76,12 +77,11 @@ export default async function AuditPage({
         </Table>
       )}
 
-      <Pagination
+      <CursorPagination
         basePath="/audit"
         params={{ businessId }}
-        page={meta.page}
-        limit={meta.limit}
-        total={meta.total}
+        nextCursor={meta.nextCursor}
+        isFirstPage={!cursor}
       />
     </>
   );
