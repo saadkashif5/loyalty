@@ -20,7 +20,7 @@ export interface BusinessProfile {
   name: string;
   category: string;
   description?: string;
-  contact?: { phone?: string; email?: string; address?: string };
+  contact?: { phone?: string; email?: string; address?: string; city?: string };
 }
 
 function Submit() {
@@ -78,6 +78,15 @@ export function BusinessProfileForm({
           required
           placeholder="Shop 4, MM Alam Road, Gulberg III, Lahore"
           defaultValue={profile.contact?.address}
+        />
+      </Field>
+      <Field label="City">
+        <Input
+          name="city"
+          required
+          maxLength={80}
+          placeholder="Lahore"
+          defaultValue={profile.contact?.city}
         />
       </Field>
       <Field label="Short description (shown to customers)">

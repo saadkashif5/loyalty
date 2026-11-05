@@ -57,7 +57,7 @@ export default async function BusinessLayout({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = await params;
-  const { role, business } = await getMembership(businessId);
+  const { role, business, supportView } = await getMembership(businessId);
   const base = `/b/${businessId}`;
   const items = NAV.filter((item) => item.permissions.some((p) => can(role, p)));
   const billing = can(role, P.BUSINESS_MANAGE_BILLING)
@@ -73,7 +73,9 @@ export default async function BusinessLayout({
             <Link href="/businesses" className="text-sm font-semibold">
               {business.name}
             </Link>
-            <span className="ml-2 text-xs text-slate-400">{role.toLowerCase()}</span>
+            <span className="ml-2 text-xs text-slate-400">
+              {supportView ? "support view" : role.toLowerCase()}
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/account/security" className="text-sm text-slate-500 hover:text-slate-900">
@@ -96,6 +98,21 @@ export default async function BusinessLayout({
           ))}
         </nav>
       </header>
+
+      {supportView ? (
+        <div className="border-b border-violet-200 bg-violet-50">
+          <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-violet-900">
+            <strong>Support view, read-only.</strong> You are seeing this business as its owner
+            does. Nothing can be changed, and every page you open is recorded. Ends at{" "}
+            {new Date(supportView.expiresAt).toLocaleTimeString("en-PK", {
+              timeZone: "Asia/Karachi",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+            . Reason: {supportView.reason}
+          </p>
+        </div>
+      ) : null}
 
       {business.status === "SUSPENDED" ? (
         <div className="border-b border-red-200 bg-red-50">

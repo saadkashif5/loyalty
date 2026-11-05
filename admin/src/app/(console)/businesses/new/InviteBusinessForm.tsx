@@ -26,6 +26,7 @@ export interface InvitePrefill {
   ownerEmail?: string;
   ownerPhone?: string;
   address?: string;
+  city?: string;
 }
 
 function Submit() {
@@ -89,6 +90,15 @@ export function InviteBusinessForm({
           </Field>
           <Field label="Address (optional)">
             <Input name="address" defaultValue={prefill.address} />
+          </Field>
+          <Field label="City">
+            <Input
+              name="city"
+              required
+              maxLength={80}
+              defaultValue={prefill.city}
+              placeholder="Lahore"
+            />
           </Field>
         </div>
         <Field label="Description (optional)">

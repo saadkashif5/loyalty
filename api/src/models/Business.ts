@@ -17,6 +17,8 @@ const businessSchema = new Schema(
       email: { type: String, trim: true, lowercase: true },
       phone: { type: String, trim: true },
       address: { type: String },
+      // Used by the console to filter and group businesses.
+      city: { type: String, trim: true, maxlength: 80 },
     },
     status: {
       type: String,
@@ -35,6 +37,8 @@ const businessSchema = new Schema(
   },
   { timestamps: true },
 );
+
+businessSchema.index({ "contact.city": 1 });
 
 invalidatesCache(businessSchema, {
   fields: ["status"],

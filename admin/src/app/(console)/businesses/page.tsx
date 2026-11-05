@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
-import { apiFetchPage } from "@/lib/api";
+import { apiFetch, apiFetchPage } from "@/lib/api";
+import type { Plan } from "@/lib/billing";
 import { can, getMe } from "@/lib/me";
 import {
   EmptyState,
@@ -22,22 +23,43 @@ interface Business {
   slug: string;
   category: string;
   status: string;
-  contact?: { phone?: string; address?: string };
+  contact?: { phone?: string; address?: string; city?: string };
+  plan: { code: string; name: string; status: string } | null;
   createdAt: string;
 }
+
+// For team members who cannot read the plan list (no billing access).
+const DEFAULT_PLANS = ["STARTER", "GROWTH", "PRO", "ENTERPRISE"].map((code) => ({
+  code,
+  name: code.charAt(0) + code.slice(1).toLowerCase(),
+}));
 
 export default async function BusinessesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    plan?: string;
+    city?: string;
+    page?: string;
+  }>;
 }) {
-  const { q, status, page } = await searchParams;
+  const { q, status, plan, city, page } = await searchParams;
   const me = await getMe();
 
   const query = new URLSearchParams({ page: page ?? "1", limit: "25" });
   if (q) query.set("q", q);
   if (status) query.set("status", status);
-  const { data, meta } = await apiFetchPage<Business[]>(`/admin/businesses?${query.toString()}`);
+  if (plan) query.set("plan", plan);
+  if (city) query.set("city", city);
+  const [{ data, meta }, cities, plans] = await Promise.all([
+    apiFetchPage<Business[]>(`/admin/businesses?${query.toString()}`),
+    apiFetch<string[]>("/admin/businesses/cities"),
+    can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_VIEW)
+      ? apiFetch<Plan[]>("/admin/plans")
+      : Promise.resolve(DEFAULT_PLANS),
+  ]);
 
   return (
     <>
@@ -59,13 +81,29 @@ export default async function BusinessesPage({
           <option value="ACTIVE">Active</option>
           <option value="SUSPENDED">Suspended</option>
         </Select>
+        <Select name="plan" defaultValue={plan ?? ""} className="max-w-[12rem]">
+          <option value="">All plans</option>
+          {plans.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+        <Select name="city" defaultValue={city ?? ""} className="max-w-[12rem]">
+          <option value="">All cities</option>
+          {cities.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
         <SecondaryButton type="submit">Search</SecondaryButton>
       </form>
 
       {data.length === 0 ? (
         <EmptyState>No businesses match.</EmptyState>
       ) : (
-        <Table head={["Business", "Category", "Status", "Phone", "Created"]}>
+        <Table head={["Business", "Category", "Status", "Plan", "City", "Phone", "Created"]}>
           {data.map((b) => (
             <tr key={b._id}>
               <Td>
@@ -81,6 +119,19 @@ export default async function BusinessesPage({
               <Td>
                 <StatusBadge status={b.status} />
               </Td>
+              <Td>
+                {b.plan ? (
+                  <>
+                    {b.plan.name}
+                    <span className="block text-xs text-slate-400">
+                      {b.plan.status.toLowerCase().replace("_", " ")}
+                    </span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </Td>
+              <Td>{b.contact?.city ?? "—"}</Td>
               <Td>{b.contact?.phone ?? "—"}</Td>
               <Td>{formatDate(b.createdAt)}</Td>
             </tr>
@@ -90,7 +141,7 @@ export default async function BusinessesPage({
 
       <Pagination
         basePath="/businesses"
-        params={{ q, status }}
+        params={{ q, status, plan, city }}
         page={meta.page}
         limit={meta.limit}
         total={meta.total}

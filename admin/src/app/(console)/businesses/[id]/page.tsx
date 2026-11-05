@@ -5,6 +5,8 @@ import { can, getMe } from "@/lib/me";
 import { Card, PageHeader, Stat, StatusBadge, Table, Td, formatDate } from "@/components/ui";
 import { AssignDeviceForm, InvitationActions, StatusForm } from "./BusinessActions";
 import { SubscriptionCard } from "./SubscriptionCard";
+import { SupportViewForm } from "./SupportView";
+import { ResetTagForm } from "@/components/ResetTagForm";
 import type { BillingSummary, Plan } from "@/lib/billing";
 
 interface Detail {
@@ -15,7 +17,7 @@ interface Detail {
     category: string;
     status: string;
     description?: string;
-    contact?: { phone?: string; email?: string; address?: string };
+    contact?: { phone?: string; email?: string; address?: string; city?: string };
     createdAt: string;
   };
   members: Array<{
@@ -30,6 +32,7 @@ interface Detail {
     deviceIdentifier: string;
     status: string;
     tagType: string;
+    tagUid: string | null;
     branchId: { name: string } | null;
     lastTapAt: string | null;
   }>;
@@ -43,6 +46,17 @@ interface Detail {
     sendCount: number;
     acceptedAt: string | null;
   }>;
+  supportViews: Array<{
+    id: string;
+    by: { _id: string; name: string; email: string } | null;
+    reason: string;
+    startedAt: string;
+    expiresAt: string;
+    endedAt: string | null;
+    active: boolean;
+    pagesViewed: number;
+  }>;
+  dashboardUrl: string;
   counts: { customers: number; stamps: number; redemptions: number };
 }
 
@@ -53,6 +67,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
   const canAssign = can(me.platformRole, PLATFORM_PERMISSIONS.DEVICE_MANAGE);
   const canSeeBilling = can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_VIEW);
   const canManageBilling = can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_MANAGE);
+  const canViewAs = can(me.platformRole, PLATFORM_PERMISSIONS.BUSINESS_VIEW_AS);
 
   const [detail, unassigned, billing, plans] = await Promise.all([
     apiFetch<Detail>(`/admin/businesses/${id}`),
@@ -67,6 +82,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
     canManageBilling ? apiFetch<Plan[]>("/admin/plans") : Promise.resolve([] as Plan[]),
   ]);
   const { business } = detail;
+  const myView = detail.supportViews.find((v) => v.active && v.by?._id === me.id) ?? null;
 
   return (
     <div className="space-y-6">
@@ -91,6 +107,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
           <p>Phone: {business.contact?.phone ?? "—"}</p>
           <p>Email: {business.contact?.email ?? "—"}</p>
           <p>Address: {business.contact?.address ?? "—"}</p>
+          <p>City: {business.contact?.city ?? "—"}</p>
           {business.description ? <p className="text-slate-500">{business.description}</p> : null}
         </Card>
 
@@ -101,6 +118,32 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
           </Card>
         ) : null}
       </div>
+
+      {canViewAs && business.status !== "PENDING" ? (
+        <Card className="space-y-4">
+          <h2 className="font-semibold">Support view</h2>
+          <SupportViewForm
+            businessId={business._id}
+            active={myView}
+            dashboardUrl={detail.dashboardUrl}
+          />
+          {detail.supportViews.length > 0 ? (
+            <Table head={["Started", "By", "Reason", "Pages", "Status"]}>
+              {detail.supportViews.map((v) => (
+                <tr key={v.id}>
+                  <Td className="whitespace-nowrap">{formatDate(v.startedAt)}</Td>
+                  <Td>{v.by?.email ?? "—"}</Td>
+                  <Td>{v.reason}</Td>
+                  <Td>{v.pagesViewed}</Td>
+                  <Td>
+                    <StatusBadge status={v.active ? "ACTIVE" : "ENDED"} />
+                  </Td>
+                </tr>
+              ))}
+            </Table>
+          ) : null}
+        </Card>
+      ) : null}
 
       {billing ? (
         <SubscriptionCard
@@ -198,7 +241,16 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
                 <Td>
                   <StatusBadge status={d.status} />
                 </Td>
-                <Td>{d.tagType}</Td>
+                <Td>
+                  {d.tagType}
+                  <div className="mt-1">
+                    {canAssign && d.status !== "REVOKED" && d.status !== "REPLACED" ? (
+                      <ResetTagForm deviceId={d._id} businessId={business._id} tagUid={d.tagUid} />
+                    ) : d.tagUid ? (
+                      <span className="font-mono text-xs text-slate-500">{d.tagUid}</span>
+                    ) : null}
+                  </div>
+                </Td>
                 <Td>{formatDate(d.lastTapAt)}</Td>
               </tr>
             ))}

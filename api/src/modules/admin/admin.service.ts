@@ -8,8 +8,12 @@ import {
   NfcDevice,
   Redemption,
   Stamp,
+  Subscription,
   User,
 } from "@/models";
+import { isValidObjectId } from "mongoose";
+import { env } from "@/config/env";
+import { listSupportViews } from "@/modules/support/support.service";
 import { listInvitations } from "@/modules/invitations/invitations.service";
 import { applyBusinessStatus } from "@/modules/businesses/businesses.service";
 import { ApiError } from "@/utils/ApiError";
@@ -25,6 +29,9 @@ function escapeRegex(input: string): string {
 export async function listBusinesses(options: {
   status?: string;
   query?: string;
+  /** Plan code, e.g. "GROWTH". */
+  plan?: string;
+  city?: string;
   page: number;
   limit: number;
 }) {
@@ -35,8 +42,16 @@ export async function listBusinesses(options: {
     const pattern = { $regex: escapeRegex(options.query), $options: "i" };
     filter.$or = [{ name: pattern }, { slug: pattern }, { "contact.phone": pattern }];
   }
+  if (options.city) {
+    filter["contact.city"] = { $regex: `^${escapeRegex(options.city.trim())}$`, $options: "i" };
+  }
+  if (options.plan) {
+    filter._id = {
+      $in: await Subscription.distinct("businessId", { "plan.code": options.plan.toUpperCase() }),
+    };
+  }
 
-  const [items, total] = await Promise.all([
+  const [businesses, total] = await Promise.all([
     Business.find(filter)
       .sort({ createdAt: -1 })
       .skip((options.page - 1) * options.limit)
@@ -44,7 +59,29 @@ export async function listBusinesses(options: {
     Business.countDocuments(filter),
   ]);
 
+  const subscriptions = await Subscription.find({
+    businessId: { $in: businesses.map((b) => b._id) },
+  }).select("businessId plan.code plan.name status");
+  const planOf = new Map(subscriptions.map((s) => [String(s.businessId), s]));
+  const items = businesses.map((b) => {
+    const sub = planOf.get(b.id);
+    return {
+      ...b.toObject(),
+      plan: sub ? { code: sub.plan.code, name: sub.plan.name, status: sub.status } : null,
+    };
+  });
+
   return { items, total };
+}
+
+/** Distinct cities on file, for the console's filter list. */
+export async function listBusinessCities(): Promise<string[]> {
+  const cities = (await Business.distinct("contact.city")) as Array<string | null>;
+  const seen = new Map<string, string>();
+  for (const city of cities) {
+    if (city && !seen.has(city.toLowerCase())) seen.set(city.toLowerCase(), city);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
 export async function setBusinessStatus(
@@ -112,8 +149,39 @@ export async function setUserStatus(
   return user;
 }
 
-export async function listAuditLogs(options: { businessId?: string } & CursorRequest) {
-  const filter = options.businessId ? { businessId: options.businessId } : {};
+export interface AuditFilters {
+  businessId?: string;
+  /** An exact action ("device.revoked") or a family ending in a dot ("device."). */
+  action?: string;
+  /** Email of the person who acted. */
+  actor?: string;
+  from?: Date;
+  to?: Date;
+}
+
+export async function listAuditLogs(options: AuditFilters & CursorRequest) {
+  const filter: Record<string, unknown> = {};
+  if (options.businessId) {
+    if (!isValidObjectId(options.businessId)) throw ApiError.badRequest("Invalid business id");
+    filter.businessId = options.businessId;
+  }
+  if (options.action) {
+    filter.action = options.action.endsWith(".")
+      ? { $regex: `^${escapeRegex(options.action)}` }
+      : options.action;
+  }
+  if (options.actor) {
+    const actor = await User.findOne({ email: options.actor.trim().toLowerCase() }).select("_id");
+    // An unknown email matches nothing rather than everything.
+    if (!actor) return { items: [], nextCursor: null };
+    filter.actorUserId = actor._id;
+  }
+  if (options.from || options.to) {
+    filter.createdAt = {
+      ...(options.from ? { $gte: options.from } : {}),
+      ...(options.to ? { $lt: options.to } : {}),
+    };
+  }
 
   const rows = await AuditLog.find(afterCursor(filter, "createdAt", options.cursor))
     .sort(sortFor("createdAt"))
@@ -232,6 +300,7 @@ export async function getBusinessDetail(businessId: string) {
       Stamp.countDocuments({ businessId }),
       Redemption.countDocuments({ businessId }),
     ]);
+  const supportViews = await listSupportViews(businessId);
 
   return {
     business,
@@ -239,6 +308,8 @@ export async function getBusinessDetail(businessId: string) {
     branches,
     devices,
     invitations,
+    supportViews,
+    dashboardUrl: `${env.DASHBOARD_URL}/b/${businessId}`,
     counts: { customers, stamps, redemptions },
   };
 }
@@ -268,4 +339,35 @@ export async function listDevices(options: {
   ]);
 
   return { items, total };
+}
+
+/**
+ * Forgets the chip a stamper is bound to and its last tap counter, after the
+ * tag is re-written or swapped for a new one. The next verified tap binds the
+ * new chip. Until then any chip carrying this stamper's link would be
+ * accepted once, so this is done just before the new tag goes in.
+ */
+export async function resetDeviceTag(actorUserId: string, deviceId: string, reason: string) {
+  if (!isValidObjectId(deviceId)) throw ApiError.notFound("Stamper not found");
+  const device = await NfcDevice.findById(deviceId);
+  if (!device) throw ApiError.notFound("Stamper not found");
+  if (device.status === DEVICE_STATUS.REVOKED || device.status === DEVICE_STATUS.REPLACED) {
+    throw ApiError.badRequest("This stamper is retired. Use a new stamper instead.");
+  }
+
+  const previous = { tagUid: device.tagUid, lastTapCounter: device.lastTapCounter };
+  device.tagUid = null;
+  device.lastTapCounter = null;
+  await device.save();
+
+  await recordAudit({
+    actorUserId,
+    businessId: device.businessId ?? undefined,
+    action: AUDIT_ACTIONS.DEVICE_TAG_RESET,
+    resourceType: "NfcDevice",
+    resourceId: device._id,
+    metadata: { reason, ...previous },
+  });
+
+  return device;
 }

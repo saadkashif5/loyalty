@@ -62,6 +62,7 @@ export async function updateBusinessProfileAction(
           phone: text(formData, "phone"),
           email: text(formData, "email"),
           address: text(formData, "address"),
+          city: text(formData, "city"),
         },
       },
     }),

@@ -9,7 +9,7 @@ The platform owner (Super Admin) controls who gets onboarded and whether they ha
 
 ---
 
-## Where things stand (2026-11-01)
+## Where things stand (2026-11-05)
 
 Development is paused while the platform is reviewed by hand. `[x]` means built, `[~]` means partly
 built (the note says what is missing), `[ ]` means not started.
@@ -17,14 +17,15 @@ built (the note says what is missing), `[ ]` means not started.
 | Phase | Status | What is left |
 |---|---|---|
 | 0 Foundation | Mostly done | Decisions in §10: OTP providers, hosting; CI has not run on a push |
-| 1 Console and onboarding | Mostly done | View as business, label printing, logo upload, WhatsApp delivery of invitations |
+| 1 Console and onboarding | Mostly done | Stamper shipped status and label printing, logo upload, WhatsApp delivery of invitations |
 | 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, Urdu, Web NFC, push. Never tested on a real stamper |
 | 3 Billing | Built, except the card gateway | Gateway, coupons, credit notes and refunds, feature flags |
 | 4 Scale and security | In progress | Threat model, OWASP checklist, staging load test, monitoring, backups, pentest |
 | 5 Pilot and launch | Not started | Needs a hosting decision first |
 
 Automated tests pass. In Chrome: plan switching, receipt upload and approval, password reset on
-both apps, account deletion and data export, and cursor paging. The rest of the UI has not been tested by hand. No staging environment
+both apps, account deletion and data export, cursor paging, console filters, stamper tag reset and
+support view. The rest of the UI has not been tested by hand. No staging environment
 exists.
 
 Where §1, §2 and §3 describe phone sign-in or NTAG 424 DNA, that is the eventual design. What is
@@ -352,18 +353,24 @@ Admin console
 - [x] Overview: tenants by status, active stampers, stamps today, signups — _separate `admin/` app:
       "needs attention" (new leads, pending invitations, suspended businesses, stampers to assign)
       and platform totals. Stamps-today and signup trends need the Phase 4 aggregates_
-- [~] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
+- [x] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
       members, subscription and audit trail; activate, suspend and restore with reason — _search by
       name/slug/phone, status filter, invite form (also pre-filled from a lead), detail page with
       counts, people, branches, stampers, invitations (new link / revoke) and suspend/restore with a
-      reason. Subscription card built; plan and city filters not built_
+      reason. Subscription card built; filter by plan and by city (businesses now have a city,
+      set on invite and in the owner's settings; a lead's city carries over)_
 - [~] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
       (provisioned → shipped → active → revoked/replaced), print labels and QR — _fleet list with
       filters, mint batches (activation codes shown once), assign from the business page.
       Shipped status, labels/QR printing and SUN keys (NTAG 424 DNA) not built_
 - [x] Users: search customers and business users; suspend/restore; force sign-out
-- [~] Audit log viewer with filters — _filter by business only_
-- [ ] Support "view as business" — read-only, time-limited, banner shown, fully audited
+- [x] Audit log viewer with filters — _by kind of action, by who did it (email), by business and by
+      date range (Pakistan days)_
+- [x] Support "view as business" — read-only, time-limited, banner shown, fully audited — _Super
+      Admin, Admin and Support open it from the business page with a reason; for 30 minutes they
+      sign in to the dashboard with their own account and see it as the owner does, under a banner.
+      Every write is refused, every page opened is kept with the view, start and end are in the
+      audit log, and the business page lists recent views_
 - [x] Platform team page — _add by email, change role, remove (signs them out); own role locked_
 
 Business dashboard
@@ -405,7 +412,9 @@ Secure taps (server)
 - [x] `POST /stamps` consumes a tap token inside the stamp transaction; a bare device identifier is
       accepted only for `STATIC` stampers
 - [x] NTAG 21x UID + counter mirror verifier
-- [ ] Admin action to reset a stamper's bound UID and counter (after a tag is re-written or replaced)
+- [x] Admin action to reset a stamper's bound UID and counter (after a tag is re-written or replaced)
+      — _from the business page or the fleet list, with a reason; the old UID and counter go in the
+      audit log and the next verified tap binds the new chip_
 - [x] Portal route `/t/:deviceIdentifier` that forwards the URL's query parameters to `POST /taps`
 - [ ] Before public launch: NTAG 424 DNA (SUN) verifier, per-tag keys derived from a KMS master
       key, key rotation procedure

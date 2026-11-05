@@ -37,7 +37,7 @@ function inviteHref(lead: Lead): string {
     category: lead.category,
     ownerName: lead.contactName,
     ownerPhone: lead.phone,
-    address: lead.city,
+    city: lead.city,
   });
   if (lead.email) params.set("ownerEmail", lead.email);
   return `/businesses/new?${params.toString()}`;

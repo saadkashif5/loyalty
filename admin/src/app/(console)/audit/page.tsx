@@ -7,6 +7,7 @@ import {
   PageHeader,
   CursorPagination,
   SecondaryButton,
+  Select,
   Table,
   Td,
   formatDate,
@@ -23,16 +24,54 @@ interface AuditEntry {
   createdAt: string;
 }
 
+interface Filters {
+  businessId?: string;
+  action?: string;
+  actor?: string;
+  from?: string;
+  to?: string;
+}
+
+const FILTER_KEYS = ["businessId", "action", "actor", "from", "to"] as const;
+
+// A family ends in a dot and matches every action in it.
+const ACTION_FAMILIES: Array<[string, string]> = [
+  ["business.", "Businesses"],
+  ["invitation.", "Owner invitations"],
+  ["lead.", "Leads"],
+  ["user.", "Accounts"],
+  ["platform.", "Platform team"],
+  ["support.", "Support views"],
+  ["member.", "Staff"],
+  ["branch.", "Branches"],
+  ["program.", "Programs"],
+  ["reward.", "Rewards"],
+  ["stamp.", "Stamps"],
+  ["redemption.", "Redemptions"],
+  ["device.", "Stampers"],
+  ["fraud.", "Alerts"],
+  ["plan.", "Plans"],
+  ["subscription.", "Subscriptions"],
+  ["invoice.", "Invoices"],
+  ["payment.", "Payments"],
+  ["payment_proof.", "Receipts"],
+  ["billing.", "Billing settings"],
+];
+
 export default async function AuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ businessId?: string; cursor?: string }>;
+  searchParams: Promise<Filters & { cursor?: string }>;
 }) {
   await requirePermission(PLATFORM_PERMISSIONS.AUDIT_VIEW);
-  const { businessId, cursor } = await searchParams;
+  const { cursor, ...filters } = await searchParams;
   const query = new URLSearchParams({ limit: "50" });
   if (cursor) query.set("cursor", cursor);
-  if (businessId) query.set("businessId", businessId);
+  for (const key of FILTER_KEYS) {
+    const value = filters[key]?.trim();
+    if (value) query.set(key, value);
+  }
+  const { businessId, action, actor, from, to } = filters;
   const { data, meta } = await apiFetchPage<AuditEntry[]>(`/admin/audit-logs?${query.toString()}`);
 
   return (
@@ -42,13 +81,36 @@ export default async function AuditPage({
         description="Every sensitive action on the platform, newest first."
       />
 
-      <form className="mb-4 flex gap-2">
+      <form className="mb-4 flex flex-wrap items-end gap-2">
+        <Select name="action" defaultValue={action ?? ""} className="max-w-[12rem]">
+          <option value="">All actions</option>
+          {ACTION_FAMILIES.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+        <Input
+          name="actor"
+          type="email"
+          defaultValue={actor}
+          placeholder="Done by (email)"
+          className="max-w-[14rem]"
+        />
         <Input
           name="businessId"
           defaultValue={businessId}
-          placeholder="Business ID (optional)"
-          className="max-w-xs font-mono"
+          placeholder="Business ID"
+          className="max-w-[14rem] font-mono"
         />
+        <label className="text-xs text-slate-500">
+          From
+          <Input name="from" type="date" defaultValue={from} className="block" />
+        </label>
+        <label className="text-xs text-slate-500">
+          To
+          <Input name="to" type="date" defaultValue={to} className="block" />
+        </label>
         <SecondaryButton type="submit">Filter</SecondaryButton>
       </form>
 
@@ -79,7 +141,7 @@ export default async function AuditPage({
 
       <CursorPagination
         basePath="/audit"
-        params={{ businessId }}
+        params={{ businessId, action, actor, from, to }}
         nextCursor={meta.nextCursor}
         isFirstPage={!cursor}
       />

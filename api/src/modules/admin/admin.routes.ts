@@ -24,6 +24,7 @@ import {
   updateTeamMemberSchema,
 } from "@taptapsell/validation";
 import * as service from "./admin.service";
+import * as support from "@/modules/support/support.service";
 import * as invitations from "@/modules/invitations/invitations.service";
 import * as leads from "@/modules/leads/leads.service";
 import * as fraud from "@/modules/fraud/fraud.service";
@@ -55,6 +56,17 @@ function pagination(query: Record<string, unknown>) {
   };
 }
 
+const str = (v: unknown, max = 100) => (typeof v === "string" && v ? v.slice(0, max) : undefined);
+
+/** A yyyy-mm-dd day from the query string, or undefined. */
+function day(value: unknown): Date | undefined {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(`${value}T00:00:00+05:00`); // Pakistan time
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+const reasonSchema = z.object({ reason: z.string().trim().min(5).max(300) });
+
 const statusSchema = z.object({
   status: z.enum(["ACTIVE", "SUSPENDED"]),
   reason: z.string().max(500).optional(),
@@ -75,10 +87,23 @@ router.get(
   can(P.BUSINESS_VIEW),
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
-    const status = typeof req.query.status === "string" ? req.query.status : undefined;
-    const query = typeof req.query.q === "string" ? req.query.q.slice(0, 100) : undefined;
-    const { items, total } = await service.listBusinesses({ status, query, page, limit });
+    const { items, total } = await service.listBusinesses({
+      status: str(req.query.status),
+      query: str(req.query.q),
+      plan: str(req.query.plan, 31),
+      city: str(req.query.city, 80),
+      page,
+      limit,
+    });
     sendSuccess(res, items, { meta: { page, limit, total } });
+  }),
+);
+
+router.get(
+  "/businesses/cities",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await service.listBusinessCities());
   }),
 );
 
@@ -99,6 +124,26 @@ router.get(
   can(P.BUSINESS_VIEW),
   asyncHandler(async (req, res) => {
     sendSuccess(res, await service.getBusinessDetail(req.params.businessId));
+  }),
+);
+
+// Read-only support view of a business's dashboard: 30 minutes, with a reason, audited.
+router.post(
+  "/businesses/:businessId/support-view",
+  can(P.BUSINESS_VIEW_AS),
+  asyncHandler(async (req, res) => {
+    const { reason } = reasonSchema.parse(req.body);
+    sendSuccess(res, await support.startSupportView(req.userId!, req.params.businessId, reason), {
+      status: 201,
+    });
+  }),
+);
+
+router.delete(
+  "/businesses/:businessId/support-view",
+  can(P.BUSINESS_VIEW_AS),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await support.endSupportView(req.userId!, req.params.businessId));
   }),
 );
 
@@ -426,7 +471,6 @@ router.get(
   can(P.BUSINESS_VIEW),
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
-    const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
     const { items, total } = await service.listDevices({
       status: str(req.query.status),
       businessId: str(req.query.businessId),
@@ -440,6 +484,16 @@ router.get(
 router.post("/devices", can(P.DEVICE_MANAGE), registerDevicesHandler);
 router.patch("/devices/:deviceId/assign", can(P.DEVICE_MANAGE), assignDeviceHandler);
 
+// After a stamper's tag is re-written or swapped: forget the bound chip and counter.
+router.post(
+  "/devices/:deviceId/reset-tag",
+  can(P.DEVICE_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { reason } = reasonSchema.parse(req.body);
+    sendSuccess(res, await service.resetDeviceTag(req.userId!, req.params.deviceId, reason));
+  }),
+);
+
 // ---- Audit log ----------------------------------------------------------------
 
 router.get(
@@ -447,8 +501,16 @@ router.get(
   can(P.AUDIT_VIEW),
   asyncHandler(async (req, res) => {
     const paging = cursorParams(req.query);
-    const businessId = typeof req.query.businessId === "string" ? req.query.businessId : undefined;
-    const { items, nextCursor } = await service.listAuditLogs({ businessId, ...paging });
+    const to = day(req.query.to);
+    const { items, nextCursor } = await service.listAuditLogs({
+      businessId: str(req.query.businessId, 24),
+      action: str(req.query.action, 60),
+      actor: str(req.query.actor, 254),
+      from: day(req.query.from),
+      // "to" is inclusive: everything before the start of the next day.
+      to: to && new Date(to.getTime() + 86_400_000),
+      ...paging,
+    });
     sendSuccess(res, items, { meta: { limit: paging.limit, nextCursor } });
   }),
 );

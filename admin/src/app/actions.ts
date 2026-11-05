@@ -148,6 +148,7 @@ export async function inviteBusinessAction(
 ): Promise<InviteState> {
   const phone = text(formData, "businessPhone");
   const address = text(formData, "address");
+  const city = text(formData, "city");
 
   try {
     const result = await apiFetch<{ business: { _id: string }; inviteUrl: string }>(
@@ -159,7 +160,7 @@ export async function inviteBusinessAction(
             name: text(formData, "businessName"),
             category: text(formData, "category") ?? "OTHER",
             description: text(formData, "description"),
-            ...(phone || address ? { contact: { phone, address } } : {}),
+            ...(phone || address || city ? { contact: { phone, address, city } } : {}),
           },
           owner: {
             name: text(formData, "ownerName"),
@@ -195,6 +196,33 @@ export async function setBusinessStatusAction(
   } catch (error) {
     return { error: messageFrom(error, "Could not change the status.") };
   }
+}
+
+export interface SupportViewState extends FormState {
+  dashboardUrl?: string;
+}
+
+/** Opens a 30-minute read-only view of the business's dashboard. */
+export async function startSupportViewAction(
+  businessId: string,
+  _prev: SupportViewState,
+  formData: FormData,
+): Promise<SupportViewState> {
+  try {
+    const result = await apiFetch<{ dashboardUrl: string }>(
+      `/admin/businesses/${businessId}/support-view`,
+      { method: "POST", body: { reason: text(formData, "reason") } },
+    );
+    revalidatePath(`/businesses/${businessId}`);
+    return { done: true, dashboardUrl: result.dashboardUrl };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not open the support view.") };
+  }
+}
+
+export async function endSupportViewAction(businessId: string): Promise<void> {
+  await apiFetch(`/admin/businesses/${businessId}/support-view`, { method: "DELETE" });
+  revalidatePath(`/businesses/${businessId}`);
 }
 
 export async function resendInvitationAction(
@@ -244,6 +272,26 @@ export async function assignDeviceAction(
 }
 
 // ---- Stamper fleet ------------------------------------------------------------------
+
+/** Forgets a stamper's bound chip and counter so a replacement tag can bind on its first tap. */
+export async function resetDeviceTagAction(
+  deviceId: string,
+  businessId: string | null,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/devices/${deviceId}/reset-tag`, {
+      method: "POST",
+      body: { reason: text(formData, "reason") },
+    });
+    if (businessId) revalidatePath(`/businesses/${businessId}`);
+    revalidatePath("/devices");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not reset the stamper.") };
+  }
+}
 
 export interface MintState extends FormState {
   devices?: Array<{ deviceIdentifier: string; activationCode: string }>;

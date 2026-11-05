@@ -14,6 +14,7 @@ import {
 
 interface Membership {
   role: string;
+  supportView?: { expiresAt: string };
   business: {
     _id: string;
     name: string;
@@ -91,7 +92,8 @@ export default async function BusinessesPage() {
                     <div>
                       <p className="font-medium">{m.business!.name}</p>
                       <p className="text-sm text-slate-500">
-                        {m.business!.category} · your role: {m.role}
+                        {m.business!.category} ·{" "}
+                        {m.supportView ? "support view (read-only)" : `your role: ${m.role}`}
                       </p>
                     </div>
                     <StatusBadge status={m.business!.status} />

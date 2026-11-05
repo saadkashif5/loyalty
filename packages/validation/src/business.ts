@@ -21,6 +21,7 @@ export const createBusinessSchema = z.object({
       email: z.string().email().optional(),
       phone: z.string().min(7).max(20).optional(),
       address: z.string().max(500).optional(),
+      city: z.string().trim().min(1).max(80).optional(),
     })
     .optional(),
 });

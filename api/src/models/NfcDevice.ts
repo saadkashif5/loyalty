@@ -43,7 +43,7 @@ const nfcDeviceSchema = new Schema(
 nfcDeviceSchema.index({ businessId: 1, branchId: 1 });
 
 invalidatesCache(nfcDeviceSchema, {
-  fields: ["status", "businessId", "branchId", "tagType"],
+  fields: ["status", "businessId", "branchId", "tagType", "tagUid"],
   keys: (doc) => [`device:${String(doc.deviceIdentifier)}`],
 });
 

@@ -15,12 +15,14 @@ import {
   formatDate,
 } from "@/components/ui";
 import { MintForm } from "./MintForm";
+import { ResetTagForm } from "@/components/ResetTagForm";
 
 interface Device {
   _id: string;
   deviceIdentifier: string;
   status: string;
   tagType: string;
+  tagUid: string | null;
   businessId: { _id: string; name: string } | null;
   branchId: { name: string } | null;
   lastTapAt: string | null;
@@ -34,6 +36,7 @@ export default async function DevicesPage({
 }) {
   const { q, status, page } = await searchParams;
   const me = await getMe();
+  const canManage = can(me.platformRole, PLATFORM_PERMISSIONS.DEVICE_MANAGE);
 
   const query = new URLSearchParams({ page: page ?? "1", limit: "50" });
   if (q) query.set("q", q);
@@ -47,7 +50,7 @@ export default async function DevicesPage({
         description="The whole fleet. Assign a stamper from its business's page."
       />
 
-      {can(me.platformRole, PLATFORM_PERMISSIONS.DEVICE_MANAGE) ? <MintForm /> : null}
+      {canManage ? <MintForm /> : null}
 
       <div>
         <form className="mb-4 flex flex-wrap gap-2">
@@ -87,7 +90,18 @@ export default async function DevicesPage({
                   )}
                 </Td>
                 <Td>{d.branchId?.name ?? "—"}</Td>
-                <Td>{d.tagType}</Td>
+                <Td>
+                  {d.tagType}
+                  <div className="mt-1">
+                    {canManage && d.status !== "REVOKED" && d.status !== "REPLACED" ? (
+                      <ResetTagForm
+                        deviceId={d._id}
+                        businessId={d.businessId?._id ?? null}
+                        tagUid={d.tagUid}
+                      />
+                    ) : null}
+                  </div>
+                </Td>
                 <Td>{formatDate(d.lastTapAt)}</Td>
                 <Td>{formatDate(d.createdAt)}</Td>
               </tr>
