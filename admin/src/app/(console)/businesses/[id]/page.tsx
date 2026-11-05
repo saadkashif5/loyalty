@@ -6,6 +6,7 @@ import { Card, PageHeader, Stat, StatusBadge, Table, Td, formatDate } from "@/co
 import { AssignDeviceForm, InvitationActions, StatusForm } from "./BusinessActions";
 import { SubscriptionCard } from "./SubscriptionCard";
 import { SupportViewForm } from "./SupportView";
+import { ShipForm } from "./ShipForm";
 import { ResetTagForm } from "@/components/ResetTagForm";
 import type { BillingSummary, Plan } from "@/lib/billing";
 
@@ -33,6 +34,7 @@ interface Detail {
     status: string;
     tagType: string;
     tagUid: string | null;
+    shipment?: { shippedAt?: string; courier?: string; trackingNumber?: string } | null;
     branchId: { name: string } | null;
     lastTapAt: string | null;
   }>;
@@ -231,15 +233,42 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-semibold">Stampers</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-semibold">Stampers</h2>
+          {detail.devices.length > 0 ? (
+            <Link
+              href={`/devices/labels?ids=${detail.devices.map((d) => d._id).join(",")}&back=/businesses/${business._id}`}
+              className="text-sm text-brand-600 hover:underline"
+            >
+              Print labels
+            </Link>
+          ) : null}
+        </div>
         {detail.devices.length > 0 ? (
-          <Table head={["Stamper", "Branch", "Status", "Tag", "Last tap"]}>
+          <Table head={["Stamper", "Branch", "Status", "Shipping", "Tag", "Last tap"]}>
             {detail.devices.map((d) => (
               <tr key={d._id}>
                 <Td className="font-mono">{d.deviceIdentifier}</Td>
                 <Td>{d.branchId?.name ?? "—"}</Td>
                 <Td>
                   <StatusBadge status={d.status} />
+                </Td>
+                <Td className="text-xs">
+                  {d.shipment?.shippedAt ? (
+                    <>
+                      Shipped {formatDate(d.shipment.shippedAt)}
+                      {d.shipment.courier ? (
+                        <span className="block text-slate-500">
+                          {d.shipment.courier}
+                          {d.shipment.trackingNumber ? ` · ${d.shipment.trackingNumber}` : ""}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : canAssign && d.status === "ASSIGNED" ? (
+                    <ShipForm deviceId={d._id} businessId={business._id} />
+                  ) : (
+                    "—"
+                  )}
                 </Td>
                 <Td>
                   {d.tagType}

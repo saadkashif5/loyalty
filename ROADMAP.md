@@ -9,7 +9,7 @@ The platform owner (Super Admin) controls who gets onboarded and whether they ha
 
 ---
 
-## Where things stand (2026-11-05)
+## Where things stand (2026-11-06)
 
 Development is paused while the platform is reviewed by hand. `[x]` means built, `[~]` means partly
 built (the note says what is missing), `[ ]` means not started.
@@ -17,15 +17,15 @@ built (the note says what is missing), `[ ]` means not started.
 | Phase | Status | What is left |
 |---|---|---|
 | 0 Foundation | Mostly done | Decisions in §10: OTP providers, hosting; CI has not run on a push |
-| 1 Console and onboarding | Mostly done | Stamper shipped status and label printing, logo upload, WhatsApp delivery of invitations |
+| 1 Console and onboarding | Mostly done | Logo upload, WhatsApp delivery of invitations, SUN keys for NTAG 424 DNA |
 | 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, Urdu, Web NFC, push. Never tested on a real stamper |
 | 3 Billing | Built, except the card gateway | Gateway, coupons, credit notes and refunds, feature flags |
 | 4 Scale and security | In progress | Threat model, OWASP checklist, staging load test, monitoring, backups, pentest |
 | 5 Pilot and launch | Not started | Needs a hosting decision first |
 
 Automated tests pass. In Chrome: plan switching, receipt upload and approval, password reset on
-both apps, account deletion and data export, cursor paging, console filters, stamper tag reset and
-support view. The rest of the UI has not been tested by hand. No staging environment
+both apps, account deletion and data export, cursor paging, console filters, stamper tag reset,
+support view, and stamper labels, shipping and QR activation. The rest of the UI has not been tested by hand. No staging environment
 exists.
 
 Where §1, §2 and §3 describe phone sign-in or NTAG 424 DNA, that is the eventual design. What is
@@ -297,10 +297,13 @@ Engineering
       — _[docs/environments.md](docs/environments.md); the API refuses to start in staging or
       production without Redis, without CORS origins, or with identical JWT secrets. Provisioning
       the actual staging and production infrastructure is still to do_
-- [~] Fix known defects: manual stamp (no transaction, no cooldown, no route), duplicate
+- [x] Fix known defects: manual stamp (no transaction, no cooldown, no route), duplicate
       `redemptionCode` index, reward-tier selection, analytics `distinct` over all stamps,
       raw Mongoose documents returned to clients (add response serializers)
-      — _all fixed and tested except response serializers. Also fixed: the compiled API could
+      — _all fixed and tested. Responses: every model drops fields that are never selected by
+      default (password and MFA secrets, activation codes) and fields marked `private` (token and
+      code hashes, file keys) when sent, even if a query selected them; a JSON replacer strips
+      those names from plain objects too; a test sweeps every GET route. Also fixed: the compiled API could
       not start (`node dist/server.js` crashed on the shared TypeScript packages); it is now
       bundled with tsup_
 - [x] Seed scripts: Super Admin, demo business, demo customers — _`seed:admin`, `seed:demo`_
@@ -362,7 +365,10 @@ Admin console
 - [~] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
       (provisioned → shipped → active → revoked/replaced), print labels and QR — _fleet list with
       filters, mint batches (activation codes shown once), assign from the business page.
-      Shipped status, labels/QR printing and SUN keys (NTAG 424 DNA) not built_
+      Printable labels: right after minting with the activation code, and reprints (without it)
+      for a business's stampers; each has a QR code that opens the dashboard's activation form
+      with the stamper ID filled in. "Mark shipped" with courier and tracking number emails the
+      owners, and the owner's Stampers page shows it on its way. SUN keys (NTAG 424 DNA) not built_
 - [x] Users: search customers and business users; suspend/restore; force sign-out
 - [x] Audit log viewer with filters — _by kind of action, by who did it (email), by business and by
       date range (Pakistan days)_

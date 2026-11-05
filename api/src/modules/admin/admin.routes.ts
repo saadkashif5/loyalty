@@ -484,6 +484,29 @@ router.get(
 router.post("/devices", can(P.DEVICE_MANAGE), registerDevicesHandler);
 router.patch("/devices/:deviceId/assign", can(P.DEVICE_MANAGE), assignDeviceHandler);
 
+router.get(
+  "/devices/labels",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    const ids = (str(req.query.ids, 2600) ?? "").split(",");
+    sendSuccess(res, await service.listDeviceLabels(ids));
+  }),
+);
+
+const shipSchema = z.object({
+  courier: z.string().trim().max(60).optional(),
+  trackingNumber: z.string().trim().max(60).optional(),
+});
+
+router.post(
+  "/devices/:deviceId/ship",
+  can(P.DEVICE_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = shipSchema.parse(req.body ?? {});
+    sendSuccess(res, await service.shipDevice(req.userId!, req.params.deviceId, input));
+  }),
+);
+
 // After a stamper's tag is re-written or swapped: forget the bound chip and counter.
 router.post(
   "/devices/:deviceId/reset-tag",

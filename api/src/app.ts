@@ -11,6 +11,7 @@ import { clientIp } from "@/middleware/clientIp";
 import { globalRateLimiter } from "@/middleware/rateLimit";
 import { errorHandler, notFoundHandler } from "@/middleware/errorHandler";
 import apiRoutes from "@/routes";
+import { jsonReplacer } from "@/models/serialize";
 
 export function createApp(): Express {
   const app = express();
@@ -21,6 +22,8 @@ export function createApp(): Express {
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
+  // Strips secret and internal field names from every JSON response (models/serialize.ts).
+  app.set("json replacer", jsonReplacer);
 
   // Not includeSubDomains: other services may share the parent domain.
   app.use(helmet({ strictTransportSecurity: { maxAge: 31_536_000, includeSubDomains: false } }));

@@ -11,7 +11,9 @@ import {
   Subscription,
   User,
 } from "@/models";
-import { isValidObjectId } from "mongoose";
+import { Types, isValidObjectId } from "mongoose";
+import { activateUrl } from "@/modules/devices/devices.service";
+import { emailOwners } from "@/modules/billing/subscriptions.service";
 import { env } from "@/config/env";
 import { listSupportViews } from "@/modules/support/support.service";
 import { listInvitations } from "@/modules/invitations/invitations.service";
@@ -370,4 +372,73 @@ export async function resetDeviceTag(actorUserId: string, deviceId: string, reas
   });
 
   return device;
+}
+
+/**
+ * Marks an assigned stamper as sent to its business and tells the owners it
+ * is on the way, with the courier's tracking number if there is one.
+ */
+export async function shipDevice(
+  actorUserId: string,
+  deviceId: string,
+  input: { courier?: string; trackingNumber?: string },
+) {
+  if (!isValidObjectId(deviceId)) throw ApiError.notFound("Stamper not found");
+  const device = await NfcDevice.findById(deviceId).populate("branchId", "name");
+  if (!device) throw ApiError.notFound("Stamper not found");
+  if (device.status !== DEVICE_STATUS.ASSIGNED || !device.businessId) {
+    throw ApiError.badRequest("Only a stamper assigned to a business and not yet active can ship.");
+  }
+
+  device.shipment = {
+    shippedAt: new Date(),
+    courier: input.courier,
+    trackingNumber: input.trackingNumber,
+    shippedBy: new Types.ObjectId(actorUserId),
+  };
+  await device.save();
+
+  await recordAudit({
+    actorUserId,
+    businessId: device.businessId,
+    action: AUDIT_ACTIONS.DEVICE_SHIPPED,
+    resourceType: "NfcDevice",
+    resourceId: device._id,
+    metadata: { courier: input.courier, trackingNumber: input.trackingNumber },
+  });
+
+  const branch = (device.branchId as unknown as { name?: string } | null)?.name;
+  const tracking = input.trackingNumber
+    ? `It is with ${input.courier ?? "the courier"}, tracking number ${input.trackingNumber}.`
+    : input.courier
+      ? `It is with ${input.courier}.`
+      : "";
+  await emailOwners(
+    String(device.businessId),
+    `Your stamper ${device.deviceIdentifier} is on its way`,
+    [
+      `We have sent stamper ${device.deviceIdentifier}${branch ? ` for ${branch}` : ""}. ${tracking}`.trim(),
+      "",
+      "When it arrives, scan the QR code on its card or open this link, then type the activation code printed on the card:",
+      activateUrl(device.deviceIdentifier),
+    ].join("\n"),
+  );
+
+  return device;
+}
+
+/** What goes on printed stamper labels. Activation codes are not included: they exist only at mint time. */
+export async function listDeviceLabels(ids: string[]) {
+  const valid = ids.filter((id) => isValidObjectId(id)).slice(0, 100);
+  const devices = await NfcDevice.find({ _id: { $in: valid } })
+    .sort({ deviceIdentifier: 1 })
+    .populate("businessId", "name")
+    .populate("branchId", "name");
+  return devices.map((d) => ({
+    _id: d.id,
+    deviceIdentifier: d.deviceIdentifier,
+    business: (d.businessId as unknown as { name?: string } | null)?.name ?? null,
+    branch: (d.branchId as unknown as { name?: string } | null)?.name ?? null,
+    activateUrl: activateUrl(d.deviceIdentifier),
+  }));
 }

@@ -23,6 +23,7 @@ interface Device {
   status: string;
   tagType: string;
   tagUid: string | null;
+  shipment?: { shippedAt?: string } | null;
   businessId: { _id: string; name: string } | null;
   branchId: { name: string } | null;
   lastTapAt: string | null;
@@ -76,6 +77,11 @@ export default async function DevicesPage({
                 <Td className="font-mono">{d.deviceIdentifier}</Td>
                 <Td>
                   <StatusBadge status={d.status} />
+                  {d.status === "ASSIGNED" && d.shipment?.shippedAt ? (
+                    <span className="block text-xs text-slate-500">
+                      shipped {formatDate(d.shipment.shippedAt)}
+                    </span>
+                  ) : null}
                 </Td>
                 <Td>
                   {d.businessId ? (

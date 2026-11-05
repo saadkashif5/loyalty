@@ -5,10 +5,10 @@ import { Schema, model } from "mongoose";
 const refreshTokenSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    tokenHash: { type: String, required: true, unique: true },
+    tokenHash: { type: String, required: true, unique: true, private: true },
     expiresAt: { type: Date, required: true },
     revokedAt: { type: Date, default: null },
-    replacedByTokenHash: { type: String, default: null },
+    replacedByTokenHash: { type: String, default: null, private: true },
     userAgent: { type: String },
     ip: { type: String },
   },

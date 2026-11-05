@@ -26,6 +26,7 @@ export const AUDIT_ACTIONS = {
   DEVICE_REPLACED: "device.replaced",
   DEVICE_PROBLEM_REPORTED: "device.problem_reported",
   DEVICE_TAG_RESET: "device.tag_reset",
+  DEVICE_SHIPPED: "device.shipped",
   SUPPORT_VIEW_STARTED: "support.view_started",
   SUPPORT_VIEW_ENDED: "support.view_ended",
   MEMBER_JOINED: "member.joined",

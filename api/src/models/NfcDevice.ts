@@ -32,6 +32,13 @@ const nfcDeviceSchema = new Schema(
       reportedBy: { type: Schema.Types.ObjectId, ref: "User" },
       at: { type: Date },
     },
+    // Set when the platform team sends an assigned stamper to its business.
+    shipment: {
+      shippedAt: { type: Date },
+      courier: { type: String, maxlength: 60 },
+      trackingNumber: { type: String, maxlength: 60 },
+      shippedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    },
     activationCode: { type: String, select: false }, // one-time code used to activate; never the security credential itself
     replacedByDeviceId: { type: Schema.Types.ObjectId, ref: "NfcDevice", default: null },
     revokedAt: { type: Date, default: null },

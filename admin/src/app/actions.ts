@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { API_BASE_URL, ApiRequestError, apiFetch } from "@/lib/api";
 import { clientHeaders } from "@/lib/forwarding";
+import { labelQr } from "@/lib/qr";
 import { clearSessionCookies, getRefreshToken, setSessionCookies } from "@/lib/session";
 
 export interface FormState {
@@ -293,29 +294,54 @@ export async function resetDeviceTagAction(
   }
 }
 
+/** Records that an assigned stamper has been sent; the owners are emailed. */
+export async function shipDeviceAction(
+  deviceId: string,
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/devices/${deviceId}/ship`, {
+      method: "POST",
+      body: {
+        courier: text(formData, "courier"),
+        trackingNumber: text(formData, "trackingNumber"),
+      },
+    });
+    revalidatePath(`/businesses/${businessId}`);
+    revalidatePath("/devices");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not mark the stamper as shipped.") };
+  }
+}
+
 export interface MintState extends FormState {
-  devices?: Array<{ deviceIdentifier: string; activationCode: string }>;
+  devices?: Array<{ deviceIdentifier: string; activationCode: string; qrDataUrl: string }>;
 }
 
 export async function mintDevicesAction(_prev: MintState, formData: FormData): Promise<MintState> {
   try {
-    const devices = await apiFetch<Array<{ deviceIdentifier: string; activationCode: string }>>(
-      "/admin/devices",
-      {
-        method: "POST",
-        body: {
-          quantity: Number(formData.get("quantity") ?? 1),
-          tagType: text(formData, "tagType") ?? "NTAG21X_MIRROR",
-        },
+    const devices = await apiFetch<
+      Array<{ deviceIdentifier: string; activationCode: string; activateUrl: string }>
+    >("/admin/devices", {
+      method: "POST",
+      body: {
+        quantity: Number(formData.get("quantity") ?? 1),
+        tagType: text(formData, "tagType") ?? "NTAG21X_MIRROR",
       },
-    );
+    });
     revalidatePath("/devices");
     return {
       done: true,
-      devices: devices.map((d) => ({
-        deviceIdentifier: d.deviceIdentifier,
-        activationCode: d.activationCode,
-      })),
+      devices: await Promise.all(
+        devices.map(async (d) => ({
+          deviceIdentifier: d.deviceIdentifier,
+          activationCode: d.activationCode,
+          qrDataUrl: await labelQr(d.activateUrl),
+        })),
+      ),
     };
   } catch (error) {
     return { error: messageFrom(error, "Could not create stampers.") };

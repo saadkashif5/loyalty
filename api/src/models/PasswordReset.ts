@@ -5,7 +5,7 @@ import { Schema, model, type HydratedDocument, type InferSchemaType } from "mong
 const passwordResetSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    tokenHash: { type: String, required: true, unique: true },
+    tokenHash: { type: String, required: true, unique: true, private: true },
     expiresAt: { type: Date, required: true },
     usedAt: { type: Date, default: null },
   },

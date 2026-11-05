@@ -12,6 +12,7 @@ interface Device {
   deviceType: string;
   status: string;
   branchId?: { _id: string; name: string } | null;
+  shipment?: { shippedAt?: string; courier?: string; trackingNumber?: string } | null;
   lastProblem?: { reason?: string; note?: string; at?: string } | null;
 }
 
@@ -26,8 +27,16 @@ interface Branch {
   name: string;
 }
 
-export default async function DevicesPage({ params }: { params: Promise<{ businessId: string }> }) {
+export default async function DevicesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ businessId: string }>;
+  searchParams: Promise<{ device?: string }>;
+}) {
   const { businessId } = await params;
+  // Set when the owner scanned the QR code on a stamper's label.
+  const { device: scanned } = await searchParams;
   const { role } = await getMembership(businessId);
   const canManage = can(role, BUSINESS_PERMISSIONS.DEVICE_MANAGE);
   const [devices, branches] = await Promise.all([
@@ -70,6 +79,16 @@ export default async function DevicesPage({ params }: { params: Promise<{ busine
                     ) : null}
                   </div>
                 </div>
+                {device.status === "ASSIGNED" && device.shipment?.shippedAt ? (
+                  <p className="mt-2 text-sm text-slate-600">
+                    On its way: shipped {formatDate(device.shipment.shippedAt)}
+                    {device.shipment.courier ? ` with ${device.shipment.courier}` : ""}
+                    {device.shipment.trackingNumber
+                      ? `, tracking number ${device.shipment.trackingNumber}`
+                      : ""}
+                    . Activate it when it arrives.
+                  </p>
+                ) : null}
                 {device.lastProblem?.reason ? (
                   <p className="mt-2 text-sm text-amber-700">
                     {PROBLEM_LABEL[device.lastProblem.reason]} {formatDate(device.lastProblem.at)}
@@ -84,7 +103,13 @@ export default async function DevicesPage({ params }: { params: Promise<{ busine
           )}
         </div>
 
-        {canManage ? <ActivateDeviceForm businessId={businessId} branches={branches} /> : null}
+        {canManage ? (
+          <ActivateDeviceForm
+            businessId={businessId}
+            branches={branches}
+            deviceIdentifier={scanned?.slice(0, 32)}
+          />
+        ) : null}
       </div>
     </>
   );

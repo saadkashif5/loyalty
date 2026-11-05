@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AuditLog, NfcDevice, SupportAccess } from "@/models";
+import { testOutbox } from "@/services/email.service";
 import { PASSWORD, api, bearer, enableMfa, platformUser } from "./helpers";
 
 async function onboard(rootToken: string, name: string, email: string, city?: string) {
@@ -187,5 +188,53 @@ describe("stamper tag reset", () => {
       .set(bearer(support.token))
       .send({ reason: "Tag replaced" });
     expect(refused.status).toBe(403);
+  });
+});
+
+describe("stamper shipping and labels", () => {
+  it("ships an assigned stamper, tells the owner, and prints labels", async () => {
+    const root = await platformUser("root@example.com", "SUPER_ADMIN");
+    const { businessId } = await onboard(root.token, "Alpha Cafe", "alpha@example.com");
+    const spare = await NfcDevice.create({ deviceIdentifier: "SPARE-1" });
+    const device = await NfcDevice.create({
+      deviceIdentifier: "SHIP-1",
+      businessId,
+      status: "ASSIGNED",
+    });
+    const ship = (id: string, body: object = {}) =>
+      api().post(`/api/v1/admin/devices/${id}/ship`).set(bearer(root.token)).send(body);
+
+    expect((await ship(spare.id)).status).toBe(400);
+    const shipped = await ship(device.id, { courier: "TCS", trackingNumber: "TCS-778" });
+    expect(shipped.status).toBe(200);
+    expect(shipped.body.data.shipment).toMatchObject({ courier: "TCS", trackingNumber: "TCS-778" });
+
+    const mail = testOutbox().find((m) => m.to === "alpha@example.com" && /SHIP-1/.test(m.subject));
+    expect(mail!.text).toContain("TCS-778");
+    expect(mail!.text).toContain("/activate?device=SHIP-1");
+    expect(await AuditLog.exists({ action: "device.shipped" })).toBeTruthy();
+
+    const labels = await api()
+      .get(`/api/v1/admin/devices/labels?ids=${device.id},${spare.id},nope`)
+      .set(bearer(root.token));
+    expect(labels.body.data.map((l: { deviceIdentifier: string }) => l.deviceIdentifier)).toEqual([
+      "SHIP-1",
+      "SPARE-1",
+    ]);
+    expect(labels.body.data[0]).toMatchObject({ business: "Alpha Cafe" });
+    expect(JSON.stringify(labels.body)).not.toContain("activationCode");
+  });
+
+  it("gives each minted stamper an activation link alongside its code", async () => {
+    const root = await platformUser("root@example.com", "SUPER_ADMIN");
+    const minted = await api()
+      .post("/api/v1/admin/devices")
+      .set(bearer(root.token))
+      .send({ quantity: 2 });
+    expect(minted.status).toBe(201);
+    for (const d of minted.body.data) {
+      expect(d.activationCode).toEqual(expect.any(String));
+      expect(d.activateUrl).toContain(`/activate?device=${d.deviceIdentifier}`);
+    }
   });
 });

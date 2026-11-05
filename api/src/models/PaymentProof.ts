@@ -15,7 +15,7 @@ const paymentProofSchema = new Schema(
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true },
     invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice", required: true },
     uploadedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    fileKey: { type: String, required: true },
+    fileKey: { type: String, required: true, private: true },
     mimeType: { type: String, required: true },
     sizeBytes: { type: Number, required: true },
     method: { type: String, enum: Object.values(PAYMENT_METHOD), required: true },

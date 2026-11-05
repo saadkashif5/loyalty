@@ -1,4 +1,5 @@
 import "./tenantGuard";
+import "./serialize";
 export * from "./User";
 export * from "./RefreshToken";
 export * from "./Business";

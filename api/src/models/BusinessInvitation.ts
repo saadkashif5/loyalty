@@ -15,7 +15,7 @@ const businessInvitationSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 },
     email: { type: String, required: true, trim: true, lowercase: true },
     phone: { type: String, trim: true },
-    tokenHash: { type: String, required: true, unique: true },
+    tokenHash: { type: String, required: true, unique: true, private: true },
     expiresAt: { type: Date, required: true },
     status: {
       type: String,
