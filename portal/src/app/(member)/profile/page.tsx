@@ -1,18 +1,60 @@
 import { apiFetch } from "@/lib/api";
-import { signOutAction } from "@/app/actions";
+import { setWhatsappConsentAction, signOutAction } from "@/app/actions";
 import { Card } from "@/components/ui";
 import { DeleteAccount } from "./DeleteAccount";
+import { ProfileForm } from "./ProfileForm";
+
+interface Consent {
+  businessId: string;
+  business: string;
+  whatsapp: boolean;
+}
 
 export default async function ProfilePage() {
-  const me = await apiFetch<{ name: string; email: string }>("/users/me");
+  const [me, consents] = await Promise.all([
+    apiFetch<{ name: string; email: string; phone?: string | null }>("/users/me"),
+    apiFetch<Consent[]>("/users/me/consents"),
+  ]);
 
   return (
     <>
       <h1 className="text-lg font-semibold">Me</h1>
-      <Card className="space-y-1">
-        <p className="font-semibold">{me.name}</p>
-        <p className="text-sm text-slate-500">{me.email}</p>
-      </Card>
+      <p className="text-sm text-slate-500">{me.email}</p>
+      <ProfileForm name={me.name} phone={me.phone} />
+
+      {consents.length > 0 ? (
+        <Card className="space-y-3">
+          <div>
+            <h2 className="font-semibold">Offers on WhatsApp</h2>
+            <p className="text-xs text-slate-500">
+              Choose which shops may message you. You can change this any time.
+              {me.phone ? "" : " Add your mobile number above first."}
+            </p>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {consents.map((c) => (
+              <li key={c.businessId} className="flex items-center justify-between gap-3 py-2">
+                <span className="text-sm">{c.business}</span>
+                <form action={setWhatsappConsentAction.bind(null, c.businessId, !c.whatsapp)}>
+                  <button
+                    type="submit"
+                    disabled={!c.whatsapp && !me.phone}
+                    aria-pressed={c.whatsapp}
+                    className={`rounded-full px-3 py-1 text-sm font-medium disabled:opacity-40 ${
+                      c.whatsapp
+                        ? "bg-emerald-600 text-white"
+                        : "border border-slate-300 text-slate-700"
+                    }`}
+                  >
+                    {c.whatsapp ? "Allowed" : "Allow"}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       <a
         href="/files/my-data"
         className="block w-full rounded-xl border border-slate-300 bg-white py-3 text-center font-medium text-slate-700"

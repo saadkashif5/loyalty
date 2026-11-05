@@ -32,5 +32,6 @@ const notificationSchema = new Schema(
 );
 
 notificationSchema.index({ userId: 1, status: 1 });
+notificationSchema.index({ userId: 1, createdAt: -1 });
 
 export const Notification = model("Notification", notificationSchema, "notifications");

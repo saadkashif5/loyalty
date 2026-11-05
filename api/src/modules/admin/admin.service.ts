@@ -3,6 +3,7 @@ import {
   AuditLog,
   Branch,
   Business,
+  BusinessNote,
   BusinessMember,
   LoyaltyCard,
   NfcDevice,
@@ -441,4 +442,27 @@ export async function listDeviceLabels(ids: string[]) {
     branch: (d.branchId as unknown as { name?: string } | null)?.name ?? null,
     activateUrl: activateUrl(d.deviceIdentifier),
   }));
+}
+
+export async function listNotes(businessId: string) {
+  if (!isValidObjectId(businessId)) throw ApiError.notFound("Business not found");
+  return BusinessNote.find({ businessId })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .populate("authorId", "name email");
+}
+
+export async function addNote(actorUserId: string, businessId: string, body: string) {
+  if (!isValidObjectId(businessId) || !(await Business.exists({ _id: businessId }))) {
+    throw ApiError.notFound("Business not found");
+  }
+  const note = await BusinessNote.create({ businessId, authorId: actorUserId, body });
+  await recordAudit({
+    actorUserId,
+    businessId,
+    action: AUDIT_ACTIONS.SUPPORT_NOTE_ADDED,
+    resourceType: "BusinessNote",
+    resourceId: note._id,
+  });
+  return note.populate("authorId", "name email");
 }

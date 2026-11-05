@@ -28,4 +28,7 @@ export * from "./Invoice";
 export * from "./OutboxMessage";
 export * from "./PasswordReset";
 export * from "./SupportAccess";
+export * from "./DailyStat";
+export * from "./CustomerConsent";
+export * from "./BusinessNote";
 export * from "./PaymentProof";

@@ -135,6 +135,7 @@ export async function createProgramAction(
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps") ?? 5),
         maxStampsPerDay: Number(formData.get("maxStampsPerDay") ?? 3),
         stampExpiryDays: expiryDays(formData),
+        welcomeStamp: formData.get("welcomeStamp") === "on",
       },
     }),
   );
@@ -157,6 +158,7 @@ export async function updateProgramAction(
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps")),
         maxStampsPerDay: Number(formData.get("maxStampsPerDay")),
         stampExpiryDays: expiryDays(formData),
+        welcomeStamp: formData.get("welcomeStamp") === "on",
         status: text(formData, "status"),
       },
     }),

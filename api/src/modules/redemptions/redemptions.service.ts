@@ -1,4 +1,5 @@
 import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
+import { bumpStat } from "@/services/stats.service";
 import { LoyaltyCard, Redemption, Reward } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
@@ -106,6 +107,8 @@ export async function validateRedemption(params: {
     },
     { new: true },
   ).populate("rewardId", "name description");
+
+  if (redemption) bumpStat(params.businessId, "rewardsRedeemed");
 
   if (!redemption) {
     // Covers unknown code, another business's code, and an already-redeemed code.

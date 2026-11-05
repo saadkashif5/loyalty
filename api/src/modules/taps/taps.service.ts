@@ -5,6 +5,7 @@ import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { cached, invalidate } from "@/services/cache.service";
 import { raiseFlag } from "@/services/fraud.service";
+import { bumpStat } from "@/services/stats.service";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
 import { getPublicBusiness } from "@/modules/businesses/discovery.service";
 import type { RecordTapInput } from "@taptapsell/validation";
@@ -70,9 +71,13 @@ export async function recordTap(input: RecordTapInput) {
   }
 
   const tap = verifier.verify(input.params, { tagUid: device.tagUid });
-  if (!tap) throw invalidTap();
+  if (!tap) {
+    bumpStat(device.businessId, "tapsRejected");
+    throw invalidTap();
+  }
 
   if (device.tagUid && device.tagUid !== tap.tagUid) {
+    bumpStat(device.businessId, "tapsRejected");
     await flagSuspiciousTap(device, "TAG_UID_MISMATCH", tap);
     throw invalidTap();
   }
@@ -89,6 +94,7 @@ export async function recordTap(input: RecordTapInput) {
   );
 
   if (!accepted) {
+    bumpStat(device.businessId, "tapsRejected");
     await flagSuspiciousTap(device, "TAP_REPLAYED", tap);
     throw new ApiError(
       409,
@@ -97,6 +103,7 @@ export async function recordTap(input: RecordTapInput) {
     );
   }
 
+  bumpStat(device.businessId, "tapsVerified");
   // The chip is bound now, so the next tap must see its UID.
   if (!device.tagUid) await invalidate([`device:${input.deviceIdentifier}`]);
 

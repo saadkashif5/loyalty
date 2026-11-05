@@ -6,6 +6,7 @@ import { can, getMe } from "@/lib/me";
 const NAV: Array<{ href: string; label: string; permission?: PlatformPermission }> = [
   { href: "/", label: "Overview", permission: PLATFORM_PERMISSIONS.ANALYTICS_VIEW },
   { href: "/businesses", label: "Businesses", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
+  { href: "/pilot", label: "Pilot", permission: PLATFORM_PERMISSIONS.ANALYTICS_VIEW },
   { href: "/leads", label: "Leads", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
   { href: "/devices", label: "Stampers", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },
   { href: "/alerts", label: "Alerts", permission: PLATFORM_PERMISSIONS.BUSINESS_VIEW },

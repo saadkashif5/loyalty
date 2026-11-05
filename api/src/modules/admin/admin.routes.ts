@@ -25,6 +25,7 @@ import {
 } from "@taptapsell/validation";
 import * as service from "./admin.service";
 import * as support from "@/modules/support/support.service";
+import { getPilotMetrics } from "@/modules/metrics/pilot.service";
 import * as invitations from "@/modules/invitations/invitations.service";
 import * as leads from "@/modules/leads/leads.service";
 import * as fraud from "@/modules/fraud/fraud.service";
@@ -96,6 +97,35 @@ router.get(
       limit,
     });
     sendSuccess(res, items, { meta: { page, limit, total } });
+  }),
+);
+
+router.get(
+  "/metrics/pilot",
+  can(P.ANALYTICS_VIEW),
+  asyncHandler(async (req, res) => {
+    const days = Math.min(365, Math.max(1, Number(req.query.days) || 30));
+    sendSuccess(res, await getPilotMetrics(days));
+  }),
+);
+
+// Support notes: what the team learned about a business. Added, never edited.
+const noteSchema = z.object({ body: z.string().trim().min(1).max(2000) });
+router.get(
+  "/businesses/:businessId/notes",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await service.listNotes(req.params.businessId));
+  }),
+);
+router.post(
+  "/businesses/:businessId/notes",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    const { body } = noteSchema.parse(req.body);
+    sendSuccess(res, await service.addNote(req.userId!, req.params.businessId, body), {
+      status: 201,
+    });
   }),
 );
 

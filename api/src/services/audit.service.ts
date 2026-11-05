@@ -29,6 +29,7 @@ export const AUDIT_ACTIONS = {
   DEVICE_SHIPPED: "device.shipped",
   SUPPORT_VIEW_STARTED: "support.view_started",
   SUPPORT_VIEW_ENDED: "support.view_ended",
+  SUPPORT_NOTE_ADDED: "support.note_added",
   MEMBER_JOINED: "member.joined",
   REWARD_CREATED: "reward.created",
   REWARD_UPDATED: "reward.updated",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { apiFetchPage } from "@/lib/api";
+import { apiFetch, apiFetchPage } from "@/lib/api";
 import {
   Card,
   EmptyState,
@@ -32,9 +32,10 @@ export default async function CustomersPage({
   const query = new URLSearchParams({ limit: "25" });
   if (q) query.set("q", q);
   if (cursor) query.set("cursor", cursor);
-  const { data, meta } = await apiFetchPage<CustomerRow[]>(
-    `/businesses/${businessId}/customers?${query.toString()}`,
-  );
+  const [{ data, meta }, consents] = await Promise.all([
+    apiFetchPage<CustomerRow[]>(`/businesses/${businessId}/customers?${query.toString()}`),
+    apiFetch<{ whatsapp: number }>(`/businesses/${businessId}/customers/consents`),
+  ]);
 
   return (
     <>
@@ -42,6 +43,10 @@ export default async function CustomersPage({
         title="Customers"
         description="Everyone with a loyalty card here. Phone numbers are partly hidden to protect customers' privacy."
       />
+      <p className="mb-4 text-sm text-slate-600">
+        {consents.whatsapp} customer{consents.whatsapp === 1 ? " has" : "s have"} agreed to hear
+        from you on WhatsApp. Customers choose this in their TapTapSell profile.
+      </p>
 
       <form className="mb-4 flex gap-2">
         <Input

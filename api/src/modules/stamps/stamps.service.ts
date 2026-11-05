@@ -19,6 +19,7 @@ import { consumeTap, findUsableTap } from "@/modules/taps/taps.service";
 import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { queueNotification } from "@/services/notification.service";
+import { bumpStat } from "@/services/stats.service";
 import {
   checkDeviceBurst,
   checkNewAccountBurst,
@@ -149,7 +150,8 @@ interface StampContext {
   cardId: Types.ObjectId;
   program: { _id: Types.ObjectId; requiredStamps: number; settings?: unknown };
   businessId: string;
-  branchId: string;
+  /** Absent only for a welcome stamp. */
+  branchId?: string;
   deviceId?: string;
   /** Staff member who added the stamp (counter and manual stamps). */
   issuedBy?: string;
@@ -265,10 +267,14 @@ async function commitStamp(
   const session = await mongoose.startSession();
 
   try {
-    return await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
       if (beforeWrite) await beforeWrite(session);
       return applyStamp(ctx, session);
     });
+    // Counted once committed: a retried transaction must not count twice.
+    bumpStat(ctx.businessId, "stamps");
+    bumpStat(ctx.businessId, "rewardsUnlocked", result.unlockedRewards.length);
+    return result;
   } catch (err) {
     // A retried request carrying the same idempotency key is not an error —
     // it returns the original outcome instead of creating a second stamp (§28).
@@ -323,10 +329,15 @@ async function assertDailyCardCap(cardId: Types.ObjectId, program: { settings?: 
 
 /** All card-level rules every stamp path applies before writing. */
 async function assertCardMayStamp(
-  card: { _id: Types.ObjectId; lastStampAt?: Date | null },
+  card: { _id: Types.ObjectId; lastStampAt?: Date | null; welcomeStampAt?: Date | null },
   program: { settings?: unknown },
 ) {
-  assertStampCooldown(card.lastStampAt, programSettings(program).minMinutesBetweenStamps);
+  // The welcome stamp was not a visit: the customer's first real stamp is never too soon.
+  const lastVisit =
+    card.welcomeStampAt && card.lastStampAt?.getTime() === card.welcomeStampAt.getTime()
+      ? null
+      : card.lastStampAt;
+  assertStampCooldown(lastVisit, programSettings(program).minMinutesBetweenStamps);
   await assertDailyCardCap(card._id, program);
 }
 
@@ -629,4 +640,38 @@ export async function listBusinessStamps(
     .limit(options.limit + 1)
     .populate("customerId", "name email");
   return toPage(rows, options.limit, "createdAt");
+}
+
+/**
+ * The free first stamp some programs give on joining. Idempotent per card,
+ * counted like any stamp (rewards, daily limit, expiry), but not a visit for
+ * the cooldown between stamps.
+ */
+export async function grantWelcomeStamp(
+  customerId: string,
+  card: { _id: Types.ObjectId },
+  program: {
+    _id: Types.ObjectId;
+    requiredStamps: number;
+    businessId: Types.ObjectId;
+    settings?: unknown;
+  },
+): Promise<StampResult | null> {
+  if (!(program.settings as { welcomeStamp?: boolean } | undefined)?.welcomeStamp) return null;
+  const result = await commitStamp({
+    customerId,
+    cardId: card._id,
+    program,
+    businessId: String(program.businessId),
+    source: STAMP_SOURCE.WELCOME,
+    idempotencyKey: `welcome-${String(card._id)}`,
+    metadata: { welcome: true },
+  });
+  if (!result.alreadyRecorded) {
+    await LoyaltyCard.updateOne({ _id: card._id }, [{ $set: { welcomeStampAt: "$lastStampAt" } }]);
+    void notifyStamp(customerId, result).catch((err) =>
+      logger.warn({ err }, "Welcome stamp notification failed"),
+    );
+  }
+  return result;
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import QRCode from "qrcode";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiRequestError, apiFetch, idempotencyKeyFor } from "@/lib/api";
 import {
@@ -197,4 +198,44 @@ export async function deleteAccountAction(
   }
   await clearSessionCookies();
   redirect("/?deleted=1");
+}
+
+// ---- Profile, consent and notifications -------------------------------------------------
+
+export interface ProfileState {
+  error?: string;
+  saved?: boolean;
+}
+
+export async function updateProfileAction(
+  _prev: ProfileState,
+  formData: FormData,
+): Promise<ProfileState> {
+  try {
+    await apiFetch("/users/me", {
+      method: "PATCH",
+      body: {
+        name: String(formData.get("name") ?? "").trim() || undefined,
+        phone: String(formData.get("phone") ?? "").trim(),
+      },
+    });
+  } catch (error) {
+    return { error: messageFrom(error, "Could not save your details.") };
+  }
+  revalidatePath("/profile");
+  return { saved: true };
+}
+
+/** One business's permission to message the customer on WhatsApp. */
+export async function setWhatsappConsentAction(businessId: string, allow: boolean): Promise<void> {
+  await apiFetch(`/users/me/consents/${encodeURIComponent(businessId)}`, {
+    method: "PUT",
+    body: { whatsapp: allow },
+  });
+  revalidatePath("/profile");
+}
+
+export async function markNotificationsReadAction(): Promise<void> {
+  // No revalidation: the list keeps its "new" dots until the next visit.
+  await apiFetch("/notifications/read-all", { method: "POST" }).catch(() => undefined);
 }

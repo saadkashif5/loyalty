@@ -40,6 +40,7 @@ export interface EditableProgram {
     minMinutesBetweenStamps?: number;
     maxStampsPerDay?: number;
     stampExpiryDays?: number | null;
+    welcomeStamp?: boolean;
   };
 }
 
@@ -107,6 +108,14 @@ export function EditProgramForm({
           className="max-w-[10rem]"
         />
       </Field>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="welcomeStamp"
+          defaultChecked={Boolean(program.settings?.welcomeStamp)}
+        />
+        Give a free welcome stamp when someone joins
+      </label>
       <Field label="Terms shown to customers">
         <Textarea name="terms" rows={3} defaultValue={program.terms} />
       </Field>

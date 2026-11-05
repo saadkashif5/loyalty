@@ -55,6 +55,7 @@ import {
   stampsOverTimeHandler,
   nearCompletionHandler,
 } from "@/modules/analytics/analytics.controller";
+import { countWhatsappConsents } from "@/modules/users/profile.service";
 
 // Everything here is scoped to /api/v1/businesses/:businessId and gated by
 // membership + permission. No handler below may read a business id from the
@@ -140,6 +141,13 @@ router.get(
   "/customers",
   requireBusinessRole({ permission: BUSINESS_PERMISSIONS.CUSTOMER_VIEW }),
   listCustomersHandler,
+);
+router.get(
+  "/customers/consents",
+  requireBusinessRole({ permission: BUSINESS_PERMISSIONS.CUSTOMER_VIEW }),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, { whatsapp: await countWhatsappConsents(req.businessId!) });
+  }),
 );
 router.get(
   "/customers/:customerId",

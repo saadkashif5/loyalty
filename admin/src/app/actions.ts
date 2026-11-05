@@ -199,6 +199,23 @@ export async function setBusinessStatusAction(
   }
 }
 
+export async function addNoteAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/notes`, {
+      method: "POST",
+      body: { body: text(formData, "body") },
+    });
+    revalidatePath(`/businesses/${businessId}`);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not save the note.") };
+  }
+}
+
 export interface SupportViewState extends FormState {
   dashboardUrl?: string;
 }

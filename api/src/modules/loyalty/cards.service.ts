@@ -1,5 +1,7 @@
 import { LoyaltyCard, LoyaltyProgram, Redemption, Stamp } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { bumpStat } from "@/services/stats.service";
+import { grantWelcomeStamp } from "@/modules/stamps/stamps.service";
 import { expireCardIfLapsed, stampExpiryDays, stampsExpireAt } from "./stampExpiry";
 import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { LOYALTY_CARD_STATUS, PROGRAM_STATUS, REDEMPTION_STATUS } from "@taptapsell/constants";
@@ -26,11 +28,14 @@ export async function joinProgram(customerId: string, programId: string) {
     await assertWithinPlan(businessId, "customers");
   }
 
-  return LoyaltyCard.create({
+  const card = await LoyaltyCard.create({
     customerId,
     programId,
     businessId: program.businessId,
   });
+  bumpStat(program.businessId, "newCards");
+  await grantWelcomeStamp(customerId, card, program);
+  return (await LoyaltyCard.findById(card._id)) ?? card;
 }
 
 export async function listCustomerCards(customerId: string) {

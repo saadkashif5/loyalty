@@ -64,6 +64,13 @@ export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
 
 export const LEAD_STATUSES = ["NEW", "CONTACTED", "CONVERTED", "REJECTED"] as const;
 
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  /** Empty string removes the number. */
+  phone: z.union([pakistanMobileSchema, z.literal("")]).optional(),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
 export const createLeadSchema = z.object({
   businessName: z.string().min(1).max(160),
   contactName: z.string().min(1).max(120),

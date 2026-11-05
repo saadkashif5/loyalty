@@ -7,6 +7,7 @@ import { AssignDeviceForm, InvitationActions, StatusForm } from "./BusinessActio
 import { SubscriptionCard } from "./SubscriptionCard";
 import { SupportViewForm } from "./SupportView";
 import { ShipForm } from "./ShipForm";
+import { AddNoteForm } from "./Notes";
 import { ResetTagForm } from "@/components/ResetTagForm";
 import type { BillingSummary, Plan } from "@/lib/billing";
 
@@ -71,8 +72,11 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
   const canManageBilling = can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const canViewAs = can(me.platformRole, PLATFORM_PERMISSIONS.BUSINESS_VIEW_AS);
 
-  const [detail, unassigned, billing, plans] = await Promise.all([
+  const [detail, notes, unassigned, billing, plans] = await Promise.all([
     apiFetch<Detail>(`/admin/businesses/${id}`),
+    apiFetch<
+      Array<{ _id: string; body: string; createdAt: string; authorId: { name: string } | null }>
+    >(`/admin/businesses/${id}/notes`),
     canAssign
       ? apiFetchPage<Array<{ _id: string; deviceIdentifier: string }>>(
           "/admin/devices?status=UNASSIGNED&limit=100",
@@ -120,6 +124,23 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
           </Card>
         ) : null}
       </div>
+
+      <Card className="space-y-3">
+        <h2 className="font-semibold">Support notes</h2>
+        <AddNoteForm businessId={business._id} />
+        {notes.length > 0 ? (
+          <ul className="divide-y divide-slate-100 text-sm">
+            {notes.map((n) => (
+              <li key={n._id} className="py-2">
+                <p className="whitespace-pre-wrap">{n.body}</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {n.authorId?.name ?? "Someone"} · {formatDate(n.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </Card>
 
       {canViewAs && business.status !== "PENDING" ? (
         <Card className="space-y-4">

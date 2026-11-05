@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import { Pwa } from "@/components/Pwa";
 
 const TABS = [
   { href: "/cards", label: "Cards", icon: "🎟️" },
@@ -6,14 +8,31 @@ const TABS = [
   { href: "/profile", label: "Me", icon: "👤" },
 ];
 
-export default function MemberLayout({ children }: { children: React.ReactNode }) {
+export default async function MemberLayout({ children }: { children: React.ReactNode }) {
+  const { unread } = await apiFetch<{ unread: number }>("/notifications/summary").catch(() => ({
+    unread: 0,
+  }));
+
   return (
     <div className="mx-auto min-h-screen max-w-md pb-24">
-      <header className="px-5 pb-2 pt-5">
+      <header className="flex items-center justify-between px-5 pb-2 pt-5">
         <Link href="/cards" className="text-xl font-bold text-brand-600">
           TapTapSell
         </Link>
+        <Link
+          href="/notifications"
+          className="relative rounded-full p-2 text-xl"
+          aria-label={unread ? `Notifications, ${unread} new` : "Notifications"}
+        >
+          <span aria-hidden>🔔</span>
+          {unread ? (
+            <span className="absolute right-0 top-0 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-semibold text-white">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          ) : null}
+        </Link>
       </header>
+      <Pwa />
       <main className="space-y-4 px-5">{children}</main>
 
       {/* Thumb-reachable navigation on phones. */}

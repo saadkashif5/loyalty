@@ -21,6 +21,9 @@ const loyaltyCardSchema = new Schema(
     },
     // lastStampAt the expiry warning was sent for; a new stamp re-arms it.
     expiryWarnedFor: { type: Date, default: null },
+    // When the program's welcome stamp was given; the stamp-to-stamp cooldown
+    // does not count it, so the first real visit is never refused.
+    welcomeStampAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

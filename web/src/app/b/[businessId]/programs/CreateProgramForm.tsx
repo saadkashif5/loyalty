@@ -37,6 +37,10 @@ export function CreateProgramForm({ businessId }: { businessId: string }) {
         <Field label="Most stamps per card per day">
           <Input name="maxStampsPerDay" type="number" min={1} max={50} defaultValue={3} />
         </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="welcomeStamp" />
+          Give a free welcome stamp when someone joins
+        </label>
         <Field label="Stamps expire after (days without a visit)">
           <Input name="stampExpiryDays" type="number" min={7} max={730} placeholder="Never" />
         </Field>

@@ -65,6 +65,8 @@ export const STAMP_SOURCE = {
   ADMIN: "ADMIN",
   // Added by staff at the counter after scanning the customer's card code.
   STAFF: "STAFF",
+  // Given on joining, when the program offers a welcome stamp.
+  WELCOME: "WELCOME",
 } as const;
 export type StampSource = (typeof STAMP_SOURCE)[keyof typeof STAMP_SOURCE];
 

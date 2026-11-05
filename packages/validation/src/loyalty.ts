@@ -18,6 +18,8 @@ export const createProgramSchema = z
     maxStampsPerDay: z.number().int().min(1).max(50).default(3),
     /** Stamps on a card expire after this many days without a stamp; null = never. */
     stampExpiryDays: z.number().int().min(7).max(730).nullable().default(null),
+    /** A free first stamp when a customer joins. */
+    welcomeStamp: z.boolean().default(false),
   })
   .refine((data) => !data.endDate || !data.startDate || data.endDate > data.startDate, {
     message: "endDate must be after startDate",
@@ -36,6 +38,7 @@ export const updateProgramSchema = z.object({
   minMinutesBetweenStamps: z.number().int().min(0).max(1440).optional(),
   maxStampsPerDay: z.number().int().min(1).max(50).optional(),
   stampExpiryDays: z.number().int().min(7).max(730).nullable().optional(),
+  welcomeStamp: z.boolean().optional(),
 });
 export type UpdateProgramInput = z.infer<typeof updateProgramSchema>;
 
