@@ -18,7 +18,10 @@ export default async function ProgramsPage({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = await params;
-  const programs = await apiFetch<Program[]>(`/businesses/${businessId}/programs`);
+  const [programs, features] = await Promise.all([
+    apiFetch<Program[]>(`/businesses/${businessId}/programs`),
+    apiFetch<{ welcomeStamp: boolean; stampExpiry: boolean }>(`/businesses/${businessId}/features`),
+  ]);
 
   return (
     <>
@@ -62,7 +65,7 @@ export default async function ProgramsPage({
           )}
         </div>
 
-        <CreateProgramForm businessId={businessId} />
+        <CreateProgramForm businessId={businessId} features={features} />
       </div>
     </>
   );

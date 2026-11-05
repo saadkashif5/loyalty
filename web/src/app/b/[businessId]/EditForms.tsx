@@ -29,6 +29,11 @@ function StatusSelect({ value, activeLabel }: { value: string; activeLabel: stri
   );
 }
 
+export interface ProgramFeatures {
+  welcomeStamp: boolean;
+  stampExpiry: boolean;
+}
+
 export interface EditableProgram {
   _id: string;
   name: string;
@@ -47,9 +52,12 @@ export interface EditableProgram {
 export function EditProgramForm({
   businessId,
   program,
+  features = { welcomeStamp: true, stampExpiry: true },
 }: {
   businessId: string;
   program: EditableProgram;
+  /** Plan features; a switched-off one is shown but cannot be set. */
+  features?: ProgramFeatures;
 }) {
   const [state, formAction] = useActionState(
     updateProgramAction.bind(null, businessId, program._id),
@@ -97,8 +105,11 @@ export function EditProgramForm({
         </Field>
         <StatusSelect value={program.status} activeLabel="Running" />
       </div>
-      <Field label="Stamps expire after this many days without a visit (blank = never)">
+      <Field
+        label={`Stamps expire after this many days without a visit (blank = never)${features.stampExpiry ? "" : " — not in your plan"}`}
+      >
         <Input
+          disabled={!features.stampExpiry}
           name="stampExpiryDays"
           type="number"
           min={7}
@@ -112,9 +123,11 @@ export function EditProgramForm({
         <input
           type="checkbox"
           name="welcomeStamp"
-          defaultChecked={Boolean(program.settings?.welcomeStamp)}
+          disabled={!features.welcomeStamp}
+          defaultChecked={Boolean(program.settings?.welcomeStamp) && features.welcomeStamp}
         />
         Give a free welcome stamp when someone joins
+        {features.welcomeStamp ? "" : " (not in your plan)"}
       </label>
       <Field label="Terms shown to customers">
         <Textarea name="terms" rows={3} defaultValue={program.terms} />

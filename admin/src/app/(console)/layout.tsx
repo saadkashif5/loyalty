@@ -13,6 +13,7 @@ const NAV: Array<{ href: string; label: string; permission?: PlatformPermission 
   { href: "/finance", label: "Finance", permission: PLATFORM_PERMISSIONS.BILLING_VIEW },
   { href: "/payments", label: "Receipts", permission: PLATFORM_PERMISSIONS.BILLING_VIEW },
   { href: "/plans", label: "Plans", permission: PLATFORM_PERMISSIONS.BILLING_VIEW },
+  { href: "/coupons", label: "Coupons", permission: PLATFORM_PERMISSIONS.BILLING_VIEW },
   {
     href: "/billing-settings",
     label: "Billing settings",

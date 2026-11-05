@@ -31,4 +31,7 @@ export * from "./SupportAccess";
 export * from "./DailyStat";
 export * from "./CustomerConsent";
 export * from "./BusinessNote";
+export * from "./Coupon";
+export * from "./CreditNote";
+export * from "./StampRequest";
 export * from "./PaymentProof";

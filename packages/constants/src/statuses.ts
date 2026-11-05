@@ -150,3 +150,21 @@ export type PaymentMethod = (typeof PAYMENT_METHOD)[keyof typeof PAYMENT_METHOD]
 /** Why a business is suspended: billing suspensions lift automatically on payment. */
 export const SUSPENSION_KIND = { ADMIN: "ADMIN", BILLING: "BILLING" } as const;
 export type SuspensionKind = (typeof SUSPENSION_KIND)[keyof typeof SUSPENSION_KIND];
+
+// ---- Plan features (switched on or off per plan) ----------------------------------
+
+export const PLAN_FEATURES = {
+  /** Staff add stamps by scanning the customer's card code. */
+  COUNTER_MODE: "counterMode",
+  /** A free stamp when a customer joins. */
+  WELCOME_STAMP: "welcomeStamp",
+  /** Stamps that expire after a spell without visits. */
+  STAMP_EXPIRY: "stampExpiry",
+} as const;
+export type PlanFeature = (typeof PLAN_FEATURES)[keyof typeof PLAN_FEATURES];
+
+export const PLAN_FEATURE_LABELS: Record<PlanFeature, string> = {
+  counterMode: "Counter mode (stamp by card code)",
+  welcomeStamp: "Welcome stamp on joining",
+  stampExpiry: "Stamp expiry",
+};

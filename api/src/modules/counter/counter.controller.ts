@@ -27,6 +27,9 @@ export const counterStampHandler = asyncHandler(async (req: Request, res: Respon
     code: input.code,
     branchId: input.branchId,
     idempotencyKey: req.idempotencyKey!,
+    actorRole: req.businessRole,
   });
-  sendSuccess(res, result, { status: result.alreadyRecorded ? 200 : 201 });
+  // 202: waiting for a manager to approve.
+  const status = "pendingApproval" in result ? 202 : result.alreadyRecorded ? 200 : 201;
+  sendSuccess(res, result, { status });
 });

@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import { Card, PageHeader, StatusBadge, formatDate } from "@/components/ui";
 import { CancelChangeForm, ChangePlanButton, type PlanChangeQuote } from "./PlanActions";
+import { CouponEntry } from "./CouponEntry";
 import { UploadReceiptForm } from "./UploadReceiptForm";
 
 interface Limits {
@@ -42,7 +43,23 @@ interface Billing {
       billingCycle: "MONTHLY" | "ANNUAL";
       effectiveAt: string;
     } | null;
+    coupon?: {
+      code: string;
+      percentOff: number | null;
+      amountOffPkr: number | null;
+      invoicesLeft: number;
+    } | null;
+    creditBalancePkr?: number;
   } | null;
+  creditNotes?: Array<{
+    _id: string;
+    number: string;
+    invoiceNumber: string;
+    amountPkr: number;
+    reason: string;
+    outcome: "REFUND" | "CREDIT";
+    createdAt: string;
+  }>;
   nextPaymentPkr: number | null;
   planChanges: Record<string, PlanChangeQuote>;
   openInvoice: Invoice | null;
@@ -273,6 +290,47 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
                 {proof.rejectionReason ? (
                   <p className="text-xs text-red-700">Not accepted: {proof.rejectionReason}</p>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
+      <Card className="space-y-3">
+        <h2 className="font-semibold">Promotion code</h2>
+        {billing.subscription?.coupon ? (
+          <p className="text-sm text-emerald-800">
+            {billing.subscription.coupon.code}:{" "}
+            {billing.subscription.coupon.percentOff
+              ? `${billing.subscription.coupon.percentOff}% off`
+              : `${pkr(billing.subscription.coupon.amountOffPkr ?? 0)} off`}{" "}
+            your plan for the next {billing.subscription.coupon.invoicesLeft} invoice
+            {billing.subscription.coupon.invoicesLeft === 1 ? "" : "s"}.
+          </p>
+        ) : (
+          <CouponEntry businessId={businessId} />
+        )}
+        {billing.subscription?.creditBalancePkr ? (
+          <p className="text-sm text-emerald-800">
+            You have {pkr(billing.subscription.creditBalancePkr)} of credit. It comes off your next
+            invoice.
+          </p>
+        ) : null}
+      </Card>
+
+      {billing.creditNotes?.length ? (
+        <Card>
+          <h2 className="mb-2 font-semibold">Credit notes</h2>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {billing.creditNotes.map((n) => (
+              <li key={n._id} className="flex flex-wrap justify-between gap-3 py-2">
+                <span>
+                  <span className="font-mono">{n.number}</span> on {n.invoiceNumber} ·{" "}
+                  {pkr(n.amountPkr)} {n.outcome === "REFUND" ? "refunded" : "credited"}
+                </span>
+                <span className="text-slate-500">
+                  {n.reason} · {formatDate(n.createdAt)}
+                </span>
               </li>
             ))}
           </ul>

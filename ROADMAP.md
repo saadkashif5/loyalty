@@ -19,13 +19,15 @@ built (the note says what is missing), `[ ]` means not started.
 | 0 Foundation | Mostly done | Decisions in §10: OTP providers, hosting; CI has not run on a push |
 | 1 Console and onboarding | Mostly done | Logo upload, WhatsApp delivery of invitations, SUN keys for NTAG 424 DNA |
 | 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, Urdu, Web NFC, push. Never tested on a real stamper |
-| 3 Billing | Built, except the card gateway | Gateway, coupons, credit notes and refunds, feature flags |
+| 3 Billing | Built, except the card gateway | Card gateway and card refunds |
 | 4 Scale and security | In progress | Threat model, OWASP checklist, staging load test, monitoring, backups, pentest |
 | 5 Pilot and launch | Not started | Needs a hosting decision first |
 
 Automated tests pass. In Chrome: plan switching, receipt upload and approval, password reset on
 both apps, account deletion and data export, cursor paging, console filters, stamper tag reset,
-support view, and stamper labels, shipping and QR activation. The rest of the UI has not been tested by hand. No staging environment
+support view, stamper labels, shipping and QR activation, finance reminders, opening hours,
+stamp expiry, the notification centre, offline cards, pilot metrics, coupons, credit notes and
+stamp approvals. The rest of the UI has not been tested by hand. No staging environment
 exists.
 
 Where §1, §2 and §3 describe phone sign-in or NTAG 424 DNA, that is the eventual design. What is
@@ -442,16 +444,22 @@ Customer portal (PWA)
       route handler verifies the tap; signed-out or new customers go to `/join` with the tap held
       for 5 minutes_
 - [x] First tap = join; later taps = stamp — _a signed-in member gets the stamp straight from the
-      tap; a member whose session had ended can collect it after signing in. No welcome stamp yet_
-- [~] Live card update with clear success and error states (cooldown, not enrolled, stamper inactive,
-      business unavailable, offline) — _plain-language results on the card and a tap-error page;
-      offline handling not built_
+      tap; a member whose session had ended can collect it after signing in. A program can give a
+      free welcome stamp on joining; it does not count towards the cooldown before the first visit_
+- [x] Live card update with clear success and error states (cooldown, not enrolled, stamper inactive,
+      business unavailable, offline) — _plain-language results on the card and a tap-error page.
+      Offline: a service worker keeps the last copy of the card and rewards pages, so they open
+      without signal, with an offline notice; the copies are cleared on sign-out_
 - [x] "My cards": every business the customer has joined, each card separate
 - [x] Rewards: unlocked rewards with code and QR to show staff; history
 - [ ] Web NFC listening inside the page on Android Chrome
 - [ ] Urdu and English (RTL support), PKR formatting, Asia/Karachi time
-- [ ] Notification centre; consent for WhatsApp messages per business
-- [ ] Install-to-home-screen prompt
+- [x] Notification centre; consent for WhatsApp messages per business — _bell with unread count,
+      a notifications page that marks them read; the profile takes a mobile number and has an
+      allow switch per business (needs the number; removing it withdraws all). Owners see how many
+      customers agreed. Sending on WhatsApp waits for a provider_
+- [x] Install-to-home-screen prompt — _web app manifest and icons; Android's install prompt, or
+      the Share steps on iPhone; dismissable_
 
 Counter mode for businesses (mobile web)
 - [x] Staff add a stamp by scanning the customer's rotating card code (camera or typed);
@@ -460,7 +468,10 @@ Counter mode for businesses (mobile web)
       code; stamping by search stays with managers and owners. Camera scanning uses the browser's
       barcode reader (Chrome on Android); elsewhere staff type the code_
 - [x] Staff validate redemptions by scanning the reward QR or entering the code
-- [ ] Optional manager approval for stamps above a threshold
+- [x] Optional manager approval for stamps above a threshold — _the owner sets how many counter
+      stamps one staff member may add in a day before the rest wait for a manager; the card code is
+      spent when asked so it cannot be reused; managers and owners approve or turn down on
+      Approvals, all audited; managers and owners are never held_
 
 Programs and rewards
 - [x] Multiple reward tiers per program (fix the current single-threshold logic) — _done in Phase 0_
@@ -495,8 +506,11 @@ revenue and collections at a glance.
 Plans and entitlements
 - [x] `plans` collection, editable by the Super Admin, **versioned** so existing customers can keep
       ("grandfather") their price — _four default plans created on first use; edits bump the version; subscriptions keep a copy of price and limits_
-- [~] Entitlements service: limits on branches, active programs, stampers, staff, customers, plus
-      feature flags; enforced in API middleware and reflected in the UI — _limits on branches, active programs, active stampers, staff and customers enforced in the API; feature flags not built_
+- [x] Entitlements service: limits on branches, active programs, stampers, staff, customers, plus
+      feature flags; enforced in API middleware and reflected in the UI — _limits enforced in the
+      API. Plans switch features on or off (counter mode, welcome stamp, stamp expiry); the
+      switches are copied into each subscription, so businesses already on a plan keep what they
+      signed up for. The dashboard hides or greys out what the plan does not include_
 - [x] Limits never break existing customers: at the customer limit, **new joins** are blocked and the
       owner is prompted to upgrade; existing cards keep working — _a customer new to the business is refused at the limit with a customer-friendly message; existing cards keep working_
 
@@ -521,7 +535,14 @@ Invoices and payments
       signature-verified, idempotent webhooks — _deferred: card gateway comes later_
 - [x] Bank transfer / Raast with proof upload and admin approval — _owner uploads a photo or PDF (5 MB, type checked by content, not name) against the open invoice, even while suspended for non-payment; console Receipts page to open, approve (records the payment) or reject with a reason (owner emailed). Files are kept on local disk (`STORAGE_DIR`) until object storage is set up_
 - [x] Manual payment entry (cash, cheque) by `FINANCE` or `SUPER_ADMIN`, audited — _bank transfer, Raast, cash, cheque; paid time starts after any remaining trial or paid period; owner emailed a receipt_
-- [~] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds — _trial extensions (also revive an expired, never-paid trial); a percentage discount per business on future invoices (100% = complimentary, invoices settle themselves); void an unpaid invoice with a reason. Coupons, credit notes and refunds not built_
+- [x] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds —
+      _trial extensions, a standing percentage discount (100% = complimentary), voiding unpaid
+      invoices. Coupons: percentage or PKR off the plan part of the next N invoices, limited by
+      plan, expiry and number of businesses, once per business; owners enter them on Billing and
+      Finance applies or removes them; an open invoice is reissued with the coupon, and voiding
+      gives the use back. Credit notes (CN-… numbers) on paid invoices, as a recorded refund or as
+      credit taken off the next invoices after tax; never more than the invoice charged. Shown on
+      invoice PDFs, both billing pages and the accountant's CSV. Card refunds wait for the gateway_
 - [x] Hardware charges (stamper fee, replacement fee) as invoice line items — _Finance adds charges from the business page; they join the open or next invoice, are never discounted, and return to pending if that invoice is voided_
 
 Owner billing page
@@ -546,7 +567,10 @@ suspended → reactivated, with correct invoices and notifications at every step
 
 Scalability
 - [~] Outbox + worker service for notifications, aggregates, billing jobs and exports — _`npm run worker` sends queued email with retries and backoff and runs the hourly jobs, under a Redis lock; owner and reward email go through the outbox; sign-in codes stay direct. Aggregates, exports and push not moved yet_
-- [ ] Pre-aggregated analytics; analytics queries on an analytics node
+- [~] Pre-aggregated analytics; analytics queries on an analytics node — _daily counters per
+      business (taps verified and refused, stamps, new cards, rewards unlocked and used) are bumped
+      as things happen and feed the pilot page. The owner dashboard still reads raw stamps; no
+      analytics node_
 - [~] Cursor pagination on all list endpoints — _lists that grow with customers and activity (business customers, stamps, redemptions, platform users, audit log) page by cursor with matching indexes. Businesses, stampers and leads keep page numbers and counts: they grow with tenants, and the overview uses the counts. Public discovery search still uses pages_
 - [~] Redis caches for device resolution, user status and entitlements, with explicit invalidation — _stamper, business status, user status and public business data cached; watched fields clear the entry from a schema hook on every write path, so revocation and suspension apply at once. Entitlements not cached: only read on writes, not on the tap path_
 - [ ] Shard-key plan documented and validated on a staging cluster
@@ -584,9 +608,13 @@ RTO.
 - [ ] Pilot with 10–20 businesses (cafés first) in one city, free or discounted
 - [ ] Stamper operations: provisioning line, packaging, delivery, installation guide
 - [ ] Staff training: short Urdu video and printed counter card
-- [ ] WhatsApp support line and an admin-side support workflow
-- [ ] Pilot metrics: tap success rate, sign-up conversion from first tap, repeat visits, redemption
-      rate, owner satisfaction
+- [~] WhatsApp support line and an admin-side support workflow — _support notes per business
+      (kept as written, audited) and the read-only support view are built; the WhatsApp line is
+      operations_
+- [~] Pilot metrics: tap success rate, sign-up conversion from first tap, repeat visits, redemption
+      rate, owner satisfaction — _console Pilot page for 7/30/90 days, overall and per business:
+      tap success, cards that came back on another day, rewards used, stamps and new cards.
+      Sign-up conversion from first tap and owner satisfaction are not measured_
 - [ ] Public launch: marketing site, pricing page, request-access funnel, sales playbook
 
 **Exit:** pilot targets met (agree the numbers before the pilot starts); billing live with real

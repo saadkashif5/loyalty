@@ -39,6 +39,7 @@ import {
 } from "./invoices.service";
 import { quotePlanChange } from "./planQuote";
 import { day, invoiceEmail } from "./emails";
+import { CreditNote } from "@/models";
 import { getPaymentDetails } from "./settings.service";
 
 export function snapshot(plan: PlanDocument) {
@@ -50,6 +51,7 @@ export function snapshot(plan: PlanDocument) {
     priceMonthlyPkr: plan.priceMonthlyPkr,
     priceAnnualPkr: plan.priceAnnualPkr,
     limits: plan.limits,
+    flags: plan.flags,
   };
 }
 
@@ -307,14 +309,17 @@ function percent(part: number, whole: number): number | null {
 /** Everything the owner's Billing page shows. */
 export async function getBillingSummary(businessId: string) {
   const subscription = await Subscription.findOne({ businessId });
-  const [usage, payments, plans, invoices, proofs, paymentDetails] = await Promise.all([
-    countUsage(businessId),
-    Payment.find({ businessId }).sort({ createdAt: -1 }).limit(24),
-    listPlans({ publicOnly: true }),
-    listInvoices(businessId),
-    PaymentProof.find({ businessId }).sort({ createdAt: -1 }).limit(10),
-    getPaymentDetails(),
-  ]);
+  const [usage, payments, plans, invoices, proofs, paymentDetails, creditNotes] = await Promise.all(
+    [
+      countUsage(businessId),
+      Payment.find({ businessId }).sort({ createdAt: -1 }).limit(24),
+      listPlans({ publicOnly: true }),
+      listInvoices(businessId),
+      PaymentProof.find({ businessId }).sort({ createdAt: -1 }).limit(10),
+      getPaymentDetails(),
+      CreditNote.find({ businessId }).sort({ createdAt: -1 }).limit(24),
+    ],
+  );
   const openInvoice = invoices.find((i) => i.status === "ISSUED") ?? null;
 
   return {
@@ -337,6 +342,7 @@ export async function getBillingSummary(businessId: string) {
     usage,
     payments,
     plans,
+    creditNotes,
   };
 }
 

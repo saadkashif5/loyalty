@@ -9,9 +9,11 @@ export default async function SettingsPage({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = await params;
-  const business = await apiFetch<BusinessProfile & { settings?: { staffDailyStampCap?: number } }>(
-    `/businesses/${businessId}`,
-  );
+  const business = await apiFetch<
+    BusinessProfile & {
+      settings?: { staffDailyStampCap?: number; stampApprovalAfter?: number | null };
+    }
+  >(`/businesses/${businessId}`);
 
   return (
     <div className="max-w-3xl">
@@ -21,7 +23,11 @@ export default async function SettingsPage({
       </Card>
       <Card className="mt-6">
         <h2 className="mb-3 font-semibold">Limits</h2>
-        <StaffCapForm businessId={businessId} cap={business.settings?.staffDailyStampCap ?? 100} />
+        <StaffCapForm
+          businessId={businessId}
+          cap={business.settings?.staffDailyStampCap ?? 100}
+          approvalAfter={business.settings?.stampApprovalAfter}
+        />
       </Card>
     </div>
   );

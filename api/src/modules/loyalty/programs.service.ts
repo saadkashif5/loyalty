@@ -1,6 +1,6 @@
 import { LoyaltyProgram, Reward } from "@/models";
 import { ApiError } from "@/utils/ApiError";
-import { assertWithinPlan } from "@/modules/billing/entitlements.service";
+import { assertFeature, assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { PROGRAM_STATUS } from "@taptapsell/constants";
 import type { CreateProgramInput, UpdateProgramInput } from "@taptapsell/validation";
@@ -11,6 +11,7 @@ export async function createProgram(
   input: CreateProgramInput,
 ) {
   await assertWithinPlan(businessId, "programs");
+  await assertProgramFeatures(businessId, input);
   const { minMinutesBetweenStamps, maxStampsPerDay, stampExpiryDays, welcomeStamp, ...rest } =
     input;
 
@@ -31,6 +32,15 @@ export async function createProgram(
   return program;
 }
 
+/** Welcome stamps and stamp expiry are plan features. */
+async function assertProgramFeatures(
+  businessId: string,
+  input: { welcomeStamp?: boolean; stampExpiryDays?: number | null },
+) {
+  if (input.welcomeStamp) await assertFeature(businessId, "welcomeStamp");
+  if (input.stampExpiryDays) await assertFeature(businessId, "stampExpiry");
+}
+
 export async function listPrograms(businessId: string) {
   return LoyaltyProgram.find({ businessId }).sort({ createdAt: -1 });
 }
@@ -49,6 +59,8 @@ export async function updateProgram(
 ) {
   const { minMinutesBetweenStamps, maxStampsPerDay, stampExpiryDays, welcomeStamp, ...rest } =
     input;
+
+  await assertProgramFeatures(businessId, input);
 
   // Switching a paused program back on counts against the plan like a new one.
   if (input.status === PROGRAM_STATUS.ACTIVE) {

@@ -43,6 +43,7 @@ const NAV: Array<{ href: string; label: string; permissions: BusinessPermission[
   { href: "/devices", label: "Stampers", permissions: [P.DEVICE_MANAGE, P.DEVICE_REPORT_PROBLEM] },
   { href: "/branches", label: "Branches", permissions: [P.BRANCH_MANAGE] },
   { href: "/activity", label: "Activity", permissions: [P.STAMP_VIEW] },
+  { href: "/approvals", label: "Approvals", permissions: [P.STAMP_ISSUE_MANUAL] },
   { href: "/alerts", label: "Alerts", permissions: [P.FRAUD_REVIEW] },
   { href: "/staff", label: "Staff", permissions: [P.MEMBER_VIEW] },
   { href: "/billing", label: "Billing", permissions: [P.BUSINESS_MANAGE_BILLING] },
@@ -59,7 +60,15 @@ export default async function BusinessLayout({
   const { businessId } = await params;
   const { role, business, supportView } = await getMembership(businessId);
   const base = `/b/${businessId}`;
-  const items = NAV.filter((item) => item.permissions.some((p) => can(role, p)));
+  const features = await apiFetch<{ counterMode: boolean }>(
+    `/businesses/${businessId}/features`,
+  ).catch(() => ({ counterMode: true }));
+  const items = NAV.filter(
+    (item) =>
+      item.permissions.some((p) => can(role, p)) &&
+      // Counter mode is a plan feature.
+      (item.href !== "/counter" || features.counterMode),
+  );
   const billing = can(role, P.BUSINESS_MANAGE_BILLING)
     ? await apiFetch<BillingStatus>(`/businesses/${businessId}/billing`).catch(() => null)
     : null;

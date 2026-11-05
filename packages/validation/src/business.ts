@@ -30,6 +30,8 @@ export type CreateBusinessInput = z.infer<typeof createBusinessSchema>;
 export const updateBusinessSchema = createBusinessSchema.partial().extend({
   /** Most counter stamps one staff member can add in a day (Pakistan time). */
   staffDailyStampCap: z.number().int().min(1).max(1000).optional(),
+  /** Counter stamps by a staff member past this many in a day wait for a manager; null = never. */
+  stampApprovalAfter: z.number().int().min(1).max(1000).nullable().optional(),
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
 

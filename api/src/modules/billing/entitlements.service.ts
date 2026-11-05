@@ -12,7 +12,9 @@ import {
   BUSINESS_ROLES,
   DEVICE_STATUS,
   MEMBER_STATUS,
+  PLAN_FEATURE_LABELS,
   PROGRAM_STATUS,
+  type PlanFeature,
 } from "@taptapsell/constants";
 
 export type LimitedResource = "branches" | "programs" | "stampers" | "staff" | "customers";
@@ -81,4 +83,31 @@ export async function assertWithinPlan(
     "PLAN_LIMIT",
     `Your ${subscription?.plan?.name ?? "current"} plan allows ${limit} ${limit === 1 ? singular : plural}. Upgrade your plan to add more.`,
   );
+}
+
+/** Whether the business's plan includes a feature. No subscription, or an older snapshot: yes. */
+export async function hasFeature(businessId: string, feature: PlanFeature): Promise<boolean> {
+  const subscription = await Subscription.findOne({ businessId }).select("plan.flags");
+  const flags = subscription?.plan?.flags as Partial<Record<PlanFeature, boolean>> | undefined;
+  return flags?.[feature] !== false;
+}
+
+export async function assertFeature(businessId: string, feature: PlanFeature): Promise<void> {
+  if (await hasFeature(businessId, feature)) return;
+  throw new ApiError(
+    403,
+    "PLAN_FEATURE",
+    `${PLAN_FEATURE_LABELS[feature]} is not in your plan. Upgrade your plan to use it.`,
+  );
+}
+
+/** Every flag for the business, for the dashboard to show or hide screens. */
+export async function featuresOf(businessId: string): Promise<Record<PlanFeature, boolean>> {
+  const subscription = await Subscription.findOne({ businessId }).select("plan.flags");
+  const flags = (subscription?.plan?.flags ?? {}) as Partial<Record<PlanFeature, boolean>>;
+  return {
+    counterMode: flags.counterMode !== false,
+    welcomeStamp: flags.welcomeStamp !== false,
+    stampExpiry: flags.stampExpiry !== false,
+  };
 }

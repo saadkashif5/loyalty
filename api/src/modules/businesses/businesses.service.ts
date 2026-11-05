@@ -78,9 +78,12 @@ export async function updateBusiness(
   actorUserId: string,
   input: UpdateBusinessInput,
 ) {
-  const { staffDailyStampCap, ...profile } = input;
+  const { staffDailyStampCap, stampApprovalAfter, ...profile } = input;
   const update: Record<string, unknown> = { ...profile };
   if (staffDailyStampCap !== undefined) update["settings.staffDailyStampCap"] = staffDailyStampCap;
+  if (stampApprovalAfter !== undefined) {
+    update["settings.stampApprovalAfter"] = stampApprovalAfter;
+  }
 
   const business = await Business.findByIdAndUpdate(businessId, update, { new: true });
   if (!business) throw ApiError.notFound("Business not found");

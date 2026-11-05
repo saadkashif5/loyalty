@@ -452,6 +452,11 @@ function planBody(formData: FormData) {
       staff: limitValue(formData, "staff"),
       customers: limitValue(formData, "customers"),
     },
+    flags: {
+      counterMode: formData.get("flag-counterMode") === "on",
+      welcomeStamp: formData.get("flag-welcomeStamp") === "on",
+      stampExpiry: formData.get("flag-stampExpiry") === "on",
+    },
     isPublic: formData.get("isPublic") === "on",
   };
 }
@@ -610,6 +615,95 @@ export async function voidInvoiceAction(
     return { done: true };
   } catch (error) {
     return { error: messageFrom(error, "Could not void the invoice.") };
+  }
+}
+
+// ---- Coupons and credit notes ---------------------------------------------------------
+
+export async function createCouponAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const kind = text(formData, "kind");
+  const value = Number(formData.get("value"));
+  const plans = text(formData, "planCodes");
+  try {
+    await apiFetch("/admin/coupons", {
+      method: "POST",
+      body: {
+        code: text(formData, "code"),
+        description: text(formData, "description"),
+        ...(kind === "AMOUNT" ? { amountOffPkr: value } : { percentOff: value }),
+        invoices: Number(formData.get("invoices") ?? 1),
+        planCodes: plans
+          ? plans
+              .split(",")
+              .map((p) => p.trim())
+              .filter(Boolean)
+          : [],
+        maxRedemptions: text(formData, "maxRedemptions")
+          ? Number(formData.get("maxRedemptions"))
+          : undefined,
+        expiresAt: text(formData, "expiresAt"),
+      },
+    });
+    revalidatePath("/coupons");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not create the coupon.") };
+  }
+}
+
+export async function setCouponActiveAction(couponId: string, active: boolean): Promise<void> {
+  await apiFetch(`/admin/coupons/${couponId}`, { method: "PATCH", body: { active } });
+  revalidatePath("/coupons");
+}
+
+export async function applyCouponAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/coupon`, {
+      method: "POST",
+      body: { code: text(formData, "code") },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not apply the coupon.") };
+  }
+}
+
+export async function removeCouponAction(businessId: string): Promise<void> {
+  await apiFetch(`/admin/businesses/${businessId}/coupon`, { method: "DELETE" });
+  refreshBilling(businessId);
+}
+
+export async function creditNoteAction(
+  businessId: string,
+  invoiceId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const outcome = text(formData, "outcome");
+  try {
+    await apiFetch(`/admin/invoices/${invoiceId}/credit-notes`, {
+      method: "POST",
+      body: {
+        amountPkr: Number(formData.get("amountPkr")),
+        reason: text(formData, "reason"),
+        outcome,
+        ...(outcome === "REFUND"
+          ? {
+              refundMethod: text(formData, "refundMethod"),
+              refundReference: text(formData, "refundReference"),
+            }
+          : {}),
+      },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not issue the credit note.") };
   }
 }
 

@@ -32,6 +32,10 @@ import {
 import fraudRoutes from "@/modules/fraud/fraud.routes";
 import { getBillingSummary } from "@/modules/billing/subscriptions.service";
 import { cancelScheduledChange, changeOwnPlan } from "@/modules/billing/planChange.service";
+import { applyCoupon } from "@/modules/billing/coupons.service";
+import { assertFeature, featuresOf } from "@/modules/billing/entitlements.service";
+import type { PlanFeature } from "@taptapsell/constants";
+import { applyCouponSchema } from "@taptapsell/validation";
 import { getInvoice } from "@/modules/billing/invoices.service";
 import { renderInvoicePdf } from "@/modules/billing/invoicePdf.service";
 import { MAX_PROOF_BYTES, uploadProof } from "@/modules/billing/proofs.service";
@@ -56,6 +60,13 @@ import {
   nearCompletionHandler,
 } from "@/modules/analytics/analytics.controller";
 import { countWhatsappConsents } from "@/modules/users/profile.service";
+import { BUSINESS_ROLES } from "@taptapsell/constants";
+import { z } from "zod";
+import {
+  approveStampRequest,
+  listStampRequests,
+  rejectStampRequest,
+} from "@/modules/stamps/stamps.service";
 
 // Everything here is scoped to /api/v1/businesses/:businessId and gated by
 // membership + permission. No handler below may read a business id from the
@@ -155,15 +166,68 @@ router.get(
   getCustomerHandler,
 );
 
+// What the business's plan switches on, so the dashboard shows only what works.
+router.get(
+  "/features",
+  requireBusinessRole(),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await featuresOf(req.businessId!));
+  }),
+);
+
+/** Refuses a route whose feature the plan does not include. */
+function requireFeature(feature: PlanFeature) {
+  return asyncHandler(async (req, _res, next) => {
+    await assertFeature(req.businessId!, feature);
+    next();
+  });
+}
+
+// Counter stamps waiting for a manager (when the business has an approval threshold).
+router.get(
+  "/stamp-requests",
+  requireBusinessRole({ minRole: BUSINESS_ROLES.MANAGER }),
+  asyncHandler(async (req, res) => {
+    const status = typeof req.query.status === "string" ? req.query.status : "PENDING";
+    sendSuccess(res, await listStampRequests(req.businessId!, status));
+  }),
+);
+router.post(
+  "/stamp-requests/:requestId/approve",
+  requireBusinessRole({ minRole: BUSINESS_ROLES.MANAGER }),
+  asyncHandler(async (req, res) => {
+    sendSuccess(
+      res,
+      await approveStampRequest(req.businessId!, req.params.requestId, req.userId!),
+      { status: 201 },
+    );
+  }),
+);
+router.post(
+  "/stamp-requests/:requestId/reject",
+  requireBusinessRole({ minRole: BUSINESS_ROLES.MANAGER }),
+  asyncHandler(async (req, res) => {
+    const { reason } = z
+      .object({ reason: z.string().trim().max(300).optional() })
+      .parse(req.body ?? {});
+    sendSuccess(
+      res,
+      await rejectStampRequest(req.businessId!, req.params.requestId, req.userId!, reason),
+    );
+  }),
+);
+
 // Counter mode: stamp a customer who shows their card's code.
 router.post(
   "/counter/lookup",
   requireBusinessRole({ permission: BUSINESS_PERMISSIONS.STAMP_ISSUE_COUNTER }),
+  requireFeature("counterMode"),
   lookupCounterCodeHandler,
 );
 router.post(
   "/counter/stamp",
   requireBusinessRole({ permission: BUSINESS_PERMISSIONS.STAMP_ISSUE_COUNTER }),
+  requireFeature("counterMode"),
   requireIdempotencyKey,
   counterStampHandler,
 );
@@ -187,6 +251,19 @@ router.post(
   asyncHandler(async (req, res) => {
     const input = changeSubscriptionPlanSchema.parse(req.body);
     sendSuccess(res, await changeOwnPlan(req.userId!, req.businessId!, input));
+  }),
+);
+
+// Owners enter a promotion code on Billing.
+router.post(
+  "/billing/coupon",
+  requireBusinessRole({
+    permission: BUSINESS_PERMISSIONS.BUSINESS_MANAGE_BILLING,
+    billingSuspension: "pay",
+  }),
+  asyncHandler(async (req, res) => {
+    const { code } = applyCouponSchema.parse(req.body);
+    sendSuccess(res, await applyCoupon(req.userId!, req.businessId!, code));
   }),
 );
 

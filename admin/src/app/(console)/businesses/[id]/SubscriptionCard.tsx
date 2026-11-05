@@ -1,4 +1,7 @@
 import { LIMIT_LABELS, type BillingSummary, type Plan } from "@/lib/billing";
+import { ApplyCouponForm, CreditNoteForm } from "./CouponForms";
+import { removeCouponAction } from "@/app/actions";
+import { couponLabel } from "@/lib/billing";
 import { Card, SecondaryButton, StatusBadge, formatDate, formatPkr } from "@/components/ui";
 import {
   AddChargeForm,
@@ -64,6 +67,25 @@ export function SubscriptionCard({
         </p>
       ) : null}
 
+      {sub.coupon || sub.creditBalancePkr ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          {sub.coupon ? (
+            <span>
+              Coupon <strong>{sub.coupon.code}</strong>: {couponLabel(sub.coupon)}, for{" "}
+              {sub.coupon.invoicesLeft} more invoice{sub.coupon.invoicesLeft === 1 ? "" : "s"}
+            </span>
+          ) : null}
+          {sub.coupon && canManage ? (
+            <form action={removeCouponAction.bind(null, businessId)}>
+              <SecondaryButton type="submit">Remove coupon</SecondaryButton>
+            </form>
+          ) : null}
+          {sub.creditBalancePkr ? (
+            <span>Credit for next invoices: {formatPkr(sub.creditBalancePkr)}</span>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid gap-2 text-sm sm:grid-cols-5">
         {LIMIT_LABELS.map(([key, label]) => (
           <div key={key} className="rounded-md bg-slate-50 px-3 py-2">
@@ -86,6 +108,7 @@ export function SubscriptionCard({
             />
             {!sub.currentPeriodEnd ? <ExtendTrialForm businessId={businessId} /> : null}
             <DiscountForm businessId={businessId} current={sub.discountPercent ?? 0} />
+            <ApplyCouponForm businessId={businessId} />
           </div>
           <div>
             <h3 className="mb-2 text-sm font-semibold">
@@ -157,7 +180,13 @@ export function SubscriptionCard({
                     {formatPkr(inv.totalPkr)} · due {formatDate(inv.dueDate)}
                   </span>
                 </span>
-                {canManage && inv.status === "ISSUED" ? (
+                {canManage && inv.status === "PAID" && inv.totalPkr > 0 ? (
+                  <CreditNoteForm
+                    businessId={businessId}
+                    invoiceId={inv._id}
+                    maxPkr={inv.totalPkr}
+                  />
+                ) : canManage && inv.status === "ISSUED" ? (
                   <VoidInvoiceForm businessId={businessId} invoiceId={inv._id} />
                 ) : inv.voidReason ? (
                   <span className="text-xs text-slate-500">Void: {inv.voidReason}</span>
@@ -167,6 +196,26 @@ export function SubscriptionCard({
           </ul>
         )}
       </div>
+
+      {billing.creditNotes?.length ? (
+        <div className="border-t border-slate-100 pt-4">
+          <h3 className="mb-2 text-sm font-semibold">Credit notes</h3>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {billing.creditNotes.map((n) => (
+              <li key={n._id} className="flex flex-wrap justify-between gap-3 py-2">
+                <span>
+                  <span className="font-mono">{n.number}</span> on {n.invoiceNumber} ·{" "}
+                  {formatPkr(n.amountPkr)} ·{" "}
+                  {n.outcome === "REFUND" ? "refunded" : "kept as credit"}
+                </span>
+                <span className="text-slate-500">
+                  {n.reason} · {formatDate(n.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {billing.payments.length > 0 ? (
         <div className="border-t border-slate-100 pt-4">

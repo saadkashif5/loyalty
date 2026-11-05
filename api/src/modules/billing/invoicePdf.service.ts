@@ -99,7 +99,11 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
   total("Subtotal", pkr(invoice.subtotalPkr));
   if (invoice.discountPkr)
     total(`Discount (${invoice.discountPercent}%)`, `- ${pkr(invoice.discountPkr)}`);
+  if (invoice.coupon?.amountPkr)
+    total(`Coupon ${invoice.coupon.code}`, `- ${pkr(invoice.coupon.amountPkr)}`);
   total(`${invoice.taxLabel} (${invoice.taxRatePercent}%)`, pkr(invoice.taxPkr));
+  if (invoice.creditAppliedPkr)
+    total("Credit from earlier credit notes", `- ${pkr(invoice.creditAppliedPkr)}`);
   doc.moveTo(330, y).lineTo(right, y).strokeColor("#e2e8f0").stroke();
   y += 6;
   total("Total", pkr(invoice.totalPkr), true);

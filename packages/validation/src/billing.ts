@@ -24,6 +24,14 @@ export const createPlanSchema = z.object({
   priceAnnualPkr: z.number().int().min(0).max(100_000_000),
   limits: planLimitsSchema,
   features: z.array(z.string().max(80)).max(20).default([]),
+  flags: z
+    .object({
+      counterMode: z.boolean(),
+      welcomeStamp: z.boolean(),
+      stampExpiry: z.boolean(),
+    })
+    .partial()
+    .optional(),
   isPublic: z.boolean().default(true),
   sortOrder: z.number().int().min(0).max(1000).default(100),
 });
@@ -133,3 +141,42 @@ export const rejectProofSchema = z.object({
   reason: z.string().trim().min(3).max(500),
 });
 export type RejectProofInput = z.infer<typeof rejectProofSchema>;
+
+// ---- Coupons and credit notes ----------------------------------------------
+
+export const createCouponSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9-]{3,24}$/, "Use 3–24 letters, numbers or dashes"),
+    description: z.string().trim().max(200).optional(),
+    percentOff: z.number().int().min(1).max(100).optional(),
+    amountOffPkr: z.number().int().min(1).max(10_000_000).optional(),
+    invoices: z.number().int().min(1).max(24).default(1),
+    planCodes: z.array(z.string().trim().toUpperCase()).max(20).default([]),
+    maxRedemptions: z.number().int().min(1).optional(),
+    expiresAt: z.coerce.date().optional(),
+  })
+  .refine((c) => Boolean(c.percentOff) !== Boolean(c.amountOffPkr), {
+    message: "Give either a percentage or an amount off, not both",
+    path: ["percentOff"],
+  });
+export type CreateCouponInput = z.infer<typeof createCouponSchema>;
+
+export const applyCouponSchema = z.object({ code: z.string().trim().toUpperCase().min(3).max(24) });
+
+export const creditNoteSchema = z
+  .object({
+    amountPkr: z.number().int().min(1),
+    reason: z.string().trim().min(5).max(500),
+    outcome: z.enum(["REFUND", "CREDIT"]),
+    refundMethod: z.enum(["BANK_TRANSFER", "RAAST", "CASH", "CHEQUE"]).optional(),
+    refundReference: z.string().trim().max(120).optional(),
+  })
+  .refine((c) => c.outcome !== "REFUND" || Boolean(c.refundMethod), {
+    message: "Say how the money was sent back",
+    path: ["refundMethod"],
+  });
+export type CreditNoteInput = z.infer<typeof creditNoteSchema>;

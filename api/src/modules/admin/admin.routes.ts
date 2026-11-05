@@ -8,6 +8,9 @@ import { sendSuccess } from "@/utils/response";
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
 import {
   addChargeSchema,
+  applyCouponSchema,
+  createCouponSchema,
+  creditNoteSchema,
   addTeamMemberSchema,
   billingSettingsSchema,
   changeSubscriptionPlanSchema,
@@ -26,6 +29,8 @@ import {
 import * as service from "./admin.service";
 import * as support from "@/modules/support/support.service";
 import { getPilotMetrics } from "@/modules/metrics/pilot.service";
+import * as coupons from "@/modules/billing/coupons.service";
+import * as creditNotes from "@/modules/billing/creditNotes.service";
 import * as invitations from "@/modules/invitations/invitations.service";
 import * as leads from "@/modules/leads/leads.service";
 import * as fraud from "@/modules/fraud/fraud.service";
@@ -387,6 +392,66 @@ router.get(
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${invoice.number}.pdf"`);
     res.send(pdf);
+  }),
+);
+
+// ---- Coupons and credit notes -------------------------------------------------
+
+router.get(
+  "/coupons",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await coupons.listCoupons());
+  }),
+);
+
+router.post(
+  "/coupons",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = createCouponSchema.parse(req.body);
+    sendSuccess(res, await coupons.createCoupon(req.userId!, input), { status: 201 });
+  }),
+);
+
+router.patch(
+  "/coupons/:couponId",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { active } = z.object({ active: z.boolean() }).parse(req.body);
+    sendSuccess(res, await coupons.setCouponActive(req.userId!, req.params.couponId, active));
+  }),
+);
+
+// The finance team may replace a coupon still in use; owners may not.
+router.post(
+  "/businesses/:businessId/coupon",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { code } = applyCouponSchema.parse(req.body);
+    sendSuccess(
+      res,
+      await coupons.applyCoupon(req.userId!, req.params.businessId, code, { replace: true }),
+    );
+  }),
+);
+
+router.delete(
+  "/businesses/:businessId/coupon",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await coupons.removeCoupon(req.userId!, req.params.businessId));
+  }),
+);
+
+router.post(
+  "/invoices/:invoiceId/credit-notes",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = creditNoteSchema.parse(req.body);
+    sendSuccess(res, await creditNotes.issueCreditNote(req.userId!, req.params.invoiceId, input), {
+      status: 201,
+    });
   }),
 );
 

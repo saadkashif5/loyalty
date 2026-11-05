@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { createProgramAction } from "@/app/actions/business";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
+import type { ProgramFeatures } from "../EditForms";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -14,7 +15,13 @@ function SubmitButton() {
   );
 }
 
-export function CreateProgramForm({ businessId }: { businessId: string }) {
+export function CreateProgramForm({
+  businessId,
+  features = { welcomeStamp: true, stampExpiry: true },
+}: {
+  businessId: string;
+  features?: ProgramFeatures;
+}) {
   const action = createProgramAction.bind(null, businessId);
   const [state, formAction] = useActionState(action, {});
 
@@ -38,11 +45,21 @@ export function CreateProgramForm({ businessId }: { businessId: string }) {
           <Input name="maxStampsPerDay" type="number" min={1} max={50} defaultValue={3} />
         </Field>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="welcomeStamp" />
+          <input type="checkbox" name="welcomeStamp" disabled={!features.welcomeStamp} />
           Give a free welcome stamp when someone joins
+          {features.welcomeStamp ? "" : " (not in your plan)"}
         </label>
-        <Field label="Stamps expire after (days without a visit)">
-          <Input name="stampExpiryDays" type="number" min={7} max={730} placeholder="Never" />
+        <Field
+          label={`Stamps expire after (days without a visit)${features.stampExpiry ? "" : " — not in your plan"}`}
+        >
+          <Input
+            disabled={!features.stampExpiry}
+            name="stampExpiryDays"
+            type="number"
+            min={7}
+            max={730}
+            placeholder="Never"
+          />
         </Field>
         <p className="text-xs text-slate-500">
           The cooldown and daily limit stop one purchase turning into several stamps. Customers are

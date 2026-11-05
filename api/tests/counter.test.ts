@@ -179,6 +179,67 @@ describe("counter mode, limits and alerts", () => {
     expect(alerts.body.data.map((f: { type: string }) => f.type)).toContain("STAFF_DAILY_CAP");
   });
 
+  it("holds staff stamps past the approval threshold for a manager", async () => {
+    await api()
+      .patch(`/api/v1/businesses/${fx.businessId}`)
+      .set(bearer(fx.owner))
+      .send({ stampApprovalAfter: 1 });
+
+    const first = await customerWithCard("one@example.com");
+    const second = await customerWithCard("two@example.com");
+    const third = await customerWithCard("three@example.com");
+    expect((await counterStamp(fx.staff, await codeFor(first), "approve-1")).status).toBe(201);
+
+    // The second one of the day waits; its code is spent meanwhile.
+    const secondCode = await codeFor(second);
+    const held = await counterStamp(fx.staff, secondCode, "approve-2");
+    expect(held.status).toBe(202);
+    expect(held.body.data.pendingApproval).toBe(true);
+    expect((await counterStamp(fx.staff, secondCode, "approve-2")).body.data.requestId).toBe(
+      held.body.data.requestId,
+    );
+    expect((await counterStamp(fx.staff, secondCode, "approve-2b")).body.error.code).toBe(
+      "COUNTER_CODE_INVALID",
+    );
+    expect(await Stamp.countDocuments()).toBe(1);
+
+    // Staff cannot see or decide the queue; the owner can.
+    expect((await api().get(path("/stamp-requests")).set(bearer(fx.staff))).status).toBe(403);
+    const queue = await api().get(path("/stamp-requests")).set(bearer(fx.owner));
+    expect(queue.body.data).toHaveLength(1);
+    expect(queue.body.data[0].requestedBy.name).toBe("Cashier");
+
+    const approved = await api()
+      .post(path(`/stamp-requests/${held.body.data.requestId}/approve`))
+      .set(bearer(fx.owner));
+    expect(approved.status).toBe(201);
+    expect(approved.body.data.card.stampCount).toBe(1);
+    const stamp = await Stamp.findById(approved.body.data.stampId);
+    expect(String(stamp!.issuedBy)).toBe(
+      String((await BusinessMember.findOne({ role: "STAFF" }))!.userId),
+    );
+    expect(
+      (
+        await api()
+          .post(path(`/stamp-requests/${held.body.data.requestId}/approve`))
+          .set(bearer(fx.owner))
+      ).status,
+    ).toBe(404);
+
+    // Turned down: no stamp.
+    const another = await counterStamp(fx.staff, await codeFor(third), "approve-3");
+    const rejected = await api()
+      .post(path(`/stamp-requests/${another.body.data.requestId}/reject`))
+      .set(bearer(fx.owner))
+      .send({ reason: "Customer was not there" });
+    expect(rejected.body.data.status).toBe("REJECTED");
+    expect(await Stamp.countDocuments()).toBe(2);
+
+    // Owners and managers are never held.
+    const own = await customerWithCard("four@example.com");
+    expect((await counterStamp(fx.owner, await codeFor(own), "approve-4")).status).toBe(201);
+  });
+
   it("raises one alert for repeated replays, which the owner can review and staff cannot see", async () => {
     await NfcDevice.create({
       deviceIdentifier: "PESH01",
