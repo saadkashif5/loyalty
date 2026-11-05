@@ -63,6 +63,7 @@ export const AUDIT_ACTIONS = {
   SUBSCRIPTION_CHANGE_CANCELLED: "subscription.change_cancelled",
   SUBSCRIPTION_CHARGE_ADDED: "subscription.charge_added",
   SUBSCRIPTION_CHARGE_REMOVED: "subscription.charge_removed",
+  SUBSCRIPTION_REMINDER_SENT: "subscription.reminder_sent",
   PAYMENT_PROOF_UPLOADED: "payment_proof.uploaded",
   PAYMENT_PROOF_APPROVED: "payment_proof.approved",
   PAYMENT_PROOF_REJECTED: "payment_proof.rejected",

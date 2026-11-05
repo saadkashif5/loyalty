@@ -38,6 +38,7 @@ import {
   settleInvoice,
 } from "./invoices.service";
 import { quotePlanChange } from "./planQuote";
+import { day, invoiceEmail } from "./emails";
 import { getPaymentDetails } from "./settings.service";
 
 export function snapshot(plan: PlanDocument) {
@@ -355,7 +356,9 @@ export async function getFinanceOverview() {
     Subscription.aggregate<{ _id: string; count: number }>([
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
-    Subscription.find({ status: SUBSCRIPTION_STATUS.ACTIVE }).select("plan billingCycle"),
+    Subscription.find({ status: SUBSCRIPTION_STATUS.ACTIVE }).select(
+      "plan billingCycle businessId",
+    ),
     Subscription.find({
       status: { $in: [SUBSCRIPTION_STATUS.PAST_DUE, SUBSCRIPTION_STATUS.SUSPENDED] },
     })
@@ -389,6 +392,23 @@ export async function getFinanceOverview() {
     row.mrrPkr += monthlyValue(s.plan, s.billingCycle);
     mrrByPlan.set(s.plan.code, row);
   }
+  // Revenue by the city on each business's profile; "Not set" until someone fills it in.
+  const cityOf = new Map(
+    (
+      await Business.find({ _id: { $in: active.map((s) => s.businessId) } }).select("contact.city")
+    ).map((b) => [b.id as string, b.contact?.city?.trim() || null]),
+  );
+  const cities = new Map<string, { city: string; businesses: number; mrrPkr: number }>();
+  for (const s of active) {
+    const city = cityOf.get(String(s.businessId)) ?? null;
+    const key = city?.toLowerCase() ?? "";
+    const row = cities.get(key) ?? { city: city ?? "Not set", businesses: 0, mrrPkr: 0 };
+    row.businesses += 1;
+    row.mrrPkr += monthlyValue(s.plan, s.billingCycle);
+    cities.set(key, row);
+  }
+  const mrrByCity = [...cities.values()].sort((a, b) => b.mrrPkr - a.mrrPkr);
+
   const paying =
     (counts.ACTIVE ?? 0) + (counts.PAST_DUE ?? 0) + (counts.SUSPENDED ?? 0) + cancelledRecently;
 
@@ -407,8 +427,10 @@ export async function getFinanceOverview() {
     trialConversionPercent: percent(trialsConverted, trialsEnded),
     trialsEnded,
     collectedThisMonthPkr: collectedThisMonth[0]?.total ?? 0,
+    mrrByCity,
     overdue: overdue.map((s) => ({
       subscriptionId: s._id,
+      lastManualReminderAt: s.lastManualReminderAt,
       business: s.businessId,
       status: s.status,
       plan: s.plan.name,
@@ -419,4 +441,70 @@ export async function getFinanceOverview() {
     })),
     recentPayments,
   };
+}
+
+/** How often the finance team can remind one business by hand. */
+const MANUAL_REMINDER_GAP_MS = DAY_MS;
+
+/**
+ * Emails the owners of an overdue business about what they owe, on top of
+ * the automatic reminders. At most once a day per business.
+ */
+export async function sendPaymentReminder(actorUserId: string, businessId: string) {
+  const subscription = await Subscription.findOne({ businessId });
+  if (!subscription) throw ApiError.notFound("No subscription for this business");
+  if (
+    subscription.status !== SUBSCRIPTION_STATUS.PAST_DUE &&
+    subscription.status !== SUBSCRIPTION_STATUS.SUSPENDED
+  ) {
+    throw ApiError.badRequest("Only an overdue business can be reminded.");
+  }
+
+  const now = new Date();
+  const claimed = await Subscription.updateOne(
+    {
+      _id: subscription._id,
+      $or: [
+        { lastManualReminderAt: null },
+        { lastManualReminderAt: { $lte: new Date(now.getTime() - MANUAL_REMINDER_GAP_MS) } },
+      ],
+    },
+    { $set: { lastManualReminderAt: now } },
+  );
+  if (claimed.modifiedCount !== 1) {
+    throw ApiError.conflict("A reminder already went to this business in the last 24 hours.");
+  }
+
+  const invoice = await findOpenInvoice(subscription._id);
+  const suspended = subscription.status === SUBSCRIPTION_STATUS.SUSPENDED;
+  const opening = suspended
+    ? "Stamping is paused at your business because payment has not arrived."
+    : `Your payment is overdue.${
+        subscription.graceEndsAt
+          ? ` Stamping stops on ${day(subscription.graceEndsAt)} unless it arrives.`
+          : ""
+      }`;
+  const body = invoice
+    ? await invoiceEmail(invoice.number, invoice.totalPkr, invoice.dueDate)
+    : `Please pay PKR ${renewalPrice(subscription).toLocaleString("en-PK")}. See Billing in your dashboard for how to pay.`;
+
+  await emailOwners(
+    businessId,
+    suspended
+      ? "Reminder: pay to switch TapTapSell back on"
+      : "Reminder: your TapTapSell payment is overdue",
+    `${opening}
+
+${body}`,
+  );
+  await recordAudit({
+    actorUserId,
+    businessId,
+    action: AUDIT_ACTIONS.SUBSCRIPTION_REMINDER_SENT,
+    resourceType: "Subscription",
+    resourceId: subscription._id,
+    metadata: { invoice: invoice?.number ?? null },
+  });
+
+  return { sentAt: now };
 }

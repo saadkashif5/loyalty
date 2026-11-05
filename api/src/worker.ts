@@ -4,6 +4,7 @@ import { logger } from "@/config/logger";
 import { disconnectRedis, redis } from "@/config/redis";
 import { runRewardExpiryJob } from "@/jobs/rewardExpiry.job";
 import { runSubscriptionJob } from "@/jobs/subscriptions.job";
+import { runStampExpiryJob } from "@/jobs/stampExpiry.job";
 import { processOutbox } from "@/services/outbox.service";
 
 // Runs apart from the API: sends queued email and runs the scheduled jobs.
@@ -24,7 +25,8 @@ async function runJobs() {
   if (!(await holdsJobLock())) return;
   const subscriptions = await runSubscriptionJob();
   const rewards = await runRewardExpiryJob();
-  logger.info({ subscriptions, rewards }, "Scheduled jobs finished");
+  const stamps = await runStampExpiryJob();
+  logger.info({ subscriptions, rewards, stamps }, "Scheduled jobs finished");
 }
 
 /** Repeats `task`, waiting between runs so a slow one never overlaps itself. */

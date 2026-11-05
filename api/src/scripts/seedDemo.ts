@@ -72,6 +72,7 @@ async function main(): Promise<void> {
     requiredStamps: 6,
     minMinutesBetweenStamps: 0,
     maxStampsPerDay: 50,
+    stampExpiryDays: null,
   });
   const programId = program._id.toString();
 

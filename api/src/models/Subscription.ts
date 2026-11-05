@@ -77,6 +77,8 @@ const subscriptionSchema = new Schema(
     cancelledAt: { type: Date, default: null },
     // Remembers which reminder was last sent, so each one goes out once.
     lastReminderKey: { type: String, default: null },
+    // Last reminder the finance team sent by hand; at most one a day.
+    lastManualReminderAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

@@ -97,12 +97,28 @@ export async function updateBranchAction(
         name: text(formData, "name"),
         address: text(formData, "address"),
         status: text(formData, "status"),
+        openingHours: openingHours(formData),
       },
     }),
   );
 }
 
+/** One entry per day with both times filled in; a day left blank is closed. */
+function openingHours(formData: FormData) {
+  return [0, 1, 2, 3, 4, 5, 6].flatMap((day) => {
+    const open = text(formData, `open-${day}`);
+    const close = text(formData, `close-${day}`);
+    return open && close ? [{ day, open, close }] : [];
+  });
+}
+
 // ---- Programs and rewards ---------------------------------------------------------------
+
+/** Blank means stamps never expire. */
+function expiryDays(formData: FormData): number | null {
+  const value = text(formData, "stampExpiryDays");
+  return value ? Number(value) : null;
+}
 
 export async function createProgramAction(
   businessId: string,
@@ -118,6 +134,7 @@ export async function createProgramAction(
         requiredStamps: Number(formData.get("requiredStamps")),
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps") ?? 5),
         maxStampsPerDay: Number(formData.get("maxStampsPerDay") ?? 3),
+        stampExpiryDays: expiryDays(formData),
       },
     }),
   );
@@ -139,6 +156,7 @@ export async function updateProgramAction(
         requiredStamps: Number(formData.get("requiredStamps")),
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps")),
         maxStampsPerDay: Number(formData.get("maxStampsPerDay")),
+        stampExpiryDays: expiryDays(formData),
         status: text(formData, "status"),
       },
     }),

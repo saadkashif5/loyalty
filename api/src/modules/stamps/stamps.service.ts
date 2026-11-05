@@ -9,7 +9,9 @@ import {
   Redemption,
   Reward,
   Stamp,
+  User,
 } from "@/models";
+import { expireCardIfLapsed } from "@/modules/loyalty/stampExpiry";
 import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
@@ -17,7 +19,12 @@ import { consumeTap, findUsableTap } from "@/modules/taps/taps.service";
 import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { queueNotification } from "@/services/notification.service";
-import { checkDeviceBurst, raiseFlag } from "@/services/fraud.service";
+import {
+  checkDeviceBurst,
+  checkNewAccountBurst,
+  checkOutsideHours,
+  raiseFlag,
+} from "@/services/fraud.service";
 import {
   LOYALTY_CARD_STATUS,
   PROGRAM_STATUS,
@@ -140,7 +147,7 @@ async function buildResultForExistingStamp(
 interface StampContext {
   customerId: string;
   cardId: Types.ObjectId;
-  program: { _id: Types.ObjectId; requiredStamps: number };
+  program: { _id: Types.ObjectId; requiredStamps: number; settings?: unknown };
   businessId: string;
   branchId: string;
   deviceId?: string;
@@ -186,6 +193,10 @@ async function applyStamp(ctx: StampContext, session: ClientSession): Promise<St
     ],
     { session },
   );
+
+  // A card idle past the program's stamp expiry starts again from this stamp,
+  // even if the hourly expiry job has not reached it yet.
+  await expireCardIfLapsed(ctx.cardId, ctx.program, new Date(), session);
 
   const updatedCard = await LoyaltyCard.findOneAndUpdate(
     { _id: ctx.cardId },
@@ -359,6 +370,16 @@ export async function createStamp(request: StampRequest): Promise<StampResult> {
   );
   await assertCardMayStamp(card, program);
 
+  // A first stamp for an account made today; many of these at one stamper is an alert.
+  const newCustomer =
+    !card.lastStampAt &&
+    Boolean(
+      await User.exists({
+        _id: request.customerId,
+        createdAt: { $gte: new Date(Date.now() - DAY_MS) },
+      }),
+    );
+
   const usedTap = tap;
   const result = await commitStamp(
     {
@@ -373,12 +394,21 @@ export async function createStamp(request: StampRequest): Promise<StampResult> {
       metadata: {
         ...(request.metadata ?? {}),
         ...(usedTap ? { tapCounter: usedTap.tapCounter } : {}),
+        ...(newCustomer ? { newCustomer: true } : {}),
       },
     },
     usedTap ? (session) => consumeTap(usedTap._id, request.customerId, session) : undefined,
   );
 
-  if (!result.alreadyRecorded) void checkDeviceBurst(device.businessId, device.deviceId);
+  if (!result.alreadyRecorded) {
+    void checkDeviceBurst(device.businessId, device.deviceId);
+    void checkOutsideHours({
+      businessId: device.businessId,
+      branchId: device.branchId,
+      deviceId: device.deviceId,
+    });
+    if (newCustomer) void checkNewAccountBurst(device.businessId, device.deviceId);
+  }
   // In-app history only: the customer already sees the stamp in this response.
   void notifyStamp(request.customerId, result).catch((err) =>
     logger.warn({ err }, "Stamp notification failed"),
@@ -473,6 +503,11 @@ async function createStaffStamp(params: StaffStampParams): Promise<StampResult> 
   );
 
   if (!result.alreadyRecorded) {
+    void checkOutsideHours({
+      businessId: params.businessId,
+      branchId: params.branchId,
+      staffUserId: params.actorUserId,
+    });
     await recordAudit({
       actorUserId: params.actorUserId,
       businessId: params.businessId,

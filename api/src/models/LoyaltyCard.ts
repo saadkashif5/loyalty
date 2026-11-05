@@ -14,6 +14,13 @@ const loyaltyCardSchema = new Schema(
     },
     joinedAt: { type: Date, default: () => new Date() },
     lastStampAt: { type: Date },
+    // Stamps lost because the program's stamp expiry passed without a visit.
+    lastExpiry: {
+      at: { type: Date },
+      stamps: { type: Number },
+    },
+    // lastStampAt the expiry warning was sent for; a new stamp re-arms it.
+    expiryWarnedFor: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -22,5 +29,6 @@ const loyaltyCardSchema = new Schema(
 loyaltyCardSchema.index({ customerId: 1, programId: 1 }, { unique: true });
 loyaltyCardSchema.index({ businessId: 1, customerId: 1 });
 loyaltyCardSchema.index({ businessId: 1, lastStampAt: -1, _id: -1 });
+loyaltyCardSchema.index({ programId: 1, lastStampAt: 1 });
 
 export const LoyaltyCard = model("LoyaltyCard", loyaltyCardSchema, "loyalty_cards");

@@ -10,6 +10,9 @@ interface CardDetail {
     status: string;
     businessId: { name: string } | null;
     programId: { name: string; requiredStamps: number; terms?: string } | null;
+    stampExpiryDays: number | null;
+    stampsExpireAt: string | null;
+    lastExpiry?: { at?: string; stamps?: number } | null;
   };
   recentStamps: Array<{ _id: string; createdAt: string; source: string }>;
   availableRewards: Array<{
@@ -81,6 +84,18 @@ export default async function CardPage({
             <p className="text-sm text-slate-600">
               {card.stampCount} of {card.programId.requiredStamps} stamps
             </p>
+            {card.stampsExpireAt ? (
+              <p className="text-xs text-slate-500">
+                Stamps expire after {card.stampExpiryDays} days without a visit. Visit by{" "}
+                {formatDate(card.stampsExpireAt)} to keep them.
+              </p>
+            ) : null}
+            {card.stampCount === 0 && card.lastExpiry?.stamps ? (
+              <p className="text-xs text-amber-700">
+                {card.lastExpiry.stamps} stamp{card.lastExpiry.stamps === 1 ? "" : "s"} expired on{" "}
+                {formatDate(card.lastExpiry.at)}. Your next visit starts a new card.
+              </p>
+            ) : null}
           </>
         ) : null}
       </Card>

@@ -518,6 +518,16 @@ export async function removeChargeAction(businessId: string, chargeId: string): 
   refreshBilling(businessId);
 }
 
+export async function sendReminderAction(businessId: string, _prev: FormState): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/billing/remind`, { method: "POST" });
+    revalidatePath("/finance");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not send the reminder.") };
+  }
+}
+
 export async function extendTrialAction(
   businessId: string,
   _prev: FormState,

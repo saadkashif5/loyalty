@@ -10,6 +10,8 @@ const notificationSchema = new Schema(
         "STAMP_ADDED",
         "REWARD_UNLOCKED",
         "REWARD_EXPIRING",
+        "STAMPS_EXPIRING",
+        "STAMPS_EXPIRED",
         "REWARD_REDEEMED",
         "LOYALTY_MILESTONE",
         "BUSINESS_ANNOUNCEMENT",

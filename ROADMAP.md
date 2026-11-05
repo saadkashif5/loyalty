@@ -464,20 +464,23 @@ Counter mode for businesses (mobile web)
 
 Programs and rewards
 - [x] Multiple reward tiers per program (fix the current single-threshold logic) — _done in Phase 0_
-- [~] Stamp expiry and reward expiry options; reward-expiring reminder job — _rewards can be
-      valid for N days after unlocking; expired codes are refused at the counter;
-      `npm run jobs` marks expired rewards and emails/notifies customers once when
-      3 days are left (the worker runs it hourly). Stamp expiry not built_
+- [x] Stamp expiry and reward expiry options; reward-expiring reminder job — _rewards can be
+      valid for N days after unlocking; expired codes are refused at the counter. A program can
+      expire stamps after 7–730 days without a visit: customers are warned in the app and by email
+      a week before, the hourly job empties lapsed cards and tells them, the card page shows the
+      date, and a stamp on a lapsed card starts again at one even before the job runs_
 
 Fraud controls
 - [x] Daily cap per card per business, cooldown per card, velocity rules per device and per staff —
       _per-card daily limit (program setting, resets at midnight Pakistan time), cooldown, per-staff
       daily limit (business setting), burst check per stamper_
-- [~] Anomaly flags: stamps outside opening hours, bursts from one stamper, many new accounts on one
+- [x] Anomaly flags: stamps outside opening hours, bursts from one stamper, many new accounts on one
       stamper; review queue for owners and admins — _alerts for stamper bursts, replayed links,
-      copied-chip suspicion and staff limits, one alert per problem with a repeat count; owners and
-      managers review on Alerts, the platform team sees all businesses in the console. Opening hours
-      and new-account bursts not built (no opening hours in the data model yet)_
+      copied-chip suspicion, staff limits, stamps while the branch is closed (branches have
+      opening hours in Pakistan time, past midnight allowed, 30 minutes' grace) and ten or more
+      brand-new accounts getting a first stamp at one stamper within an hour; one alert per
+      problem with a repeat count; owners and managers review on Alerts, the platform team sees
+      all businesses in the console_
 
 **Exit:** the device test matrix (about 10 Android phones across price bands, plus iPhones) joins and
 stamps by tapping; replayed URLs are rejected; end-to-end tests cover join, stamp, unlock and redeem.
@@ -526,7 +529,10 @@ Owner billing page
 
 Super Admin finance console
 - [x] MRR, ARR, active / trialing / past-due / suspended counts, churn, trial conversion — _also collected this month; churn over 30 days, trial conversion over 90 days_
-- [~] Overdue list with ageing and one-click reminders; revenue by plan and city — _overdue list with due date and suspension date; reminders are automatic; revenue by plan built, by city not_
+- [x] Overdue list with ageing and one-click reminders; revenue by plan and city — _overdue list
+      with due date and suspension date; reminders are automatic, and Finance can send one more by
+      hand from the list (at most once a day per business, audited); revenue by plan and by the
+      city on each business's profile_
 - [x] CSV export for the accountant — _invoices by issue date with subtotal, discount, tax, total and payment; Excel-safe (UTF-8 BOM, cells that could run as formulas are neutralised)_
 
 **Exit:** in staging, with the gateway sandbox, a business moves through trial → active → past due →

@@ -279,6 +279,15 @@ router.delete(
   }),
 );
 
+// One-click reminder from the overdue list; at most one a day per business.
+router.post(
+  "/businesses/:businessId/billing/remind",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await billing.sendPaymentReminder(req.userId!, req.params.businessId));
+  }),
+);
+
 router.post(
   "/businesses/:businessId/subscription/extend-trial",
   can(P.BILLING_MANAGE),

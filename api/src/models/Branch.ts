@@ -15,6 +15,12 @@ const branchSchema = new Schema(
     contact: {
       phone: { type: String, trim: true },
     },
+    // Pakistan time. One entry per open day (0 = Sunday); a close earlier than
+    // the open runs past midnight. None at all: no hours known, no check.
+    openingHours: {
+      type: [{ _id: false, day: Number, open: String, close: String }],
+      default: undefined,
+    },
     status: {
       type: String,
       enum: Object.values(BRANCH_STATUS),

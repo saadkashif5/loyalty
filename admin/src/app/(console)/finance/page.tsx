@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
 import { apiFetch } from "@/lib/api";
-import { requirePermission } from "@/lib/me";
+import { can, requirePermission } from "@/lib/me";
+import { RemindButton } from "./RemindButton";
 import {
   Card,
   EmptyState,
@@ -20,6 +21,7 @@ interface Overview {
   arrPkr: number;
   collectedThisMonthPkr: number;
   mrrByPlan: Array<{ plan: string; businesses: number; mrrPkr: number }>;
+  mrrByCity: Array<{ city: string; businesses: number; mrrPkr: number }>;
   churnPercent: number | null;
   trialConversionPercent: number | null;
   trialsEnded: number;
@@ -32,6 +34,7 @@ interface Overview {
     dueSince: string | null;
     graceEndsAt: string | null;
     suspendedAt: string | null;
+    lastManualReminderAt: string | null;
   }>;
   recentPayments: Array<{
     _id: string;
@@ -44,7 +47,8 @@ interface Overview {
 }
 
 export default async function FinancePage() {
-  await requirePermission(PLATFORM_PERMISSIONS.BILLING_VIEW);
+  const me = await requirePermission(PLATFORM_PERMISSIONS.BILLING_VIEW);
+  const canRemind = can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const data = await apiFetch<Overview>("/admin/billing/overview");
 
   return (
@@ -95,6 +99,22 @@ export default async function FinancePage() {
         </Card>
       ) : null}
 
+      {data.mrrByCity.length > 0 ? (
+        <Card>
+          <h2 className="mb-3 font-semibold">Revenue by city</h2>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {data.mrrByCity.map((row) => (
+              <li key={row.city} className="flex flex-wrap justify-between gap-3 py-2">
+                <span>
+                  {row.city} · {row.businesses} paying
+                </span>
+                <span className="text-slate-500">{formatPkr(row.mrrPkr)} / month</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       <Card>
         <h2 className="mb-3 font-semibold">Export invoices for the accountant</h2>
         <form action="/files/export" className="flex flex-wrap items-end gap-3 text-sm">
@@ -122,7 +142,17 @@ export default async function FinancePage() {
         {data.overdue.length === 0 ? (
           <EmptyState>Nobody is overdue.</EmptyState>
         ) : (
-          <Table head={["Business", "Status", "Plan", "Due", "Since", "Suspends / suspended"]}>
+          <Table
+            head={[
+              "Business",
+              "Status",
+              "Plan",
+              "Due",
+              "Since",
+              "Suspends / suspended",
+              canRemind ? "Remind" : "",
+            ]}
+          >
             {data.overdue.map((row) => (
               <tr key={row.subscriptionId}>
                 <Td>
@@ -144,6 +174,14 @@ export default async function FinancePage() {
                 <Td>{formatPkr(row.amountDuePkr)}</Td>
                 <Td>{formatDate(row.dueSince)}</Td>
                 <Td>{formatDate(row.suspendedAt ?? row.graceEndsAt)}</Td>
+                <Td>
+                  {canRemind && row.business ? (
+                    <RemindButton
+                      businessId={row.business._id}
+                      lastSentAt={row.lastManualReminderAt}
+                    />
+                  ) : null}
+                </Td>
               </tr>
             ))}
           </Table>

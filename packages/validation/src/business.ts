@@ -33,6 +33,8 @@ export const updateBusinessSchema = createBusinessSchema.partial().extend({
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
 
+const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour time, e.g. 09:30");
+
 export const createBranchSchema = z.object({
   name: z.string().min(1).max(160),
   address: z.string().max(500).optional(),
@@ -43,6 +45,22 @@ export const createBranchSchema = z.object({
     })
     .optional(),
   contact: z.object({ phone: z.string().min(7).max(20).optional() }).optional(),
+  /** Pakistan time; one entry per open day (0 = Sunday). Empty = hours not set. */
+  openingHours: z
+    .array(
+      z
+        .object({
+          day: z.number().int().min(0).max(6),
+          open: clockTime,
+          close: clockTime,
+        })
+        .refine((h) => h.open !== h.close, { message: "Opening and closing times are the same" }),
+    )
+    .max(7)
+    .refine((hours) => new Set(hours.map((h) => h.day)).size === hours.length, {
+      message: "Each day can appear once",
+    })
+    .optional(),
 });
 export type CreateBranchInput = z.infer<typeof createBranchSchema>;
 

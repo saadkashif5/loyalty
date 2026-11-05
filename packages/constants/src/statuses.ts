@@ -112,6 +112,10 @@ export const FRAUD_FLAG_TYPE = {
   TAG_MISMATCH: "TAG_MISMATCH",
   /** A staff member reached their daily stamp limit. */
   STAFF_DAILY_CAP: "STAFF_DAILY_CAP",
+  /** A stamp given while the branch is closed. */
+  OUTSIDE_HOURS: "OUTSIDE_HOURS",
+  /** Many brand-new accounts collecting their first stamp at one stamper. */
+  NEW_ACCOUNT_BURST: "NEW_ACCOUNT_BURST",
 } as const;
 export type FraudFlagType = (typeof FRAUD_FLAG_TYPE)[keyof typeof FRAUD_FLAG_TYPE];
 

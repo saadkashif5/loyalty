@@ -11,12 +11,12 @@ export async function createProgram(
   input: CreateProgramInput,
 ) {
   await assertWithinPlan(businessId, "programs");
-  const { minMinutesBetweenStamps, maxStampsPerDay, ...rest } = input;
+  const { minMinutesBetweenStamps, maxStampsPerDay, stampExpiryDays, ...rest } = input;
 
   const program = await LoyaltyProgram.create({
     ...rest,
     businessId,
-    settings: { minMinutesBetweenStamps, maxStampsPerDay },
+    settings: { minMinutesBetweenStamps, maxStampsPerDay, stampExpiryDays },
   });
 
   await recordAudit({
@@ -46,7 +46,7 @@ export async function updateProgram(
   actorUserId: string,
   input: UpdateProgramInput,
 ) {
-  const { minMinutesBetweenStamps, maxStampsPerDay, ...rest } = input;
+  const { minMinutesBetweenStamps, maxStampsPerDay, stampExpiryDays, ...rest } = input;
 
   // Switching a paused program back on counts against the plan like a new one.
   if (input.status === PROGRAM_STATUS.ACTIVE) {
@@ -73,6 +73,9 @@ export async function updateProgram(
   }
   if (maxStampsPerDay !== undefined) {
     update["settings.maxStampsPerDay"] = maxStampsPerDay;
+  }
+  if (stampExpiryDays !== undefined) {
+    update["settings.stampExpiryDays"] = stampExpiryDays;
   }
 
   const program = await LoyaltyProgram.findOneAndUpdate({ _id: programId, businessId }, update, {

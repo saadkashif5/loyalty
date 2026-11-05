@@ -12,14 +12,10 @@ import {
   REMIND_BEFORE_DAYS,
 } from "@/modules/billing/billing.config";
 import { findOpenInvoice, issueInvoice, renewalPrice } from "@/modules/billing/invoices.service";
-import { getPaymentDetails } from "@/modules/billing/settings.service";
+import { day, invoiceEmail } from "@/modules/billing/emails";
 import { SUBSCRIPTION_STATUS } from "@taptapsell/constants";
 
 const BATCH = 500;
-
-function day(d: Date) {
-  return d.toLocaleDateString("en-PK", { timeZone: "Asia/Karachi" });
-}
 
 /**
  * Moves subscriptions through their lifecycle and tells owners at each step:
@@ -205,26 +201,6 @@ export async function runSubscriptionJob(now: Date = new Date()) {
   }
 
   return result;
-}
-
-async function invoiceEmail(number: string, totalPkr: number, dueDate: Date): Promise<string> {
-  const pay = await getPaymentDetails();
-  const accounts = pay.bankAccounts
-    .map(
-      (a) =>
-        `${a.bankName} — ${a.accountTitle}, account ${a.accountNumber}${a.iban ? `, IBAN ${a.iban}` : ""}`,
-    )
-    .join("\n");
-  return [
-    `Invoice ${number} for PKR ${totalPkr.toLocaleString("en-PK")} is due on ${day(dueDate)}.`,
-    "",
-    accounts ? `Pay by bank transfer to:\n${accounts}` : "",
-    pay.raastId ? `Or by Raast to: ${pay.raastId}` : "",
-    "",
-    "Then upload the receipt from Billing in your dashboard. The invoice PDF is there too.",
-  ]
-    .filter((line, i, all) => line !== "" || all[i - 1] !== "")
-    .join("\n");
 }
 
 /** Marks a reminder as sent; false if this exact reminder already went out. */

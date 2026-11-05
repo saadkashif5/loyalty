@@ -37,8 +37,12 @@ export function CreateProgramForm({ businessId }: { businessId: string }) {
         <Field label="Most stamps per card per day">
           <Input name="maxStampsPerDay" type="number" min={1} max={50} defaultValue={3} />
         </Field>
+        <Field label="Stamps expire after (days without a visit)">
+          <Input name="stampExpiryDays" type="number" min={7} max={730} placeholder="Never" />
+        </Field>
         <p className="text-xs text-slate-500">
-          The cooldown and daily limit stop one purchase turning into several stamps.
+          The cooldown and daily limit stop one purchase turning into several stamps. Customers are
+          warned a week before their stamps expire.
         </p>
         <ErrorText>{state.error}</ErrorText>
         <SubmitButton />
