@@ -18,16 +18,16 @@ built (the note says what is missing), `[ ]` means not started.
 |---|---|---|
 | 0 Foundation | Mostly done | Decisions in §10: OTP providers, hosting; CI has not run on a push |
 | 1 Console and onboarding | Mostly done | Logo upload, WhatsApp delivery of invitations, SUN keys for NTAG 424 DNA |
-| 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, Urdu, Web NFC, push. Never tested on a real stamper |
+| 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, push. Urdu on the dashboard. Never tested on a real stamper or phone matrix |
 | 3 Billing | Built, except the card gateway | Card gateway and card refunds |
 | 4 Scale and security | In progress | Threat model, OWASP checklist, staging load test, monitoring, backups, pentest |
-| 5 Pilot and launch | Not started | Needs a hosting decision first |
+| 5 Pilot and launch | Marketing site built | Hosting, legal, the pilot itself, operations |
 
 Automated tests pass. In Chrome: plan switching, receipt upload and approval, password reset on
 both apps, account deletion and data export, cursor paging, console filters, stamper tag reset,
 support view, stamper labels, shipping and QR activation, finance reminders, opening hours,
-stamp expiry, the notification centre, offline cards, pilot metrics, coupons, credit notes and
-stamp approvals. The rest of the UI has not been tested by hand. No staging environment
+stamp expiry, the notification centre, offline cards, pilot metrics, coupons, credit notes,
+stamp approvals, the marketing site and request-access form, Urdu, and both exports. The rest of the UI has not been tested by hand. No staging environment
 exists.
 
 Where §1, §2 and §3 describe phone sign-in or NTAG 424 DNA, that is the eventual design. What is
@@ -452,8 +452,15 @@ Customer portal (PWA)
       without signal, with an offline notice; the copies are cleared on sign-out_
 - [x] "My cards": every business the customer has joined, each card separate
 - [x] Rewards: unlocked rewards with code and QR to show staff; history
-- [ ] Web NFC listening inside the page on Android Chrome
-- [ ] Urdu and English (RTL support), PKR formatting, Asia/Karachi time
+- [x] Web NFC listening inside the page on Android Chrome — _a "Tap the stamper with this page"
+      button on My cards, shown only where the browser has Web NFC; it reads the tag, keeps only
+      TapTapSell stamper links and opens them; stops listening after a minute. Not yet tried on a
+      real phone and stamper_
+- [~] Urdu and English (RTL support), PKR formatting, Asia/Karachi time — _the customer portal
+      is in English and Urdu, right to left in Urdu, chosen on the home or profile page (or by
+      the phone's language); shop, program and reward names stay as the business wrote them.
+      PKR and Pakistan time throughout. The dashboard, console, emails and the marketing site are
+      English only; the Urdu wording needs a native speaker's review_
 - [x] Notification centre; consent for WhatsApp messages per business — _bell with unread count,
       a notifications page that marks them read; the profile takes a mobile number and has an
       allow switch per business (needs the number; removing it withdraws all). Owners see how many
@@ -566,7 +573,11 @@ suspended → reactivated, with correct invoices and notifications at every step
 **Goal:** prove the platform survives "the masses" and an attacker before public launch.
 
 Scalability
-- [~] Outbox + worker service for notifications, aggregates, billing jobs and exports — _`npm run worker` sends queued email with retries and backoff and runs the hourly jobs, under a Redis lock; owner and reward email go through the outbox; sign-in codes stay direct. Aggregates, exports and push not moved yet_
+- [x] Outbox + worker service for notifications, aggregates, billing jobs and exports — _`npm run
+      worker` sends queued email, runs the hourly jobs under a Redis lock, and builds exports:
+      the accountant's invoice CSV in the console and the owner's customer CSV (contact details
+      masked) are queued, claimed one at a time, retried if a worker dies, and kept a week. Daily
+      counters are bumped as things happen rather than by a job. Sign-in codes stay direct_
 - [~] Pre-aggregated analytics; analytics queries on an analytics node — _daily counters per
       business (taps verified and refused, stamps, new cards, rewards unlocked and used) are bumped
       as things happen and feed the pilot page. The owner dashboard still reads raw stamps; no
@@ -575,7 +586,13 @@ Scalability
 - [~] Redis caches for device resolution, user status and entitlements, with explicit invalidation — _stamper, business status, user status and public business data cached; watched fields clear the entry from a schema hook on every write path, so revocation and suspension apply at once. Entitlements not cached: only read on writes, not on the tap path_
 - [ ] Shard-key plan documented and validated on a staging cluster
 - [ ] Autoscaling, at least two availability zones, zero-downtime deploys
-- [~] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run — _`loadtests/run.sh` runs the tap storm in Docker with a query profile. Laptop results only compare builds; the staging run against a target is still to do, and the other scenarios are not written. See `loadtests/README.md`_
+- [~] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run —
+      _all four written (`loadtests/`): tap storm, sign-in code storm (email to a local sink),
+      dashboard reads, and `benchBilling.ts` for the hourly billing run. The dashboard run found
+      paging indexes missing their tie-break (activity p95 1.05 s → 226 ms after the fix); the
+      billing run found the job re-reading the same 500 subscriptions, so beyond 500 some were
+      never invoiced (fixed). Laptop numbers only; the staging run against a target is still to
+      do. See `loadtests/README.md`_
 - [ ] Tune per-address rate limits with real traffic (carrier-grade NAT puts many customers
       behind one address); confirm `CLIENT_IP_HEADER` for the chosen host
 
@@ -592,7 +609,11 @@ Security
 
 Reliability and operations
 - [ ] Point-in-time backups; quarterly restore drill
-- [ ] Tracing (OpenTelemetry), dashboards for tap success rate, OTP delivery rate, payment success
+- [~] Tracing (OpenTelemetry), dashboards for tap success rate, OTP delivery rate, payment success
+      — _API and worker send traces (HTTP, Express, MongoDB, Redis) to any OTLP collector when
+      `OTEL_EXPORTER_OTLP_ENDPOINT` is set; URLs are scrubbed like the logs and database values
+      are never recorded. Tap success is on the console's Pilot page. Hosted dashboards and
+      alerting wait for hosting_
 - [ ] Alerting, on-call rotation, runbooks, public status page
 
 **Exit:** load test passes at 3× target; pentest criticals and highs closed; restore drill done within
@@ -615,7 +636,10 @@ RTO.
       rate, owner satisfaction — _console Pilot page for 7/30/90 days, overall and per business:
       tap success, cards that came back on another day, rewards used, stamps and new cards.
       Sign-up conversion from first tap and owner satisfaction are not measured_
-- [ ] Public launch: marketing site, pricing page, request-access funnel, sales playbook
+- [~] Public launch: marketing site, pricing page, request-access funnel, sales playbook —
+      _`/business` on the portal: landing page, pricing read live from the public plans, and a
+      request-access form that becomes a lead in the console (rate limited, with a hidden field
+      that catches bots). The sales playbook is not code_
 
 **Exit:** pilot targets met (agree the numbers before the pilot starts); billing live with real
 payments.

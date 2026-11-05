@@ -392,6 +392,12 @@ export async function counterStampAction(
   }
 }
 
+/** Queues the customer list as a CSV; the worker builds it. */
+export async function requestCustomerExportAction(businessId: string): Promise<void> {
+  await apiFetch(`/businesses/${businessId}/exports`, { method: "POST" }).catch(() => undefined);
+  refresh(businessId);
+}
+
 /** Managers and owners decide stamps that waited for approval. */
 export async function decideStampRequestAction(
   businessId: string,

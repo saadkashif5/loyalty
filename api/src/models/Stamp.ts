@@ -31,7 +31,7 @@ stampSchema.index({ customerId: 1, idempotencyKey: 1 }, { unique: true });
 stampSchema.index({ customerId: 1, programId: 1, createdAt: -1 });
 stampSchema.index({ businessId: 1, branchId: 1, createdAt: -1 });
 // Business-wide time ranges (activity feed, analytics) without a branch filter.
-stampSchema.index({ businessId: 1, createdAt: -1 });
+stampSchema.index({ businessId: 1, createdAt: -1, _id: -1 });
 // Daily caps: per card, per staff member, and per stamper for burst detection.
 stampSchema.index({ loyaltyCardId: 1, createdAt: -1 });
 stampSchema.index({ businessId: 1, issuedBy: 1, createdAt: -1 });

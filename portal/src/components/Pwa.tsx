@@ -17,11 +17,16 @@ function wasDismissed(): boolean {
   }
 }
 
+type PwaMessages = Record<
+  "pwa.offline" | "pwa.installAndroid" | "pwa.installIos" | "pwa.add" | "pwa.notNow",
+  string
+>;
+
 /**
  * Registers the offline helper, offers to add the portal to the home screen
  * (Android's own prompt, or the steps on iPhone), and says so when offline.
  */
-export function Pwa() {
+export function Pwa({ messages }: { messages: PwaMessages }) {
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [iosTip, setIosTip] = useState(false);
   const [offline, setOffline] = useState(false);
@@ -68,16 +73,13 @@ export function Pwa() {
     <div className="space-y-2 px-5">
       {offline ? (
         <p className="rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900">
-          You are offline. This is your card as last loaded; new stamps appear when you are back
-          online.
+          {messages["pwa.offline"]}
         </p>
       ) : null}
       {installEvent || iosTip ? (
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
           <p className="flex-1">
-            {installEvent
-              ? "Add TapTapSell to your home screen to open your cards in one tap."
-              : "Add TapTapSell to your home screen: tap Share, then Add to Home Screen."}
+            {installEvent ? messages["pwa.installAndroid"] : messages["pwa.installIos"]}
           </p>
           {installEvent ? (
             <button
@@ -89,10 +91,15 @@ export function Pwa() {
                 setInstallEvent(null);
               }}
             >
-              Add
+              {messages["pwa.add"]}
             </button>
           ) : null}
-          <button type="button" className="text-slate-500" onClick={dismiss} aria-label="Not now">
+          <button
+            type="button"
+            className="text-slate-500"
+            onClick={dismiss}
+            aria-label={messages["pwa.notNow"]}
+          >
             ✕
           </button>
         </div>

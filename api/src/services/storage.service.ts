@@ -3,11 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { env } from "@/config/env";
 
-// Private files (payment receipts). Kept on local disk for now; an S3/R2
+// Private files (payment receipts, exports). Kept on local disk for now; an S3/R2
 // implementation can replace these three functions without touching callers.
 // Keys are generated here and validated on read, so a stored key can never
 // point outside the storage folder.
-const KEY_PATTERN = /^[a-z]+\/\d{4}\/\d{2}\/[a-f0-9]{32}\.(png|jpg|webp|pdf)$/;
+const KEY_PATTERN = /^[a-z]+\/\d{4}\/\d{2}\/[a-f0-9]{32}\.(png|jpg|webp|pdf|csv)$/;
 
 function root(): string {
   return path.resolve(env.STORAGE_DIR);

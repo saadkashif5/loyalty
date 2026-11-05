@@ -34,4 +34,5 @@ export * from "./BusinessNote";
 export * from "./Coupon";
 export * from "./CreditNote";
 export * from "./StampRequest";
+export * from "./ExportJob";
 export * from "./PaymentProof";

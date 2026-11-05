@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
 import { Card, formatDate } from "@/components/ui";
 
@@ -17,6 +18,7 @@ interface Redemption {
 export default async function RewardsPage() {
   const redemptions = await apiFetch<Redemption[]>("/redemptions/me");
   const now = Date.now();
+  const t = await getT();
   const usable = (r: Redemption) =>
     r.status === "PENDING" && (!r.expiresAt || new Date(r.expiresAt).getTime() > now);
   const ready = redemptions.filter(usable);
@@ -24,12 +26,10 @@ export default async function RewardsPage() {
 
   return (
     <>
-      <h1 className="text-lg font-semibold">Rewards</h1>
+      <h1 className="text-lg font-semibold">{t("rewards.title")}</h1>
 
       {ready.length === 0 ? (
-        <Card className="text-center text-sm text-slate-600">
-          No rewards waiting. Keep collecting stamps!
-        </Card>
+        <Card className="text-center text-sm text-slate-600">{t("rewards.none")}</Card>
       ) : (
         ready.map((r) => (
           <Link key={r._id} href={`/cards/${r.loyaltyCardId}`} className="block">
@@ -49,7 +49,7 @@ export default async function RewardsPage() {
 
       {used.length > 0 ? (
         <Card>
-          <p className="mb-2 font-semibold">Used</p>
+          <p className="mb-2 font-semibold">{t("rewards.used")}</p>
           <ul className="divide-y divide-slate-100 text-sm">
             {used.map((r) => (
               <li key={r._id} className="flex justify-between gap-4 py-2">

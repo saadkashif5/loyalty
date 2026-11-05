@@ -4,7 +4,16 @@ import { Types } from "mongoose";
 import { connectDatabase, disconnectDatabase } from "@/config/database";
 import { disconnectRedis } from "@/config/redis";
 import { env } from "@/config/env";
-import { Branch, Business, LoyaltyCard, LoyaltyProgram, NfcDevice, Stamp, User } from "@/models";
+import {
+  Branch,
+  Business,
+  BusinessMember,
+  LoyaltyCard,
+  LoyaltyProgram,
+  NfcDevice,
+  Stamp,
+  User,
+} from "@/models";
 import { signAccessToken } from "@/modules/auth/token.service";
 import { BUSINESS_STATUS, DEVICE_STATUS, TAG_TYPE } from "@taptapsell/constants";
 
@@ -35,6 +44,7 @@ async function main(): Promise<void> {
 
   const stampers: Array<{ deviceIdentifier: string; tagUid: string; business: number }> = [];
   const customers: string[][] = [];
+  const owners: Array<{ businessId: string; token: string }> = [];
   const users: unknown[] = [];
   const cards: unknown[] = [];
   const stamps: unknown[] = [];
@@ -44,7 +54,18 @@ async function main(): Promise<void> {
   for (let b = 0; b < BUSINESSES; b += 1) {
     const businessId = new Types.ObjectId();
     const ownerId = new Types.ObjectId();
-    users.push({ _id: ownerId, name: `Owner ${b}`, email: `owner${b}@load.local` });
+    // Owners must use two-step verification; marked on so dashboard reads are allowed.
+    users.push({
+      _id: ownerId,
+      name: `Owner ${b}`,
+      email: `owner${b}@load.local`,
+      status: "ACTIVE",
+      mfa: { enabled: true },
+    });
+    owners.push({
+      businessId: businessId.toString(),
+      token: signAccessToken(ownerId.toString(), new Types.ObjectId().toString()),
+    });
 
     await Business.create({
       _id: businessId,
@@ -54,6 +75,7 @@ async function main(): Promise<void> {
       ownerId,
       status: BUSINESS_STATUS.ACTIVE,
     });
+    await BusinessMember.create({ businessId, userId: ownerId, role: "OWNER", status: "ACTIVE" });
     const branch = await Branch.create({ businessId, name: "Main" });
     const program = await LoyaltyProgram.create({
       businessId,
@@ -116,7 +138,7 @@ async function main(): Promise<void> {
 
   const out = path.resolve(__dirname, "../../../loadtests/.data");
   mkdirSync(out, { recursive: true });
-  writeFileSync(path.join(out, "seed.json"), JSON.stringify({ stampers, customers }));
+  writeFileSync(path.join(out, "seed.json"), JSON.stringify({ stampers, customers, owners }));
   console.log(
     `Seeded ${BUSINESSES} businesses, ${stampers.length} stampers, ${users.length} users, ${stamps.length} stamps.`,
   );

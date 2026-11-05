@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { Pwa } from "@/components/Pwa";
+import { getT, pick } from "@/lib/i18n";
 
 const TABS = [
-  { href: "/cards", label: "Cards", icon: "🎟️" },
-  { href: "/rewards", label: "Rewards", icon: "🎁" },
-  { href: "/profile", label: "Me", icon: "👤" },
-];
+  { href: "/cards", label: "nav.cards", icon: "🎟️" },
+  { href: "/rewards", label: "nav.rewards", icon: "🎁" },
+  { href: "/profile", label: "nav.me", icon: "👤" },
+] as const;
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
+  const t = await getT();
   const { unread } = await apiFetch<{ unread: number }>("/notifications/summary").catch(() => ({
     unread: 0,
   }));
@@ -22,7 +24,7 @@ export default async function MemberLayout({ children }: { children: React.React
         <Link
           href="/notifications"
           className="relative rounded-full p-2 text-xl"
-          aria-label={unread ? `Notifications, ${unread} new` : "Notifications"}
+          aria-label={unread ? t("nav.notificationsNew", { n: unread }) : t("nav.notifications")}
         >
           <span aria-hidden>🔔</span>
           {unread ? (
@@ -32,7 +34,15 @@ export default async function MemberLayout({ children }: { children: React.React
           ) : null}
         </Link>
       </header>
-      <Pwa />
+      <Pwa
+        messages={pick(t, [
+          "pwa.offline",
+          "pwa.installAndroid",
+          "pwa.installIos",
+          "pwa.add",
+          "pwa.notNow",
+        ])}
+      />
       <main className="space-y-4 px-5">{children}</main>
 
       {/* Thumb-reachable navigation on phones. */}
@@ -47,7 +57,7 @@ export default async function MemberLayout({ children }: { children: React.React
               <span className="text-lg" aria-hidden>
                 {tab.icon}
               </span>
-              {tab.label}
+              {t(tab.label)}
             </Link>
           ))}
         </div>

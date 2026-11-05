@@ -13,6 +13,12 @@ const envSchema = z
     REDIS_URL: z.string().optional(),
     // Error tracking. Unset in development and tests.
     SENTRY_DSN: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
+    // OTLP/HTTP collector for request tracing (src/tracing.ts); unset = no tracing.
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.url().optional(),
+    ),
+    OTEL_SERVICE_NAME: z.string().default("taptapsell"),
 
     JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
     JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 characters"),

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { Card, formatDate } from "@/components/ui";
 import { MarkAllRead } from "./MarkAllRead";
+import { getT } from "@/lib/i18n";
 
 interface Item {
   _id: string;
@@ -14,17 +15,15 @@ interface Item {
 }
 
 export default async function NotificationsPage() {
-  const items = await apiFetch<Item[]>("/notifications?limit=50");
+  const [items, t] = await Promise.all([apiFetch<Item[]>("/notifications?limit=50"), getT()]);
   const unread = items.some((n) => n.status !== "READ");
 
   return (
     <>
-      <h1 className="text-lg font-semibold">Notifications</h1>
+      <h1 className="text-lg font-semibold">{t("notifications.title")}</h1>
       {unread ? <MarkAllRead /> : null}
       {items.length === 0 ? (
-        <Card className="text-center text-sm text-slate-500">
-          Nothing yet. Stamps, rewards and reminders show up here.
-        </Card>
+        <Card className="text-center text-sm text-slate-500">{t("notifications.empty")}</Card>
       ) : (
         <ul className="space-y-2">
           {items.map((n) => {

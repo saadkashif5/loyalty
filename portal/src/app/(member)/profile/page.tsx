@@ -3,6 +3,8 @@ import { setWhatsappConsentAction, signOutAction } from "@/app/actions";
 import { Card } from "@/components/ui";
 import { DeleteAccount } from "./DeleteAccount";
 import { ProfileForm } from "./ProfileForm";
+import { getT } from "@/lib/i18n";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 
 interface Consent {
   businessId: string;
@@ -11,6 +13,7 @@ interface Consent {
 }
 
 export default async function ProfilePage() {
+  const t = await getT();
   const [me, consents] = await Promise.all([
     apiFetch<{ name: string; email: string; phone?: string | null }>("/users/me"),
     apiFetch<Consent[]>("/users/me/consents"),
@@ -18,17 +21,18 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <h1 className="text-lg font-semibold">Me</h1>
+      <h1 className="text-lg font-semibold">{t("profile.title")}</h1>
+      <LanguageSwitch />
       <p className="text-sm text-slate-500">{me.email}</p>
       <ProfileForm name={me.name} phone={me.phone} />
 
       {consents.length > 0 ? (
         <Card className="space-y-3">
           <div>
-            <h2 className="font-semibold">Offers on WhatsApp</h2>
+            <h2 className="font-semibold">{t("profile.whatsapp")}</h2>
             <p className="text-xs text-slate-500">
-              Choose which shops may message you. You can change this any time.
-              {me.phone ? "" : " Add your mobile number above first."}
+              {t("profile.whatsappHelp")}
+              {me.phone ? "" : t("profile.addNumberFirst")}
             </p>
           </div>
           <ul className="divide-y divide-slate-100">
@@ -46,7 +50,7 @@ export default async function ProfilePage() {
                         : "border border-slate-300 text-slate-700"
                     }`}
                   >
-                    {c.whatsapp ? "Allowed" : "Allow"}
+                    {c.whatsapp ? t("profile.allowed") : t("profile.allow")}
                   </button>
                 </form>
               </li>
@@ -59,11 +63,11 @@ export default async function ProfilePage() {
         href="/files/my-data"
         className="block w-full rounded-xl border border-slate-300 bg-white py-3 text-center font-medium text-slate-700"
       >
-        Download my data
+        {t("profile.download")}
       </a>
       <form action={signOutAction}>
         <button className="w-full rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-700">
-          Sign out
+          {t("profile.signOut")}
         </button>
       </form>
       <DeleteAccount />

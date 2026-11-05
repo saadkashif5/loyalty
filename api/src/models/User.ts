@@ -44,7 +44,7 @@ const userSchema = new Schema(
   { timestamps: true },
 );
 
-userSchema.index({ createdAt: -1 });
+userSchema.index({ createdAt: -1, _id: -1 });
 
 invalidatesCache(userSchema, {
   fields: ["status", "platformRole", "mfa"],

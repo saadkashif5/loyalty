@@ -3,6 +3,7 @@ import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
 import { apiFetch } from "@/lib/api";
 import { can, requirePermission } from "@/lib/me";
 import { RemindButton } from "./RemindButton";
+import { ExportForm } from "./ExportForm";
 import {
   Card,
   EmptyState,
@@ -49,7 +50,12 @@ interface Overview {
 export default async function FinancePage() {
   const me = await requirePermission(PLATFORM_PERMISSIONS.BILLING_VIEW);
   const canRemind = can(me.platformRole, PLATFORM_PERMISSIONS.BILLING_MANAGE);
-  const data = await apiFetch<Overview>("/admin/billing/overview");
+  const [data, exports] = await Promise.all([
+    apiFetch<Overview>("/admin/billing/overview"),
+    apiFetch<
+      Array<{ _id: string; status: string; fileName?: string; rows?: number; createdAt: string }>
+    >("/admin/exports"),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -117,24 +123,33 @@ export default async function FinancePage() {
 
       <Card>
         <h2 className="mb-3 font-semibold">Export invoices for the accountant</h2>
-        <form action="/files/export" className="flex flex-wrap items-end gap-3 text-sm">
-          <label className="block">
-            <span className="mb-1 block text-slate-600">From</span>
-            <input
-              type="date"
-              name="from"
-              className="rounded-md border border-slate-300 px-3 py-2"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-slate-600">To</span>
-            <input type="date" name="to" className="rounded-md border border-slate-300 px-3 py-2" />
-          </label>
-          <button className="rounded-md border border-slate-300 px-4 py-2 font-medium hover:bg-slate-50">
-            Download CSV
-          </button>
-        </form>
-        <p className="mt-2 text-xs text-slate-500">Leave blank for this month so far.</p>
+        <ExportForm />
+        <p className="mt-2 text-xs text-slate-500">
+          Leave blank for this month so far. Files are kept for a week.
+        </p>
+        {exports.length > 0 ? (
+          <ul className="mt-3 divide-y divide-slate-100 text-sm">
+            {exports.map((e) => (
+              <li key={e._id} className="flex flex-wrap justify-between gap-3 py-2">
+                <span>
+                  {e.fileName ?? "Invoices"} · {formatDate(e.createdAt)}
+                </span>
+                {e.status === "DONE" ? (
+                  <a
+                    href={`/files/exports/${e._id}`}
+                    className="font-medium text-brand-600 hover:underline"
+                  >
+                    Download ({e.rows} rows)
+                  </a>
+                ) : (
+                  <span className="text-slate-500">
+                    {e.status === "FAILED" ? "Failed" : "Preparing…"}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </Card>
 
       <section>

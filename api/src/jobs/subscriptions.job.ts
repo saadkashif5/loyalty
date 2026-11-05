@@ -59,14 +59,16 @@ export async function runSubscriptionJob(now: Date = new Date()) {
 
   // 0. Invoices: a week before a trial or period ends, and for anyone overdue without one.
   const billBy = new Date(now.getTime() + INVOICE_LEAD_DAYS * DAY_MS);
-  const toBill = await Subscription.find({
+  // Walked in full: these keep their status, so a limit would re-read the same
+  // first batch every run and never reach the rest.
+  const toBill = Subscription.find({
     $or: [
       { status: SUBSCRIPTION_STATUS.TRIALING, trialEndsAt: { $ne: null, $lte: billBy } },
       { status: SUBSCRIPTION_STATUS.ACTIVE, currentPeriodEnd: { $ne: null, $lte: billBy } },
       { status: { $in: [SUBSCRIPTION_STATUS.PAST_DUE, SUBSCRIPTION_STATUS.SUSPENDED] } },
     ],
-  }).limit(BATCH);
-  for (const sub of toBill) {
+  }).cursor();
+  for await (const sub of toBill) {
     if (await findOpenInvoice(sub._id)) continue;
     const invoice = await issueInvoice(sub);
     result.invoiced += 1;
@@ -80,13 +82,13 @@ export async function runSubscriptionJob(now: Date = new Date()) {
   }
 
   // 1. Reminders before a trial or a paid period ends.
-  const ending = await Subscription.find({
+  const ending = Subscription.find({
     $or: [
       { status: SUBSCRIPTION_STATUS.TRIALING, trialEndsAt: { $gt: now, $lte: soon } },
       { status: SUBSCRIPTION_STATUS.ACTIVE, currentPeriodEnd: { $gt: now, $lte: soon } },
     ],
-  }).limit(BATCH);
-  for (const sub of ending) {
+  }).cursor();
+  for await (const sub of ending) {
     const trial = sub.status === SUBSCRIPTION_STATUS.TRIALING;
     const end = (trial ? sub.trialEndsAt : sub.currentPeriodEnd)!;
     const key = `${trial ? "trial-ending" : "renewal"}:${end.toISOString()}`;

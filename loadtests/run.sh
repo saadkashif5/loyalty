@@ -16,8 +16,13 @@ export JWT_ACCESS_SECRET=load-test-access-secret-that-is-long-enough
 export JWT_REFRESH_SECRET=load-test-refresh-secret-that-is-long-enough
 export MFA_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
 export EMAIL_TRANSPORT=smtp SMTP_URL=smtp://localhost:2525 EMAIL_FROM=load@example.com
+# api/.env may switch two-step verification off for local testing; production refuses that.
+export SKIP_MFA=false
 
 docker exec taptapsell-mongo mongosh --quiet taptapsell_load --eval 'db.dropDatabase().ok' > /dev/null
+# Production mode sends real email; this accepts it and throws it away.
+node "$ROOT/loadtests/smtp-sink.js" 2525 > "$ROOT/loadtests/.data/smtp.log" 2>&1 &
+SINK=$!
 cd "$ROOT/api"
 NODE_ENV=development npx tsx src/scripts/seedLoad.ts || exit 1
 
@@ -38,5 +43,6 @@ mongo 'db.system.profile.aggregate([{$group:{_id:{ns:"$ns",op:"$op",plan:"$planS
 
 PID=$(netstat -ano | grep LISTENING | grep ":4600 " | awk '{print $NF}' | head -1)
 [ -n "$PID" ] && taskkill //PID "$PID" //F > /dev/null
+kill "$SINK" 2> /dev/null
 docker exec taptapsell-mongo mongosh --quiet taptapsell_load --eval 'db.dropDatabase().ok' > /dev/null
 exit $STATUS

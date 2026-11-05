@@ -35,6 +35,7 @@ import { cancelScheduledChange, changeOwnPlan } from "@/modules/billing/planChan
 import { applyCoupon } from "@/modules/billing/coupons.service";
 import { assertFeature, featuresOf } from "@/modules/billing/entitlements.service";
 import type { PlanFeature } from "@taptapsell/constants";
+import { listExports, openExport, requestExport } from "@/services/exports.service";
 import { applyCouponSchema } from "@taptapsell/validation";
 import { getInvoice } from "@/modules/billing/invoices.service";
 import { renderInvoicePdf } from "@/modules/billing/invoicePdf.service";
@@ -182,6 +183,40 @@ function requireFeature(feature: PlanFeature) {
     next();
   });
 }
+
+// The customer list as a CSV, built by the worker. Contact details stay masked.
+router.post(
+  "/exports",
+  requireBusinessRole({ minRole: BUSINESS_ROLES.MANAGER }),
+  asyncHandler(async (req, res) => {
+    const job = await requestExport({
+      kind: "CUSTOMERS_CSV",
+      requestedBy: req.userId!,
+      businessId: req.businessId!,
+    });
+    sendSuccess(res, job, { status: 202 });
+  }),
+);
+router.get(
+  "/exports",
+  requireBusinessRole({ minRole: BUSINESS_ROLES.MANAGER }),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await listExports({ businessId: req.businessId! }));
+  }),
+);
+router.get(
+  "/exports/:exportId/file",
+  requireBusinessRole({ minRole: BUSINESS_ROLES.MANAGER }),
+  asyncHandler(async (req, res) => {
+    const { stream, fileName } = await openExport(req.params.exportId, {
+      businessId: req.businessId!,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    stream.on("error", () => res.status(404).end());
+    stream.pipe(res);
+  }),
+);
 
 // Counter stamps waiting for a manager (when the business has an approval threshold).
 router.get(

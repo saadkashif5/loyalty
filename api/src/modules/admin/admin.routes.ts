@@ -31,6 +31,7 @@ import * as support from "@/modules/support/support.service";
 import { getPilotMetrics } from "@/modules/metrics/pilot.service";
 import * as coupons from "@/modules/billing/coupons.service";
 import * as creditNotes from "@/modules/billing/creditNotes.service";
+import * as exportsService from "@/services/exports.service";
 import * as invitations from "@/modules/invitations/invitations.service";
 import * as leads from "@/modules/leads/leads.service";
 import * as fraud from "@/modules/fraud/fraud.service";
@@ -523,6 +524,47 @@ router.get(
     res.setHeader("Content-Disposition", 'attachment; filename="invoices.csv"');
     // Byte-order mark so Excel opens the file as UTF-8.
     res.send(`\uFEFF${csv}`);
+  }),
+);
+
+// Larger exports are built by the worker; the console lists them with a download link.
+router.post(
+  "/exports",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const now = new Date();
+    const from =
+      day(req.query.from ?? req.body?.from) ??
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const to = day(req.query.to ?? req.body?.to);
+    const job = await exportsService.requestExport({
+      kind: "INVOICES_CSV",
+      requestedBy: req.userId!,
+      params: { from, to: to ? new Date(to.getTime() + 86_400_000) : now },
+    });
+    sendSuccess(res, job, { status: 202 });
+  }),
+);
+
+router.get(
+  "/exports",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await exportsService.listExports({ requestedBy: req.userId! }));
+  }),
+);
+
+router.get(
+  "/exports/:exportId/file",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const { stream, fileName } = await exportsService.openExport(req.params.exportId, {
+      requestedBy: req.userId!,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    stream.on("error", () => res.status(404).end());
+    stream.pipe(res);
   }),
 );
 

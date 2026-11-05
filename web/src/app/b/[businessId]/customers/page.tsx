@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getMembership } from "@/lib/membership";
+import { requestCustomerExportAction } from "@/app/actions/business";
 import { apiFetch, apiFetchPage } from "@/lib/api";
 import {
   Card,
@@ -28,13 +30,21 @@ export default async function CustomersPage({
 }) {
   const { businessId } = await params;
   const { q, cursor } = await searchParams;
+  const { role } = await getMembership(businessId);
+  // Exports are for owners and managers.
+  const canExport = role === "OWNER" || role === "MANAGER";
 
   const query = new URLSearchParams({ limit: "25" });
   if (q) query.set("q", q);
   if (cursor) query.set("cursor", cursor);
-  const [{ data, meta }, consents] = await Promise.all([
+  const [{ data, meta }, consents, exports] = await Promise.all([
     apiFetchPage<CustomerRow[]>(`/businesses/${businessId}/customers?${query.toString()}`),
     apiFetch<{ whatsapp: number }>(`/businesses/${businessId}/customers/consents`),
+    canExport
+      ? apiFetch<Array<{ _id: string; status: string; rows?: number; createdAt: string }>>(
+          `/businesses/${businessId}/exports`,
+        )
+      : Promise.resolve([]),
   ]);
 
   return (
@@ -47,6 +57,28 @@ export default async function CustomersPage({
         {consents.whatsapp} customer{consents.whatsapp === 1 ? " has" : "s have"} agreed to hear
         from you on WhatsApp. Customers choose this in their TapTapSell profile.
       </p>
+      {canExport ? (
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+          <form action={requestCustomerExportAction.bind(null, businessId)}>
+            <SecondaryButton type="submit">Export customers (CSV)</SecondaryButton>
+          </form>
+          {exports.slice(0, 3).map((e) =>
+            e.status === "DONE" ? (
+              <a
+                key={e._id}
+                href={`/b/${businessId}/customers/exports/${e._id}`}
+                className="text-brand-600 hover:underline"
+              >
+                Download {formatDate(e.createdAt)} ({e.rows})
+              </a>
+            ) : (
+              <span key={e._id} className="text-slate-500">
+                {e.status === "FAILED" ? "Export failed" : "Preparing… refresh in a moment"}
+              </span>
+            ),
+          )}
+        </div>
+      ) : null}
 
       <form className="mb-4 flex gap-2">
         <Input

@@ -618,6 +618,23 @@ export async function voidInvoiceAction(
   }
 }
 
+/** Queues the accountant's invoice export; the worker builds it. */
+export async function requestInvoiceExportAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch("/admin/exports", {
+      method: "POST",
+      body: { from: text(formData, "from"), to: text(formData, "to") },
+    });
+    revalidatePath("/finance");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not start the export.") };
+  }
+}
+
 // ---- Coupons and credit notes ---------------------------------------------------------
 
 export async function createCouponAction(_prev: FormState, formData: FormData): Promise<FormState> {

@@ -11,6 +11,11 @@ function cell(value: unknown): string {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+/** Rows to CSV text, every cell quoted and made safe for spreadsheets. */
+export function toCsv(rows: unknown[][]): string {
+  return rows.map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+}
+
 const day = (d?: Date | null) =>
   d ? d.toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" }) : "";
 
@@ -89,5 +94,5 @@ export async function invoicesCsv(from: Date, to: Date): Promise<string> {
     n.refund?.reference || n.reason,
   ]);
 
-  return [header, ...rows, ...noteRows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+  return toCsv([header, ...rows, ...noteRows]);
 }
