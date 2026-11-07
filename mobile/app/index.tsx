@@ -3,7 +3,17 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Text, View } from "r
 import { Redirect } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
-import { Button, Card, ErrorText, Input, Muted, Screen, Title, colors } from "@/components/ui";
+import {
+  BRAND_NAME,
+  Button,
+  Card,
+  ErrorText,
+  Input,
+  Muted,
+  Screen,
+  Title,
+  colors,
+} from "@/components/ui";
 
 export default function WelcomeScreen() {
   const { user, loading, signIn, signUp } = useAuth();
@@ -47,7 +57,7 @@ export default function WelcomeScreen() {
     >
       <Screen>
         <View style={{ flex: 1, justifyContent: "center" }}>
-          <Title>TapTapSell Loyalty</Title>
+          <Title>{BRAND_NAME}</Title>
           <Muted>Tap your phone at the counter. Collect stamps. Earn rewards.</Muted>
 
           <View style={{ height: 24 }} />

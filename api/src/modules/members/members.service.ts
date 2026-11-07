@@ -6,6 +6,7 @@ import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { BUSINESS_ROLES, MEMBER_STATUS } from "@taptapsell/constants";
 import type { InviteMemberInput, UpdateMemberInput } from "@taptapsell/validation";
+import { BRAND } from "@taptapsell/brand";
 
 export async function listMembers(businessId: string) {
   return BusinessMember.find({ businessId }).populate("userId", "name email phone status");
@@ -51,7 +52,7 @@ export async function inviteMember(
   const business = await Business.findById(businessId).select("name");
   await queueEmail({
     to: user.email,
-    subject: `You are invited to join ${business?.name ?? "a business"} on TapTapSell`,
+    subject: `You are invited to join ${business?.name ?? "a business"} on ${BRAND.name}`,
     text: [
       `Hi ${user.name},`,
       "",

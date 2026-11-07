@@ -41,6 +41,7 @@ import { quotePlanChange } from "./planQuote";
 import { day, invoiceEmail } from "./emails";
 import { CreditNote } from "@/models";
 import { getPaymentDetails } from "./settings.service";
+import { BRAND } from "@taptapsell/brand";
 
 export function snapshot(plan: PlanDocument) {
   return {
@@ -497,8 +498,8 @@ export async function sendPaymentReminder(actorUserId: string, businessId: strin
   await emailOwners(
     businessId,
     suspended
-      ? "Reminder: pay to switch TapTapSell back on"
-      : "Reminder: your TapTapSell payment is overdue",
+      ? `Reminder: pay to switch ${BRAND.name} back on`
+      : `Reminder: your ${BRAND.name} payment is overdue`,
     `${opening}
 
 ${body}`,

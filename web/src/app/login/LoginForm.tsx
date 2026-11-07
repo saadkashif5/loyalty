@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { BRAND } from "@taptapsell/brand";
 import { codeLoginAction, loginAction, type CodeLoginState } from "@/app/actions/auth";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
 
@@ -30,7 +31,7 @@ export function LoginForm({ next }: { next: string }) {
           <p className="text-sm text-slate-600">
             {useRecovery
               ? "Enter one of the recovery codes you saved when you set up two-step verification."
-              : "Open your authenticator app and enter the 6-digit code for TapTapSell."}
+              : `Open your authenticator app and enter the 6-digit code for ${BRAND.name}.`}
           </p>
           {useRecovery ? (
             <Field label="Recovery code">

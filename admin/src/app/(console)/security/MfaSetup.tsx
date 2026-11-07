@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { BRAND } from "@taptapsell/brand";
 import { mfaSetupAction } from "@/app/actions";
 import { Button, ErrorText, Field, Input } from "@/components/ui";
 
@@ -76,7 +77,7 @@ export function MfaSetup() {
     <form action={formAction} className="space-y-4">
       <p className="text-sm text-slate-600">
         Each time you sign in, you will enter a code from an app on your phone as well as your
-        password. Everyone on the TapTapSell team must use it.
+        password. Everyone on the {BRAND.name} team must use it.
       </p>
       <ErrorText>{state.error}</ErrorText>
       <SubmitButton label="Set up two-step verification" pendingLabel="Starting…" />

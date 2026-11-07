@@ -1,3 +1,4 @@
+import { BRAND } from "@taptapsell/brand";
 import { apiFetch } from "@/lib/api";
 import { Card, PageHeader, StatusBadge, formatDate } from "@/components/ui";
 import { CancelChangeForm, ChangePlanButton, type PlanChangeQuote } from "./PlanActions";
@@ -134,7 +135,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
       <>
         <PageHeader title="Billing" />
         <Card className="text-sm text-slate-600">
-          Your business is not on a paid plan. Contact TapTapSell if you have questions.
+          Your business is not on a paid plan. Contact {BRAND.name} if you have questions.
         </Card>
       </>
     );
@@ -450,7 +451,7 @@ function PaymentDetails({
   if (details.bankAccounts.length === 0 && !details.raastId) {
     return (
       <p className="text-sm text-slate-600">
-        Contact the TapTapSell team
+        Contact the {BRAND.name} team
         {details.phone ? ` on ${details.phone}` : details.email ? ` at ${details.email}` : ""} for
         payment details.
       </p>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PLATFORM_PERMISSIONS, type PlatformPermission } from "@taptapsell/constants";
+import { Logo } from "@taptapsell/brand/logo";
 import { logoutAction } from "@/app/actions";
 import { can, getMe } from "@/lib/me";
 
@@ -31,10 +32,10 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="border-b border-slate-200 bg-slate-900 text-slate-200 md:w-56 md:border-b-0 md:border-r">
+      <aside className="border-b border-brand-900 bg-brand-950 text-brand-100 md:w-56 md:border-b-0 md:border-r">
         <div className="px-5 py-4">
-          <p className="font-semibold text-white">TapTapSell Admin</p>
-          <p className="mt-1 truncate text-xs text-slate-400">
+          <Logo size="sm" tone="light" suffix="Admin" />
+          <p className="mt-2 truncate text-xs text-brand-300">
             {me.name} · {me.platformRole.replace("_", " ").toLowerCase()}
           </p>
         </div>
@@ -43,13 +44,13 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
             <Link
               key={item.href}
               href={item.href}
-              className="whitespace-nowrap rounded-md px-3 py-2 text-sm hover:bg-slate-800 hover:text-white"
+              className="whitespace-nowrap rounded-md px-3 py-2 text-sm hover:bg-white/10 hover:text-white"
             >
               {item.label}
             </Link>
           ))}
           <form action={logoutAction}>
-            <button className="w-full whitespace-nowrap rounded-md px-3 py-2 text-left text-sm text-slate-400 hover:bg-slate-800 hover:text-white">
+            <button className="w-full whitespace-nowrap rounded-md px-3 py-2 text-left text-sm text-brand-300 hover:bg-white/10 hover:text-white">
               Sign out
             </button>
           </form>

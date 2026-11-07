@@ -1,17 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import { BRAND, THEME_COLOR } from "@taptapsell/brand";
 import "./globals.css";
 import { getLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "TapTapSell",
-  description: "Your loyalty cards from every TapTapSell shop, in one place.",
+  title: { default: BRAND.name, template: `%s · ${BRAND.name}` },
+  description: `Your loyalty cards from every ${BRAND.name} shop, in one place.`,
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0f766e",
+  themeColor: THEME_COLOR,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

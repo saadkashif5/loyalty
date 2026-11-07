@@ -8,6 +8,7 @@ import type { RequestEmailCodeInput, VerifyEmailCodeInput } from "@taptapsell/va
 import { issueTokenPair, type AuthContext } from "./auth.service";
 import { signMfaChallenge } from "./token.service";
 import { toPublicUser } from "./auth.serializer";
+import { BRAND } from "@taptapsell/brand";
 
 const CODE_TTL_MS = 5 * 60_000;
 const MAX_ATTEMPTS = 5;
@@ -27,15 +28,15 @@ function normalise(email: string): string {
 
 function codeEmail(code: string) {
   const text = [
-    `Your TapTapSell code is ${code}`,
+    `Your ${BRAND.name} code is ${code}`,
     "",
     "Enter it on the page you came from. It expires in 5 minutes.",
     "If you did not ask for this code, you can ignore this email.",
     "",
-    `آپ کا TapTapSell کوڈ ${code} ہے۔ یہ 5 منٹ میں ختم ہو جائے گا۔`,
+    `آپ کا ${BRAND.name} کوڈ ${code} ہے۔ یہ 5 منٹ میں ختم ہو جائے گا۔`,
   ].join("\n");
 
-  return { subject: `${code} is your TapTapSell code`, text };
+  return { subject: `${code} is your ${BRAND.name} code`, text };
 }
 
 /**

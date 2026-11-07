@@ -1,19 +1,10 @@
 import type { Config } from "tailwindcss";
+import brand, { brandContent } from "@taptapsell/brand/tailwind";
 
+// Colours, logo and name come from packages/brand.
 const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      colors: {
-        brand: {
-          50: "#eef7f3",
-          500: "#0f766e",
-          600: "#0d635c",
-          700: "#0a4f49",
-        },
-      },
-    },
-  },
+  presets: [brand],
+  content: ["./src/**/*.{ts,tsx}", brandContent],
   plugins: [],
 };
 

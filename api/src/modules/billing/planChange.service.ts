@@ -10,6 +10,7 @@ import { findActivePlan } from "./plans.service";
 import { reissueOpenInvoice } from "./invoices.service";
 import { quotePlanChange } from "./planQuote";
 import { emailOwners, getSubscriptionOrThrow, snapshot } from "./subscriptions.service";
+import { BRAND } from "@taptapsell/brand";
 
 const REISSUE_REASON = "Replaced after a plan change";
 const RECEIPT_WAITING = "We are checking your receipt. Try again once it has been reviewed.";
@@ -98,7 +99,7 @@ export async function changeOwnPlan(
   });
   await emailOwners(
     businessId,
-    `Your TapTapSell plan is changing to ${plan.name}`,
+    `Your ${BRAND.name} plan is changing to ${plan.name}`,
     quote.kind === "PERIOD_END"
       ? `You will move to the ${plan.name} plan when your paid period ends.`
       : `You are now on the ${plan.name} plan.` +

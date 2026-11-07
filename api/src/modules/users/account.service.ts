@@ -14,6 +14,7 @@ import { sendEmail } from "@/services/email.service";
 import { revokeAllUserSessions } from "@/modules/auth/token.service";
 import { runAcrossTenants } from "@/models/tenantGuard";
 import { MEMBER_STATUS, REDEMPTION_STATUS, USER_STATUS } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 
 /** Everything the platform holds about a customer, in one file they can keep. */
 export async function exportAccount(userId: string) {
@@ -130,11 +131,11 @@ export async function deleteAccount(userId: string) {
   });
   await sendEmail({
     to: email,
-    subject: "Your TapTapSell account was deleted",
+    subject: `Your ${BRAND.name} account was deleted`,
     text: [
       `Hi ${name},`,
       "",
-      "Your TapTapSell account and your loyalty cards have been deleted, as you asked.",
+      `Your ${BRAND.name} account and your loyalty cards have been deleted, as you asked.`,
       "You can join again any time by tapping a stamper.",
     ].join("\n"),
   }).catch(() => undefined);

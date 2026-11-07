@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { BRAND } from "@taptapsell/brand";
 
 const STEPS = [
   {
     title: "Tap",
-    body: "A small TapTapSell stamper sits on your counter. After paying, the customer holds their phone to it.",
+    body: `A small ${BRAND.name} stamper sits on your counter. After paying, the customer holds their phone to it.`,
   },
   {
     title: "Collect",
@@ -42,7 +43,7 @@ const FEATURES = [
 export default function BusinessHome() {
   return (
     <>
-      <section className="bg-gradient-to-b from-emerald-50 to-white">
+      <section className="bg-gradient-to-b from-brand-50 to-white">
         <div className="mx-auto max-w-5xl px-5 py-16 text-center sm:py-24">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">
             Loyalty cards your customers will not lose
@@ -54,13 +55,13 @@ export default function BusinessHome() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/business/request-access"
-              className="rounded-xl bg-brand-600 px-5 py-3 font-medium text-white"
+              className="rounded-xl bg-brand-600 px-5 py-3 font-medium text-white shadow-sm transition hover:bg-brand-700"
             >
               Request access
             </Link>
             <Link
               href="/business/pricing"
-              className="rounded-xl border border-slate-300 px-5 py-3 font-medium text-slate-700"
+              className="rounded-xl px-5 py-3 font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50"
             >
               See pricing
             </Link>
@@ -74,8 +75,10 @@ export default function BusinessHome() {
         <ol className="mt-8 grid gap-6 sm:grid-cols-3">
           {STEPS.map((step, i) => (
             <li key={step.title} className="rounded-2xl border border-slate-200 p-6">
-              <p className="text-sm font-semibold text-brand-600">Step {i + 1}</p>
-              <p className="mt-1 text-lg font-semibold">{step.title}</p>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 font-bold text-brand-600">
+                {i + 1}
+              </span>
+              <p className="mt-4 text-lg font-semibold">{step.title}</p>
               <p className="mt-2 text-sm text-slate-600">{step.body}</p>
             </li>
           ))}
@@ -103,7 +106,7 @@ export default function BusinessHome() {
         </p>
         <Link
           href="/business/request-access"
-          className="mt-6 inline-block rounded-xl bg-brand-600 px-5 py-3 font-medium text-white"
+          className="mt-6 inline-block rounded-xl bg-brand-600 px-5 py-3 font-medium text-white shadow-sm transition hover:bg-brand-700"
         >
           Request access
         </Link>

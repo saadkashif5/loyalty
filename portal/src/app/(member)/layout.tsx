@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@taptapsell/brand/logo";
 import { apiFetch } from "@/lib/api";
 import { Pwa } from "@/components/Pwa";
 import { getT, pick } from "@/lib/i18n";
@@ -18,8 +19,8 @@ export default async function MemberLayout({ children }: { children: React.React
   return (
     <div className="mx-auto min-h-screen max-w-md pb-24">
       <header className="flex items-center justify-between px-5 pb-2 pt-5">
-        <Link href="/cards" className="text-xl font-bold text-brand-600">
-          TapTapSell
+        <Link href="/cards" aria-label="Cards">
+          <Logo size="sm" />
         </Link>
         <Link
           href="/notifications"

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { BUSINESS_PERMISSIONS, type BusinessPermission } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
+import { LogoMark } from "@taptapsell/brand/logo";
 import { logoutAction } from "@/app/actions/auth";
 import { can, getMembership } from "@/lib/membership";
 import { apiFetch } from "@/lib/api";
@@ -78,11 +80,14 @@ export default async function BusinessLayout({
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <div className="min-w-0">
-            <Link href="/businesses" className="text-sm font-semibold">
+          <div className="flex min-w-0 items-center">
+            <Link href="/businesses" className="me-3 shrink-0" aria-label="Your businesses">
+              <LogoMark size={28} />
+            </Link>
+            <Link href="/businesses" className="truncate text-sm font-semibold">
               {business.name}
             </Link>
-            <span className="ml-2 text-xs text-slate-400">
+            <span className="ml-2 shrink-0 text-xs text-slate-400">
               {supportView ? "support view" : role.toLowerCase()}
             </span>
           </div>
@@ -100,7 +105,7 @@ export default async function BusinessLayout({
             <Link
               key={item.href}
               href={`${base}${item.href}`}
-              className="whitespace-nowrap rounded-t-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              className="whitespace-nowrap rounded-t-md px-3 py-2 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
             >
               {item.label}
             </Link>
@@ -140,7 +145,7 @@ export default async function BusinessLayout({
             <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-red-800">
               <strong>This business is suspended.</strong>{" "}
               {business.suspension?.reason ? `Reason: ${business.suspension.reason}. ` : ""}
-              Customers cannot collect stamps and nothing can be changed until TapTapSell restores
+              Customers cannot collect stamps and nothing can be changed until {BRAND.name} restores
               it. Your data is safe and still visible.
             </p>
           )}

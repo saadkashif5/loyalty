@@ -11,7 +11,7 @@ export interface Membership {
   role: BusinessRole;
   /** Branches this person works at; empty means every branch. */
   branchIds: string[];
-  /** Set when a TapTapSell team member is looking at the business read-only. */
+  /** Set when a platform team member is looking at the business read-only. */
   supportView?: { expiresAt: string; reason: string };
   business: {
     _id: string;

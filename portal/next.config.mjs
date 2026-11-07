@@ -3,7 +3,12 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // Workspace packages ship as TypeScript source, so Next must compile them.
-  transpilePackages: ["@taptapsell/constants", "@taptapsell/types", "@taptapsell/validation"],
+  transpilePackages: [
+    "@taptapsell/brand",
+    "@taptapsell/constants",
+    "@taptapsell/types",
+    "@taptapsell/validation",
+  ],
   async headers() {
     return [
       {

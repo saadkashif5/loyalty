@@ -7,6 +7,7 @@ import { sendEmail } from "@/services/email.service";
 import type { ForgotPasswordInput, ResetPasswordInput } from "@taptapsell/validation";
 import { hashPassword } from "./auth.service";
 import { revokeAllUserSessions } from "./token.service";
+import { BRAND } from "@taptapsell/brand";
 
 const RESET_TTL_MS = 30 * 60_000;
 
@@ -44,7 +45,7 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
   // Sent straight away rather than queued: the person is waiting for it.
   await sendEmail({
     to: user.email,
-    subject: "Reset your TapTapSell password",
+    subject: `Reset your ${BRAND.name} password`,
     text: [
       `Hi ${user.name},`,
       "",
@@ -97,12 +98,12 @@ export async function resetPassword(input: ResetPasswordInput): Promise<void> {
   });
   await sendEmail({
     to: user.email,
-    subject: "Your TapTapSell password was changed",
+    subject: `Your ${BRAND.name} password was changed`,
     text: [
       `Hi ${user.name},`,
       "",
       "Your password was just changed, and you were signed out on every device.",
-      "If this was not you, contact the TapTapSell team straight away.",
+      `If this was not you, contact the ${BRAND.name} team straight away.`,
     ].join("\n"),
   }).catch(() => undefined);
 }

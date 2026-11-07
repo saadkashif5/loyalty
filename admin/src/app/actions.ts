@@ -3,6 +3,7 @@
 import QRCode from "qrcode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { BRAND } from "@taptapsell/brand";
 import { API_BASE_URL, ApiRequestError, apiFetch } from "@/lib/api";
 import { clientHeaders } from "@/lib/forwarding";
 import { labelQr } from "@/lib/qr";
@@ -49,7 +50,7 @@ interface SignedIn {
 async function startSession(data: SignedIn): Promise<LoginState> {
   if (!data.user.platformRole) {
     await postAuth("/auth/logout", { refreshToken: data.refreshToken });
-    return { error: "This account is not on the TapTapSell team." };
+    return { error: `This account is not on the ${BRAND.name} team.` };
   }
   await setSessionCookies(data);
   redirect("/");

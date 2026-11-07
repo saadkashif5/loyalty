@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { BRAND } from "@taptapsell/brand";
 
 // RFC 6238 time-based one-time passwords: HMAC-SHA1, 30-second steps — the
 // scheme every authenticator app (Google Authenticator, Microsoft
@@ -94,7 +95,7 @@ export function verifyTotp(
 export function otpauthUri(
   secretBase32: string,
   accountName: string,
-  issuer = "TapTapSell",
+  issuer: string = BRAND.name,
 ): string {
   const label = `${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}`;
   const params = new URLSearchParams({

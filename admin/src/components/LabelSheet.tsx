@@ -1,5 +1,7 @@
 "use client";
 
+import { BRAND } from "@taptapsell/brand";
+
 export interface Label {
   deviceIdentifier: string;
   qrDataUrl: string;
@@ -31,7 +33,7 @@ export function LabelSheet({ labels }: { labels: Label[] }) {
           >
             <img src={label.qrDataUrl} alt="" width={96} height={96} />
             <div className="min-w-0 text-xs">
-              <p className="font-semibold">TapTapSell stamper</p>
+              <p className="font-semibold">{BRAND.name} stamper</p>
               <p className="font-mono text-sm">{label.deviceIdentifier}</p>
               {label.activationCode ? (
                 <p className="mt-1">

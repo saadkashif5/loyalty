@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND } from "@taptapsell/brand";
 import { apiFetch } from "@/lib/api";
 
 interface PublicPlan {
@@ -21,7 +22,7 @@ const LIMITS: Array<[keyof PublicPlan["limits"], string, string]> = [
 
 const pkr = (n: number) => `PKR ${n.toLocaleString("en-PK")}`;
 
-export const metadata = { title: "Pricing · TapTapSell" };
+export const metadata = { title: "Pricing" };
 
 export default async function PricingPage() {
   const plans = await apiFetch<PublicPlan[]>("/plans", { anonymous: true }).catch(() => []);
@@ -77,7 +78,7 @@ export default async function PricingPage() {
         </div>
       )}
       <p className="mt-8 text-center text-sm text-slate-500">
-        Stampers are supplied by TapTapSell and billed once on your first invoice.
+        Stampers are supplied by {BRAND.company} and billed once on your first invoice.
       </p>
     </section>
   );

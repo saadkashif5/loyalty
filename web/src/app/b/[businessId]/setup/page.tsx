@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BUSINESS_PERMISSIONS } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 import { apiFetch } from "@/lib/api";
 import { can, getMembership } from "@/lib/membership";
 import { Card, PageHeader } from "@/components/ui";
@@ -125,7 +126,7 @@ export default async function SetupPage({
           {current === "stamper" ? (
             <>
               <p className="text-sm text-slate-600">
-                Your stamper comes from TapTapSell with a stamper ID and an activation code. Not
+                Your stamper comes from {BRAND.name} with a stamper ID and an activation code. Not
                 received it yet? You can finish the other steps and come back.
               </p>
               {branches.length === 0 ? (
@@ -139,7 +140,7 @@ export default async function SetupPage({
           {current === "staff" ? (
             <>
               <p className="text-sm text-slate-600">
-                Optional. The person needs a TapTapSell account first; they accept the invitation
+                Optional. The person needs a {BRAND.name} account first; they accept the invitation
                 when they next sign in.
               </p>
               <InviteMemberForm businessId={businessId} />

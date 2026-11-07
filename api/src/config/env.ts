@@ -1,5 +1,6 @@
 import { z } from "zod";
 import dotenv from "dotenv";
+import { BRAND } from "@taptapsell/brand";
 
 dotenv.config();
 
@@ -36,7 +37,7 @@ const envSchema = z
     // "smtp" sends through any SMTP provider (Gmail, SES, Brevo, ...).
     EMAIL_TRANSPORT: z.enum(["log", "smtp"]).default("log"),
     SMTP_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
-    EMAIL_FROM: z.string().default("TapTapSell <no-reply@taptapsell.local>"),
+    EMAIL_FROM: z.string().default(`${BRAND.name} <no-reply@taptapsell.local>`),
 
     // Where private uploads (payment receipts) are kept until cloud storage is chosen.
     STORAGE_DIR: z.string().default("./storage"),

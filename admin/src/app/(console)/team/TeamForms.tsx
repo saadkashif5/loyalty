@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { BRAND } from "@taptapsell/brand";
 import { addTeamMemberAction, updateTeamMemberAction } from "@/app/actions";
 import { Button, Card, ErrorText, Field, Input, SecondaryButton, Select } from "@/components/ui";
 
@@ -29,8 +30,8 @@ export function AddTeamMemberForm() {
     <Card className="space-y-3">
       <h2 className="font-semibold">Add someone</h2>
       <p className="text-sm text-slate-500">
-        They need a TapTapSell account first. They must set up two-step verification before they can
-        use the console.
+        They need a {BRAND.name} account first. They must set up two-step verification before they
+        can use the console.
       </p>
       <form action={formAction} className="flex flex-wrap items-end gap-2">
         <Field label="Email">

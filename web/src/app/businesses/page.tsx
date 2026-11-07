@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BRAND } from "@taptapsell/brand";
+import { Logo } from "@taptapsell/brand/logo";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { acceptStaffInviteAction, declineStaffInviteAction } from "@/app/actions/business";
 import {
@@ -46,6 +48,9 @@ export default async function BusinessesPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
+      <div className="mb-8">
+        <Logo suffix="Business" />
+      </div>
       <PageHeader
         title="Your businesses"
         description="Pick a business to manage its loyalty programs, stampers and rewards."
@@ -79,8 +84,8 @@ export default async function BusinessesPage() {
 
       {valid.length === 0 && invitations.length === 0 ? (
         <EmptyState>
-          You do not manage a business yet. Businesses join TapTapSell by invitation: open the link
-          in the invitation you received, or ask the business owner to add you as staff.
+          You do not manage a business yet. Businesses join {BRAND.name} by invitation: open the
+          link in the invitation you received, or ask the business owner to add you as staff.
         </EmptyState>
       ) : valid.length === 0 ? null : (
         <ul className="space-y-3">

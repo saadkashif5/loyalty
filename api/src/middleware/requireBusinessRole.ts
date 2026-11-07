@@ -19,6 +19,7 @@ import {
   type BusinessPermission,
   type BusinessRole,
 } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -125,7 +126,7 @@ export function requireBusinessRole(options: Options = {}) {
         new ApiError(
           403,
           "BUSINESS_SUSPENDED",
-          `This business is suspended${reason ? `: ${reason}` : ""}. Contact TapTapSell to restore it.`,
+          `This business is suspended${reason ? `: ${reason}` : ""}. Contact ${BRAND.name} to restore it.`,
         ),
       );
       return;

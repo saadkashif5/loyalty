@@ -20,6 +20,7 @@ import { createTrialSubscription, startTrial } from "@/modules/billing/subscript
 import { findActivePlan } from "@/modules/billing/plans.service";
 import { BUSINESS_ROLES, BUSINESS_STATUS, MEMBER_STATUS } from "@taptapsell/constants";
 import type { AcceptInvitationInput, CreateBusinessWithOwnerInput } from "@taptapsell/validation";
+import { BRAND } from "@taptapsell/brand";
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60_000;
 
@@ -138,11 +139,11 @@ export async function createBusinessWithInvitation(
 async function emailInvitation(to: string, name: string, businessName: string, url: string) {
   await queueEmail({
     to,
-    subject: `You are invited to run ${businessName} on TapTapSell`,
+    subject: `You are invited to run ${businessName} on ${BRAND.name}`,
     text: [
       `Hi ${name},`,
       "",
-      `The TapTapSell team has set up ${businessName} for you. Open this link to create your account and start your free trial:`,
+      `The ${BRAND.name} team has set up ${businessName} for you. Open this link to create your account and start your free trial:`,
       url,
       "",
       "The link works for 7 days.",

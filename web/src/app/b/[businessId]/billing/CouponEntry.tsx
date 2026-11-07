@@ -14,7 +14,7 @@ function Submit() {
   );
 }
 
-/** Where owners enter a promotion code from TapTapSell. */
+/** Where owners enter a promotion code from the platform. */
 export function CouponEntry({ businessId }: { businessId: string }) {
   const [state, action] = useActionState(applyCouponAction.bind(null, businessId), {});
   return (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND } from "@taptapsell/brand";
 import { getMembership } from "@/lib/membership";
 import { requestCustomerExportAction } from "@/app/actions/business";
 import { apiFetch, apiFetchPage } from "@/lib/api";
@@ -55,7 +56,7 @@ export default async function CustomersPage({
       />
       <p className="mb-4 text-sm text-slate-600">
         {consents.whatsapp} customer{consents.whatsapp === 1 ? " has" : "s have"} agreed to hear
-        from you on WhatsApp. Customers choose this in their TapTapSell profile.
+        from you on WhatsApp. Customers choose this in their {BRAND.name} profile.
       </p>
       {canExport ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">

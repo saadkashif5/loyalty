@@ -10,6 +10,7 @@ import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
 import { getPublicBusiness } from "@/modules/businesses/discovery.service";
 import type { RecordTapInput } from "@taptapsell/validation";
 import { TAP_VERIFIERS, type VerifiedTap } from "./verifiers";
+import { BRAND } from "@taptapsell/brand";
 
 // Long enough to sign up or log in after a first tap; short enough that a
 // token lifted off a phone is useless soon after the customer leaves.
@@ -67,7 +68,7 @@ export async function recordTap(input: RecordTapInput) {
 
   const verifier = TAP_VERIFIERS[device.tagType];
   if (!verifier) {
-    throw ApiError.badRequest("This stamper must be used from the TapTapSell app.");
+    throw ApiError.badRequest(`This stamper must be used from the ${BRAND.name} app.`);
   }
 
   const tap = verifier.verify(input.params, { tagUid: device.tagUid });

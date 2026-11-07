@@ -13,6 +13,7 @@ import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { SUBSCRIPTION_STATUS, type BillingCycle } from "@taptapsell/constants";
 import { getBillingSettings } from "./settings.service";
 import { addPeriods } from "./billing.config";
+import { BRAND } from "@taptapsell/brand";
 
 /** Pakistan's fiscal year runs 1 July – 30 June: "2026-27". */
 export function fiscalYear(date: Date): string {
@@ -176,7 +177,7 @@ export async function issueInvoice(
     creditAppliedPkr,
     totalPkr: taxable + taxPkr - creditAppliedPkr,
     seller: {
-      name: settings.companyName ?? "TapTapSell",
+      name: settings.companyName ?? BRAND.company,
       address: settings.address,
       ntn: settings.ntn,
       strn: settings.strn,

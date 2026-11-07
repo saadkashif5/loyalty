@@ -3,6 +3,7 @@ import { logger } from "@/config/logger";
 import { queueNotification } from "@/services/notification.service";
 import { queueEmail } from "@/services/outbox.service";
 import { REDEMPTION_STATUS } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 
 const REMIND_WITHIN_MS = 3 * 86_400_000;
 const BATCH = 500;
@@ -62,7 +63,7 @@ export async function runRewardExpiryJob(now: Date = new Date()) {
         await queueEmail({
           to: customer.email,
           subject: `Use your reward at ${shop} by ${date}`,
-          text: `${reward} at ${shop} is waiting for you. Show the code in your TapTapSell card before ${date}.`,
+          text: `${reward} at ${shop} is waiting for you. Show the code in your ${BRAND.name} card before ${date}.`,
         });
       } catch (err) {
         // The in-app notification is already queued; email is best effort.

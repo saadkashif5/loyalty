@@ -1,5 +1,5 @@
 /* global self, caches */
-// TapTapSell portal service worker. Keeps the last copy of the card pages so a
+// Stamply portal service worker. Keeps the last copy of the card pages so a
 // customer standing at the counter with a weak signal still sees their card
 // and reward codes. Everything else goes straight to the network.
 const PAGES = "ttp-pages-v1";

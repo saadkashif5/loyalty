@@ -1,4 +1,5 @@
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 import { setUserStatusAction, signOutUserAction } from "@/app/actions";
 import { apiFetchPage } from "@/lib/api";
 import { can, requirePermission } from "@/lib/me";
@@ -44,7 +45,7 @@ export default async function UsersPage({
     <>
       <PageHeader
         title="Users"
-        description="Every account: customers, business owners and staff, and the TapTapSell team."
+        description={`Every account: customers, business owners and staff, and the ${BRAND.name} team.`}
       />
 
       <form className="mb-4 flex gap-2">

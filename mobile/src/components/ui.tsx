@@ -8,9 +8,13 @@ import {
   type TextInputProps,
 } from "react-native";
 
+// Mirrors packages/brand/src/index.ts, which this Expo project cannot import.
+// Keep the two in step when the brand changes.
+export const BRAND_NAME = "Stamply";
+
 export const colors = {
-  brand: "#0f766e",
-  brandDark: "#0a4f49",
+  brand: "#5b2ed6",
+  brandDark: "#4a23b0",
   text: "#0f172a",
   muted: "#64748b",
   border: "#e2e8f0",

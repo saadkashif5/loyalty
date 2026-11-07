@@ -25,6 +25,7 @@
     "@opentelemetry/sdk-node": "^0.301.0",
     "@opentelemetry/semantic-conventions": "^1.44.0",
     "@sentry/node": "^10.78.0",
+    "@taptapsell/brand": "*",
     "@taptapsell/constants": "*",
     "@taptapsell/types": "*",
     "@taptapsell/validation": "*",

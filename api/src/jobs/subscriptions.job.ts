@@ -14,6 +14,7 @@ import {
 import { findOpenInvoice, issueInvoice, renewalPrice } from "@/modules/billing/invoices.service";
 import { day, invoiceEmail } from "@/modules/billing/emails";
 import { SUBSCRIPTION_STATUS } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 
 const BATCH = 500;
 
@@ -75,7 +76,7 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     if (invoice.status === INVOICE_STATUS.ISSUED) {
       await emailOwners(
         String(sub.businessId),
-        `Invoice ${invoice.number} from TapTapSell`,
+        `Invoice ${invoice.number} from ${BRAND.name}`,
         await invoiceEmail(invoice.number, invoice.totalPkr, invoice.dueDate),
       );
     }
@@ -97,8 +98,8 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     await emailOwners(
       String(sub.businessId),
       trial
-        ? `Your TapTapSell trial ends on ${day(end)}`
-        : `Your TapTapSell plan renews on ${day(end)}`,
+        ? `Your ${BRAND.name} trial ends on ${day(end)}`
+        : `Your ${BRAND.name} plan renews on ${day(end)}`,
       `${trial ? "Your free trial" : "Your current period"} ends on ${day(end)}. ` +
         `To keep stamping without interruption, pay PKR ${renewalPrice(sub).toLocaleString("en-PK")} ` +
         `for your plan. See Billing in your dashboard for how to pay.`,
@@ -128,7 +129,7 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     await audit(sub.businessId, sub._id, sub.status, SUBSCRIPTION_STATUS.PAST_DUE);
     await emailOwners(
       String(sub.businessId),
-      "Your TapTapSell payment is due",
+      `Your ${BRAND.name} payment is due`,
       `Your ${sub.status === SUBSCRIPTION_STATUS.TRIALING ? "trial" : "plan"} has ended. ` +
         `Please pay PKR ${renewalPrice(sub).toLocaleString("en-PK")} by ${day(graceEndsAt)}; ` +
         "after that, stamping stops until payment arrives.",
@@ -168,7 +169,7 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     );
     await emailOwners(
       String(sub.businessId),
-      "Your TapTapSell account is suspended",
+      `Your ${BRAND.name} account is suspended`,
       "We have not received payment, so customers can no longer collect stamps. " +
         "Rewards they already earned can still be redeemed for 30 days. " +
         "Pay any time to switch everything back on straight away.",

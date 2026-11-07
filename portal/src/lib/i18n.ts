@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { BRAND } from "@taptapsell/brand";
 
 // English and Urdu for the customer portal. Urdu pages are laid out right to
 // left. The choice is kept in a cookie; without one, the phone's language
@@ -14,16 +15,35 @@ const en = {
   "nav.me": "Me",
   "nav.notifications": "Notifications",
   "nav.notificationsNew": "Notifications, {n} new",
-  "home.tagline": "Collect stamps at your favourite shops. Earn rewards.",
-  "home.tapTitle": "Tap to start",
-  "home.tapBody":
-    "Hold your phone near the TapTapSell stamper at the counter after you pay. Your card opens here — no app to install.",
-  "home.signIn": "Already a member? Sign in",
-  "home.forBusiness": "Own a shop? TapTapSell for businesses →",
+  "home.heroTitle": "Loyalty cards that live on your phone.",
+  "home.heroBody":
+    "Collect stamps at the shops you love and earn rewards. Tap your phone on the {brand} stamper at the counter: no app to install, no paper card to lose.",
+  "home.getStarted": "Get started",
+  "home.signIn": "Sign in",
+  "home.howTitle": "How it works",
+  "home.step1Title": "Tap",
+  "home.step1Body": "After you pay, hold your phone near the stamper on the counter.",
+  "home.step2Title": "Collect",
+  "home.step2Body": "A stamp lands on your card straight away. Each shop has its own card.",
+  "home.step3Title": "Enjoy",
+  "home.step3Body": "Fill the card, then show your reward code at the counter.",
+  "home.whyTitle": "Every visit counts",
+  "home.whyBody":
+    "Neighbourhood shops run on regulars. {brand} gives them a simple way to say thank you, and gives you more from the places you already love.",
+  "home.sampleShop": "Chai Corner",
+  "home.sampleStamps": "7 of 10 stamps",
+  "home.sampleReward": "Free chai on your 10th visit",
+  "home.businessTitle": "Run a shop?",
+  "home.businessBody": "Bring your regulars back with digital stamp cards. No printing, no app.",
+  "home.businessCta": "{brand} for businesses",
+  "home.madeIn": "Made in Pakistan",
   "home.deleted": "Your account has been deleted.",
+  "signin.title": "Welcome to {brand}",
+  "signin.subtitle": "Sign in or create your account with your email.",
+  "signin.back": "Back to home",
   "cards.title": "My cards",
   "cards.emptyTitle": "No cards yet",
-  "cards.emptyBody": "Tap a TapTapSell stamper at any participating shop to get your first card.",
+  "cards.emptyBody": "Tap a {brand} stamper at any participating shop to get your first card.",
   "cards.shop": "Shop",
   "card.stamps": "{n} of {m} stamps",
   "card.expiry": "Stamps expire after {days} days without a visit. Visit by {date} to keep them.",
@@ -57,13 +77,13 @@ const en = {
   "profile.language": "Language",
   "nfc.button": "Tap the stamper with this page",
   "nfc.listening": "Hold your phone near the stamper…",
-  "nfc.notOurs": "That is not a TapTapSell stamper. Try the one at the counter.",
+  "nfc.notOurs": "That is not a {brand} stamper. Try the one at the counter.",
   "nfc.readError": "Could not read the stamper. Hold the phone still and try again.",
   "nfc.off": "NFC is off or not allowed. Turn on NFC in your phone settings and try again.",
   "pwa.offline":
     "You are offline. This is your card as last loaded; new stamps appear when you are back online.",
-  "pwa.installAndroid": "Add TapTapSell to your home screen to open your cards in one tap.",
-  "pwa.installIos": "Add TapTapSell to your home screen: tap Share, then Add to Home Screen.",
+  "pwa.installAndroid": "Add {brand} to your home screen to open your cards in one tap.",
+  "pwa.installIos": "Add {brand} to your home screen: tap Share, then Add to Home Screen.",
   "pwa.add": "Add",
   "pwa.notNow": "Not now",
 } as const;
@@ -76,17 +96,36 @@ const ur: Record<MessageKey, string> = {
   "nav.me": "میں",
   "nav.notifications": "اطلاعات",
   "nav.notificationsNew": "اطلاعات، {n} نئی",
-  "home.tagline": "اپنی پسندیدہ دکانوں سے اسٹیمپ جمع کریں اور انعام پائیں۔",
-  "home.tapTitle": "ٹیپ کر کے شروع کریں",
-  "home.tapBody":
-    "ادائیگی کے بعد اپنا فون کاؤنٹر پر رکھے TapTapSell اسٹیمپر کے قریب لائیں۔ آپ کا کارڈ یہیں کھل جائے گا — کوئی ایپ انسٹال نہیں کرنی۔",
-  "home.signIn": "پہلے سے ممبر ہیں؟ سائن ان کریں",
-  "home.forBusiness": "دکان کے مالک ہیں؟ کاروبار کے لیے TapTapSell ←",
+  "home.heroTitle": "لائلٹی کارڈز، اب آپ کے فون میں۔",
+  "home.heroBody":
+    "اپنی پسندیدہ دکانوں سے اسٹیمپ جمع کریں اور انعام پائیں۔ کاؤنٹر پر رکھے {brand} اسٹیمپر پر فون ٹیپ کریں: نہ کوئی ایپ انسٹال کرنی، نہ کاغذی کارڈ سنبھالنا۔",
+  "home.getStarted": "شروع کریں",
+  "home.signIn": "سائن ان",
+  "home.howTitle": "یہ کیسے کام کرتا ہے",
+  "home.step1Title": "ٹیپ کریں",
+  "home.step1Body": "ادائیگی کے بعد اپنا فون کاؤنٹر پر رکھے اسٹیمپر کے قریب لائیں۔",
+  "home.step2Title": "جمع کریں",
+  "home.step2Body": "اسٹیمپ فوراً آپ کے کارڈ پر لگ جاتا ہے۔ ہر دکان کا اپنا کارڈ ہوتا ہے۔",
+  "home.step3Title": "مزے کریں",
+  "home.step3Body": "کارڈ پورا کریں، پھر کاؤنٹر پر اپنا انعامی کوڈ دکھائیں۔",
+  "home.whyTitle": "ہر بار آنا اہم ہے",
+  "home.whyBody":
+    "محلے کی دکانیں اپنے مستقل گاہکوں سے چلتی ہیں۔ {brand} انہیں شکریہ کہنے کا آسان طریقہ دیتا ہے، اور آپ کو اپنی پسندیدہ جگہوں سے زیادہ فائدہ۔",
+  "home.sampleShop": "چائے کارنر",
+  "home.sampleStamps": "10 میں سے 7 اسٹیمپ",
+  "home.sampleReward": "دسویں بار آنے پر مفت چائے",
+  "home.businessTitle": "دکان چلاتے ہیں؟",
+  "home.businessBody":
+    "ڈیجیٹل اسٹیمپ کارڈز سے اپنے گاہکوں کو بار بار واپس لائیں۔ نہ چھپائی، نہ ایپ۔",
+  "home.businessCta": "کاروبار کے لیے {brand}",
+  "home.madeIn": "پاکستان میں بنایا گیا",
   "home.deleted": "آپ کا اکاؤنٹ ختم کر دیا گیا ہے۔",
+  "signin.title": "{brand} میں خوش آمدید",
+  "signin.subtitle": "اپنی ای میل سے سائن ان کریں یا نیا اکاؤنٹ بنائیں۔",
+  "signin.back": "واپس ہوم پر",
   "cards.title": "میرے کارڈز",
   "cards.emptyTitle": "ابھی کوئی کارڈ نہیں",
-  "cards.emptyBody":
-    "اپنا پہلا کارڈ پانے کے لیے کسی بھی شریک دکان پر TapTapSell اسٹیمپر کو ٹیپ کریں۔",
+  "cards.emptyBody": "اپنا پہلا کارڈ پانے کے لیے کسی بھی شریک دکان پر {brand} اسٹیمپر کو ٹیپ کریں۔",
   "cards.shop": "دکان",
   "card.stamps": "{m} میں سے {n} اسٹیمپ",
   "card.expiry":
@@ -121,13 +160,13 @@ const ur: Record<MessageKey, string> = {
   "profile.language": "زبان",
   "nfc.button": "اس صفحے سے اسٹیمپر ٹیپ کریں",
   "nfc.listening": "فون کو اسٹیمپر کے قریب رکھیں…",
-  "nfc.notOurs": "یہ TapTapSell اسٹیمپر نہیں ہے۔ کاؤنٹر والا آزمائیں۔",
+  "nfc.notOurs": "یہ {brand} اسٹیمپر نہیں ہے۔ کاؤنٹر والا آزمائیں۔",
   "nfc.readError": "اسٹیمپر پڑھا نہیں جا سکا۔ فون کو ساکن رکھ کر دوبارہ کوشش کریں۔",
   "nfc.off": "NFC بند ہے یا اجازت نہیں۔ فون کی سیٹنگز میں NFC آن کر کے دوبارہ کوشش کریں۔",
   "pwa.offline":
     "آپ آف لائن ہیں۔ یہ آپ کا آخری بار کھولا گیا کارڈ ہے؛ نئے اسٹیمپ آن لائن ہونے پر نظر آئیں گے۔",
-  "pwa.installAndroid": "کارڈز ایک ٹیپ میں کھولنے کے لیے TapTapSell کو ہوم اسکرین پر لگائیں۔",
-  "pwa.installIos": "TapTapSell کو ہوم اسکرین پر لگائیں: Share دبائیں، پھر Add to Home Screen۔",
+  "pwa.installAndroid": "کارڈز ایک ٹیپ میں کھولنے کے لیے {brand} کو ہوم اسکرین پر لگائیں۔",
+  "pwa.installIos": "{brand} کو ہوم اسکرین پر لگائیں: Share دبائیں، پھر Add to Home Screen۔",
   "pwa.add": "لگائیں",
   "pwa.notNow": "ابھی نہیں",
 };
@@ -152,8 +191,11 @@ export type Translate = (key: MessageKey, vars?: Record<string, string | number>
 
 export function translator(locale: Locale): Translate {
   const dictionary = DICTIONARIES[locale];
-  return (key, vars) =>
-    dictionary[key].replace(/\{(\w+)\}/g, (_, name: string) => String(vars?.[name] ?? ""));
+  // {brand} is filled in everywhere, so the product name lives in one place.
+  return (key, vars) => {
+    const all: Record<string, string | number> = { brand: BRAND.name, ...vars };
+    return dictionary[key].replace(/\{(\w+)\}/g, (_, name: string) => String(all[name] ?? ""));
+  };
 }
 
 /** For server components: the visitor's translator. */
