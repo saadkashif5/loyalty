@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { AuthShell } from "@taptapsell/brand/auth-shell";
 import { registerAction } from "@/app/actions/auth";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -44,13 +45,7 @@ export default function RegisterPage() {
             <Input name="email" type="email" required autoComplete="email" />
           </Field>
           <Field label="Password">
-            <Input
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
+            <PasswordInput name="password" required minLength={8} autoComplete="new-password" />
           </Field>
           <ErrorText>{state.error}</ErrorText>
           <SubmitButton />

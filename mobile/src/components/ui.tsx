@@ -1,3 +1,5 @@
+import { useState } from "react";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   ActivityIndicator,
   Pressable,
@@ -79,6 +81,36 @@ export function Input(props: TextInputProps) {
   return <TextInput {...props} style={styles.input} placeholderTextColor={colors.muted} />;
 }
 
+/** A password field with an eye button to show or hide what was typed. */
+export function PasswordInput(props: Omit<TextInputProps, "secureTextEntry">) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <View style={styles.passwordRow}>
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        {...props}
+        secureTextEntry={!visible}
+        style={[styles.input, styles.passwordInput]}
+        placeholderTextColor={colors.muted}
+      />
+      <Pressable
+        onPress={() => setVisible(!visible)}
+        accessibilityRole="button"
+        accessibilityLabel={visible ? "Hide password" : "Show password"}
+        hitSlop={8}
+        style={styles.passwordToggle}
+      >
+        <Ionicons
+          name={visible ? "eye-off-outline" : "eye-outline"}
+          size={20}
+          color={colors.muted}
+        />
+      </Pressable>
+    </View>
+  );
+}
+
 /** Visual stamp progress — the primary thing a customer opens the app to see. */
 export function StampProgress({ current, required }: { current: number; required: number }) {
   return (
@@ -126,6 +158,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     backgroundColor: colors.surface,
     marginTop: 6,
+  },
+  passwordRow: { justifyContent: "center" },
+  passwordInput: { paddingRight: 44 },
+  passwordToggle: {
+    position: "absolute",
+    right: 0,
+    top: 6,
+    bottom: 0,
+    width: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   stampGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   stampDot: {

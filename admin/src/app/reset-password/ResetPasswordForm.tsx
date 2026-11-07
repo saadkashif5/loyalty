@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { resetPasswordAction } from "@/app/actions";
-import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
+import { Button, Card, ErrorText, Field } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -22,9 +23,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <form action={action} className="space-y-4">
         <input type="hidden" name="token" value={token} />
         <Field label="New password (at least 8 characters)">
-          <Input
+          <PasswordInput
             name="password"
-            type="password"
             required
             minLength={8}
             maxLength={128}
@@ -33,7 +33,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           />
         </Field>
         <Field label="Type it again">
-          <Input name="confirm" type="password" required autoComplete="new-password" />
+          <PasswordInput name="confirm" required autoComplete="new-password" />
         </Field>
         <ErrorText>{state.error}</ErrorText>
         {state.error?.includes("Ask for a new one") ? (

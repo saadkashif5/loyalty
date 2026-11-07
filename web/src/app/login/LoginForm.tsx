@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { BRAND } from "@taptapsell/brand";
 import { codeLoginAction, loginAction, type CodeLoginState } from "@/app/actions/auth";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -74,7 +75,7 @@ export function LoginForm({ next }: { next: string }) {
           <Input name="email" type="email" required autoComplete="email" />
         </Field>
         <Field label="Password">
-          <Input name="password" type="password" required autoComplete="current-password" />
+          <PasswordInput name="password" required autoComplete="current-password" />
         </Field>
         <ErrorText>{state.error}</ErrorText>
         <SubmitButton label="Sign in" pendingLabel="Signing in…" />

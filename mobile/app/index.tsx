@@ -10,6 +10,7 @@ import {
   ErrorText,
   Input,
   Muted,
+  PasswordInput,
   Screen,
   Title,
   colors,
@@ -83,7 +84,7 @@ export default function WelcomeScreen() {
             <View style={{ height: 12 }} />
 
             <Text>Password</Text>
-            <Input value={password} onChangeText={setPassword} secureTextEntry />
+            <PasswordInput value={password} onChangeText={setPassword} />
 
             <ErrorText>{error}</ErrorText>
 
