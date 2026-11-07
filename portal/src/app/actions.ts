@@ -17,7 +17,11 @@ import {
 /** Only same-site paths, so a crafted link cannot bounce people elsewhere after sign-in. */
 function safeNext(value: FormDataEntryValue | null): string {
   const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/cards";
+  // Browsers read "\" as "/" and drop tabs and newlines, so "/\evil.com" or
+  // "/\t/evil.com" would leave the site. Only plain same-site paths pass.
+  const unsafeChar = [...next].some((c) => c === "\\" || c.charCodeAt(0) < 0x20 || c === "\x7f");
+  const plainPath = next.startsWith("/") && !next.startsWith("//") && !unsafeChar;
+  return plainPath ? next : "/cards";
 }
 
 function messageFrom(error: unknown, fallback: string): string {

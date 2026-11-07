@@ -684,7 +684,8 @@ export async function listBusinessStamps(
   const rows = await Stamp.find(afterCursor(filter, "createdAt", options.cursor))
     .sort(sortFor("createdAt"))
     .limit(options.limit + 1)
-    .populate("customerId", "name email");
+    // Name only: contact details stay masked for businesses (see customers.service).
+    .populate("customerId", "name");
   return toPage(rows, options.limit, "createdAt");
 }
 

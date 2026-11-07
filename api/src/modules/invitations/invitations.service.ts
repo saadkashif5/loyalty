@@ -16,6 +16,7 @@ import { queueEmail } from "@/services/outbox.service";
 import { generateUniqueSlug } from "@/modules/businesses/businesses.service";
 import { hashPassword, issueTokenPair, type AuthContext } from "@/modules/auth/auth.service";
 import { toPublicUser } from "@/modules/auth/auth.serializer";
+import { revokeAllUserSessions, revokeOtherSessions } from "@/modules/auth/token.service";
 import { createTrialSubscription, startTrial } from "@/modules/billing/subscriptions.service";
 import { findActivePlan } from "@/modules/billing/plans.service";
 import { BUSINESS_ROLES, BUSINESS_STATUS, MEMBER_STATUS } from "@taptapsell/constants";
@@ -240,6 +241,7 @@ export async function acceptInvitation(
   input: AcceptInvitationInput,
   actorUserId: string | undefined,
   ctx: AuthContext,
+  actorSessionId?: string,
 ) {
   const invitation = await findUsableInvitation(rawToken);
   const existing = await User.findOne({ email: invitation.email });
@@ -287,6 +289,8 @@ export async function acceptInvitation(
               email: invitation.email,
               ...(phoneTaken ? {} : { phone: invitation.phone }),
               passwordHash,
+              // The invitation link was emailed to this address.
+              emailVerifiedAt: new Date(),
             },
           ],
           { session },
@@ -316,6 +320,16 @@ export async function acceptInvitation(
     });
   } finally {
     await session.endSession();
+  }
+
+  // The account is about to hold OWNER rights: only the session that just
+  // accepted (and so held the emailed link) keeps access.
+  if (existing) {
+    if (!existing.emailVerifiedAt) {
+      await User.updateOne({ _id: existing._id }, { $set: { emailVerifiedAt: new Date() } });
+    }
+    if (actorSessionId) await revokeOtherSessions(existing.id, actorSessionId);
+    else await revokeAllUserSessions(existing._id);
   }
 
   await recordAudit({

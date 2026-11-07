@@ -597,7 +597,10 @@ router.patch(
   can(P.USER_MANAGE),
   asyncHandler(async (req, res) => {
     const { status } = statusSchema.parse(req.body);
-    sendSuccess(res, await service.setUserStatus(req.params.userId, req.userId!, status));
+    sendSuccess(
+      res,
+      await service.setUserStatus(req.params.userId, req.userId!, status, req.platformRole),
+    );
   }),
 );
 
@@ -605,7 +608,7 @@ router.post(
   "/users/:userId/sign-out",
   can(P.USER_MANAGE),
   asyncHandler(async (req, res) => {
-    await service.signOutUser(req.userId!, req.params.userId);
+    await service.signOutUser(req.userId!, req.params.userId, req.platformRole);
     sendSuccess(res, { signedOut: true });
   }),
 );

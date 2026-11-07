@@ -77,7 +77,7 @@ export const mfaSetupHandler = asyncHandler(async (req: Request, res: Response) 
 
 export const mfaEnableHandler = asyncHandler(async (req: Request, res: Response) => {
   const { code } = mfaCodeSchema.parse(req.body);
-  const recoveryCodes = await mfaService.enableMfa(req.userId!, code);
+  const recoveryCodes = await mfaService.enableMfa(req.userId!, code, req.sessionId);
   // Shown once; only their hashes are stored.
   sendSuccess(res, { enabled: true, recoveryCodes });
 });

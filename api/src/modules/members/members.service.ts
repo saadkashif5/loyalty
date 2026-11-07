@@ -79,6 +79,11 @@ export async function updateMember(
     throw ApiError.forbidden("The business owner cannot be modified here");
   }
 
+  // Only the invited person can accept an invitation (acceptInvite below).
+  if (member.status === MEMBER_STATUS.INVITED && input.status === MEMBER_STATUS.ACTIVE) {
+    throw ApiError.forbidden("The invited person has to accept the invitation themselves");
+  }
+
   if (input.role) member.role = input.role;
   if (input.branchIds) member.set("branchIds", input.branchIds);
   if (input.status) member.status = input.status;

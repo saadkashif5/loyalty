@@ -6,7 +6,7 @@ import { ApiError } from "@/utils/ApiError";
 import { sendEmail } from "@/services/email.service";
 import type { RequestEmailCodeInput, VerifyEmailCodeInput } from "@taptapsell/validation";
 import { issueTokenPair, type AuthContext } from "./auth.service";
-import { signMfaChallenge } from "./token.service";
+import { revokeAllUserSessions, signMfaChallenge } from "./token.service";
 import { toPublicUser } from "./auth.serializer";
 import { BRAND } from "@taptapsell/brand";
 
@@ -162,8 +162,16 @@ export async function verifyEmailCode(
       if (!user) throw err;
     }
   } else if (!user.emailVerifiedAt) {
+    // First proof that this person owns the email. Anyone can register a
+    // password account for an address they do not own, so whatever was set up
+    // before now is untrusted: drop that password and end every session, or
+    // the squatter would share the account with its real owner.
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { emailVerifiedAt: now }, $unset: { passwordHash: "" } },
+    );
+    await revokeAllUserSessions(user._id);
     user.emailVerifiedAt = now;
-    await user.save();
   }
 
   // The email code replaces the password, not the second factor.

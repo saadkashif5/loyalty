@@ -37,6 +37,8 @@ async function main(): Promise<void> {
       email,
       passwordHash: await bcrypt.hash(password, 12),
       platformRole: PLATFORM_ROLES.SUPER_ADMIN,
+      // Set up by the operator, who vouches for the address.
+      emailVerifiedAt: new Date(),
     });
     console.log(`Created SUPER_ADMIN ${email}.`);
   }

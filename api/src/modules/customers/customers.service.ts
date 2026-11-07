@@ -46,11 +46,14 @@ export async function listBusinessCustomers(
 
   if (options.query) {
     // Search by name, or by the last digits of a phone number typed at the counter.
-    const pattern = escapeRegex(options.query.replace(/\s/g, ""));
+    // Only the last four digits are matched: those are already shown in the
+    // masked number, so trying longer suffixes cannot reveal the hidden digits.
+    const digits = options.query.replace(/\D/g, "");
+    const phoneTail = digits.slice(-4);
     const matches = await User.find({
       $or: [
         { name: { $regex: escapeRegex(options.query), $options: "i" } },
-        { phone: { $regex: `${pattern}$` } },
+        ...(phoneTail.length >= 3 ? [{ phone: { $regex: `${phoneTail}$` } }] : []),
       ],
     })
       .select("_id")

@@ -84,7 +84,11 @@ export async function resetPassword(input: ResetPasswordInput): Promise<void> {
 
   const user = await User.findOneAndUpdate(
     { _id: reset.userId, status: "ACTIVE" },
-    { $set: { passwordHash: await hashPassword(input.password) } },
+    // The reset link went to the inbox, so it proves the email too.
+    {
+      $set: { passwordHash: await hashPassword(input.password) },
+      $min: { emailVerifiedAt: new Date() },
+    },
     { new: true },
   );
   if (!user) throw ApiError.forbidden("This account is not active");

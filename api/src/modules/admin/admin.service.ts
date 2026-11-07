@@ -22,7 +22,14 @@ import { applyBusinessStatus } from "@/modules/businesses/businesses.service";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { revokeAllUserSessions } from "@/modules/auth/token.service";
-import { BUSINESS_STATUS, DEVICE_STATUS, USER_STATUS } from "@taptapsell/constants";
+import {
+  BUSINESS_STATUS,
+  DEFAULT_PLATFORM_ROLE_PERMISSIONS,
+  DEVICE_STATUS,
+  PLATFORM_PERMISSIONS,
+  USER_STATUS,
+  type PlatformRole,
+} from "@taptapsell/constants";
 import type { AddTeamMemberInput, UpdateTeamMemberInput } from "@taptapsell/validation";
 
 function escapeRegex(input: string): string {
@@ -126,12 +133,35 @@ export async function listCustomers(options: { query?: string } & CursorRequest)
   return toPage(rows, options.limit, "createdAt");
 }
 
+/**
+ * Platform team members are managed under TEAM_MANAGE, not USER_MANAGE: an
+ * ADMIN must not be able to suspend, restore or sign out a SUPER_ADMIN (or any
+ * other team member) through the customer routes.
+ */
+async function assertCanActOnUser(userId: string, actorPlatformRole: string | null | undefined) {
+  if (!isValidObjectId(userId)) throw ApiError.notFound("User not found");
+  const target = await User.findById(userId).select("platformRole");
+  if (!target) throw ApiError.notFound("User not found");
+  if (!target.platformRole) return;
+
+  const canManageTeam = Boolean(
+    actorPlatformRole &&
+    DEFAULT_PLATFORM_ROLE_PERMISSIONS[actorPlatformRole as PlatformRole]?.includes(
+      PLATFORM_PERMISSIONS.TEAM_MANAGE,
+    ),
+  );
+  if (!canManageTeam)
+    throw ApiError.forbidden("Platform team members are managed from the team page");
+}
+
 export async function setUserStatus(
   userId: string,
   actorUserId: string,
   status: "ACTIVE" | "SUSPENDED",
+  actorPlatformRole?: string | null,
 ) {
   if (userId === actorUserId) throw ApiError.forbidden("You cannot change your own account status");
+  await assertCanActOnUser(userId, actorPlatformRole);
 
   const user = await User.findByIdAndUpdate(userId, { status }, { new: true });
   if (!user) throw ApiError.notFound("User not found");
@@ -209,8 +239,12 @@ export async function getPlatformOverview() {
 }
 
 /** Ends every session a user has, e.g. after a lost phone or a suspected compromise. */
-export async function signOutUser(actorUserId: string, userId: string) {
-  if (!(await User.exists({ _id: userId }))) throw ApiError.notFound("User not found");
+export async function signOutUser(
+  actorUserId: string,
+  userId: string,
+  actorPlatformRole?: string | null,
+) {
+  await assertCanActOnUser(userId, actorPlatformRole);
   await revokeAllUserSessions(userId);
 
   await recordAudit({

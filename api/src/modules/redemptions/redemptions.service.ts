@@ -169,6 +169,7 @@ export async function listBusinessRedemptions(
     .sort(sortFor("createdAt"))
     .limit(options.limit + 1)
     .populate("rewardId", "name")
-    .populate("customerId", "name email");
+    // Name only: contact details stay masked for businesses (see customers.service).
+    .populate("customerId", "name");
   return toPage(rows, options.limit, "createdAt");
 }

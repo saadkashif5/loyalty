@@ -11,6 +11,7 @@ import {
   verifyTotp,
 } from "@/utils/totp";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
+import { revokeAllUserSessions, revokeOtherSessions } from "./token.service";
 import { BUSINESS_ROLES, MEMBER_STATUS } from "@taptapsell/constants";
 
 const RECOVERY_CODE_COUNT = 10;
@@ -50,7 +51,11 @@ export async function startMfaSetup(userId: string) {
 }
 
 /** Confirms enrolment with a code from the app and returns one-time recovery codes. */
-export async function enableMfa(userId: string, code: string): Promise<string[]> {
+export async function enableMfa(
+  userId: string,
+  code: string,
+  currentSessionId?: string,
+): Promise<string[]> {
   const user = await User.findById(userId).select("+mfa.pendingSecret mfa.enabled");
   if (!user?.mfa?.pendingSecret) {
     throw ApiError.badRequest("Start two-step verification setup first");
@@ -79,6 +84,11 @@ export async function enableMfa(userId: string, code: string): Promise<string[]>
       $unset: { "mfa.pendingSecret": "" },
     },
   );
+
+  // Sessions opened before the second factor existed never passed it; end them
+  // all except the one that just proved the code.
+  if (currentSessionId) await revokeOtherSessions(userId, currentSessionId);
+  else await revokeAllUserSessions(userId);
 
   await recordAudit({
     actorUserId: userId,

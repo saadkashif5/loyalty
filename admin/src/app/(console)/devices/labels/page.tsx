@@ -26,7 +26,12 @@ export default async function LabelsPage({
   const withQr = await Promise.all(
     labels.map(async (l) => ({ ...l, qrDataUrl: await labelQr(l.activateUrl) })),
   );
-  const backHref = back?.startsWith("/") && !back.startsWith("//") ? back : "/devices";
+  // "\" reads as "/" and tabs are dropped, so "/\evil.com" would leave the site.
+  const unsafeChar = [...(back ?? "")].some(
+    (c) => c === "\\" || c.charCodeAt(0) < 0x20 || c === "\x7f",
+  );
+  const backHref =
+    back?.startsWith("/") && !back.startsWith("//") && !unsafeChar ? back : "/devices";
 
   return (
     <div className="space-y-4">
