@@ -13,7 +13,9 @@ const auditLogSchema = new Schema(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
-auditLogSchema.index({ businessId: 1, createdAt: -1 });
-auditLogSchema.index({ actorUserId: 1, createdAt: -1 });
+auditLogSchema.index({ businessId: 1, createdAt: -1, _id: -1 });
+auditLogSchema.index({ createdAt: -1, _id: -1 });
+auditLogSchema.index({ actorUserId: 1, createdAt: -1, _id: -1 });
+auditLogSchema.index({ action: 1, createdAt: -1, _id: -1 });
 
 export const AuditLog = model("AuditLog", auditLogSchema, "audit_logs");

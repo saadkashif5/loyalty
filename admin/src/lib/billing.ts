@@ -16,6 +16,7 @@ export interface Plan {
   priceMonthlyPkr: number;
   priceAnnualPkr: number;
   limits: PlanLimits;
+  flags?: Partial<Record<"counterMode" | "welcomeStamp" | "stampExpiry", boolean>>;
   isActive: boolean;
   isPublic: boolean;
   version: number;
@@ -42,6 +43,30 @@ export interface SubscriptionInfo {
     billingCycle: "MONTHLY" | "ANNUAL";
     effectiveAt: string;
   } | null;
+  coupon?: {
+    code: string;
+    percentOff: number | null;
+    amountOffPkr: number | null;
+    invoicesLeft: number;
+  } | null;
+  creditBalancePkr?: number;
+}
+
+export interface CreditNoteInfo {
+  _id: string;
+  number: string;
+  invoiceNumber: string;
+  amountPkr: number;
+  reason: string;
+  outcome: "REFUND" | "CREDIT";
+  createdAt: string;
+}
+
+/** "50% off" or "PKR 1,000 off". */
+export function couponLabel(c: { percentOff: number | null; amountOffPkr: number | null }) {
+  return c.percentOff
+    ? `${c.percentOff}% off`
+    : `PKR ${(c.amountOffPkr ?? 0).toLocaleString("en-PK")} off`;
 }
 
 export interface PaymentInfo {
@@ -75,6 +100,7 @@ export interface BillingSummary {
   usage: Record<keyof PlanLimits, number>;
   payments: PaymentInfo[];
   plans: Plan[];
+  creditNotes?: CreditNoteInfo[];
 }
 
 export const LIMIT_LABELS: Array<[keyof PlanLimits, string]> = [

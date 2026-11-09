@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BRAND } from "@taptapsell/brand";
+import { AuthShell } from "@taptapsell/brand/auth-shell";
 import { apiFetch } from "@/lib/api";
 import { getAccessToken } from "@/lib/session";
 import { logoutAction } from "@/app/actions/auth";
@@ -36,14 +38,14 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <h1 className="mb-6 text-center text-2xl font-semibold">TapTapSell Loyalty</h1>
-        <Card>
-          {invitation ? <InviteBody token={token} invitation={invitation} /> : <Invalid />}
-        </Card>
-      </div>
-    </main>
+    <AuthShell
+      area="Business"
+      title="You are invited"
+      headline="Bring your regulars back."
+      blurb="Run your stamp cards, stampers and rewards from one place."
+    >
+      <Card>{invitation ? <InviteBody token={token} invitation={invitation} /> : <Invalid />}</Card>
+    </AuthShell>
   );
 }
 
@@ -52,7 +54,8 @@ function Invalid() {
     <div className="space-y-2 text-sm text-slate-600">
       <p className="font-medium text-slate-900">This invitation link does not work</p>
       <p>
-        It may have expired, been replaced by a newer link, or already been used. Ask the TapTapSell
+        It may have expired, been replaced by a newer link, or already been used. Ask the{" "}
+        {BRAND.name}
         team to send you a new one.
       </p>
     </div>
@@ -67,7 +70,8 @@ async function InviteBody({ token, invitation }: { token: string; invitation: In
     <div className="mb-5 space-y-1">
       <p className="text-lg font-semibold">{invitation.business.name}</p>
       <p className="text-sm text-slate-600">
-        You have been invited to manage this business on TapTapSell as its owner ({invitation.email}
+        You have been invited to manage this business on {BRAND.name} as its owner (
+        {invitation.email}
         ).
       </p>
     </div>
@@ -106,7 +110,7 @@ async function InviteBody({ token, invitation }: { token: string; invitation: In
       <>
         {intro}
         <p className="mb-4 text-sm text-slate-600">
-          You already have a TapTapSell account with this email. Sign in to accept.
+          You already have a {BRAND.name} account with this email. Sign in to accept.
         </p>
         <Link
           href={`/login?next=${encodeURIComponent(invitePath)}`}

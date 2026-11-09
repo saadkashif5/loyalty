@@ -1,5 +1,6 @@
 import { z } from "zod";
 import dotenv from "dotenv";
+import { BRAND } from "@taptapsell/brand";
 
 dotenv.config();
 
@@ -13,6 +14,12 @@ const envSchema = z
     REDIS_URL: z.string().optional(),
     // Error tracking. Unset in development and tests.
     SENTRY_DSN: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
+    // OTLP/HTTP collector for request tracing (src/tracing.ts); unset = no tracing.
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.url().optional(),
+    ),
+    OTEL_SERVICE_NAME: z.string().default("taptapsell"),
 
     JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
     JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 characters"),
@@ -30,13 +37,15 @@ const envSchema = z
     // "smtp" sends through any SMTP provider (Gmail, SES, Brevo, ...).
     EMAIL_TRANSPORT: z.enum(["log", "smtp"]).default("log"),
     SMTP_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
-    EMAIL_FROM: z.string().default("TapTapSell <no-reply@taptapsell.local>"),
+    EMAIL_FROM: z.string().default(`${BRAND.name} <no-reply@taptapsell.local>`),
 
     // Where private uploads (payment receipts) are kept until cloud storage is chosen.
     STORAGE_DIR: z.string().default("./storage"),
 
     // Business dashboard origin, used to build invitation links.
     DASHBOARD_URL: z.url().default("http://localhost:3000"),
+    // Platform console origin, used for the team's password reset links.
+    ADMIN_URL: z.url().default("http://localhost:3001"),
 
     // 32 random bytes, base64. Encrypts MFA secrets at rest. Required in
     // staging and production; development and tests derive a key instead.

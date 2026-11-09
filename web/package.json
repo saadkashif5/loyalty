@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^10.78.0",
+    "@taptapsell/brand": "*",
     "@taptapsell/constants": "*",
     "@taptapsell/types": "*",
     "@taptapsell/validation": "*",

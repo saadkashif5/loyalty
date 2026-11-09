@@ -1,3 +1,4 @@
+import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
 import { LoyaltyCard, Redemption, Stamp, User } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 
@@ -39,17 +40,20 @@ function escapeRegex(input: string): string {
 /** One row per loyalty card at this business, most recently active first. */
 export async function listBusinessCustomers(
   businessId: string,
-  options: { query?: string; page: number; limit: number },
+  options: { query?: string } & CursorRequest,
 ) {
   const filter: Record<string, unknown> = { businessId };
 
   if (options.query) {
     // Search by name, or by the last digits of a phone number typed at the counter.
-    const pattern = escapeRegex(options.query.replace(/\s/g, ""));
+    // Only the last four digits are matched: those are already shown in the
+    // masked number, so trying longer suffixes cannot reveal the hidden digits.
+    const digits = options.query.replace(/\D/g, "");
+    const phoneTail = digits.slice(-4);
     const matches = await User.find({
       $or: [
         { name: { $regex: escapeRegex(options.query), $options: "i" } },
-        { phone: { $regex: `${pattern}$` } },
+        ...(phoneTail.length >= 3 ? [{ phone: { $regex: `${phoneTail}$` } }] : []),
       ],
     })
       .select("_id")
@@ -57,18 +61,15 @@ export async function listBusinessCustomers(
     filter.customerId = { $in: matches.map((u) => u._id) };
   }
 
-  const [cards, total] = await Promise.all([
-    LoyaltyCard.find(filter)
-      .sort({ lastStampAt: -1, createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit)
-      .populate<{ customerId: PopulatedCustomer | null }>("customerId", "name phone email")
-      .populate<{ programId: { _id: unknown; name: string; requiredStamps: number } | null }>(
-        "programId",
-        "name requiredStamps",
-      ),
-    LoyaltyCard.countDocuments(filter),
-  ]);
+  const rows = await LoyaltyCard.find(afterCursor(filter, "lastStampAt", options.cursor))
+    .sort(sortFor("lastStampAt"))
+    .limit(options.limit + 1)
+    .populate<{ customerId: PopulatedCustomer | null }>("customerId", "name phone email")
+    .populate<{ programId: { _id: unknown; name: string; requiredStamps: number } | null }>(
+      "programId",
+      "name requiredStamps",
+    );
+  const { items: cards, nextCursor } = toPage(rows, options.limit, "lastStampAt");
 
   const items = cards.map((card) => ({
     cardId: card._id.toString(),
@@ -82,7 +83,7 @@ export async function listBusinessCustomers(
     lastStampAt: card.lastStampAt ?? null,
   }));
 
-  return { items, total };
+  return { items, nextCursor };
 }
 
 /** A customer's history at this business only; nothing from other businesses. */

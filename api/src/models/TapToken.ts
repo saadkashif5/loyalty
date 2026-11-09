@@ -5,7 +5,7 @@ import { Schema, model } from "mongoose";
 // the stamp transaction. Stored hashed, like refresh tokens.
 const tapTokenSchema = new Schema(
   {
-    tokenHash: { type: String, required: true, unique: true },
+    tokenHash: { type: String, required: true, unique: true, private: true },
     deviceId: { type: Schema.Types.ObjectId, ref: "NfcDevice", required: true },
     deviceIdentifier: { type: String, required: true },
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true },

@@ -10,7 +10,10 @@ import {
   mfaLoginSchema,
   requestEmailCodeSchema,
   verifyEmailCodeSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "@taptapsell/validation";
+import { requestPasswordReset, resetPassword } from "./passwordReset.service";
 import * as authService from "./auth.service";
 import * as mfaService from "./mfa.service";
 import * as emailCode from "./emailCode.service";
@@ -50,6 +53,16 @@ export const refreshHandler = asyncHandler(async (req: Request, res: Response) =
   sendSuccess(res, tokens);
 });
 
+export const forgotPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  await requestPasswordReset(forgotPasswordSchema.parse(req.body));
+  sendSuccess(res, { sent: true });
+});
+
+export const resetPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  await resetPassword(resetPasswordSchema.parse(req.body));
+  sendSuccess(res, { reset: true });
+});
+
 export const logoutHandler = asyncHandler(async (req: Request, res: Response) => {
   const { refreshToken } = refreshTokenSchema.parse(req.body);
   await authService.logout(refreshToken);
@@ -64,7 +77,7 @@ export const mfaSetupHandler = asyncHandler(async (req: Request, res: Response) 
 
 export const mfaEnableHandler = asyncHandler(async (req: Request, res: Response) => {
   const { code } = mfaCodeSchema.parse(req.body);
-  const recoveryCodes = await mfaService.enableMfa(req.userId!, code);
+  const recoveryCodes = await mfaService.enableMfa(req.userId!, code, req.sessionId);
   // Shown once; only their hashes are stored.
   sendSuccess(res, { enabled: true, recoveryCodes });
 });

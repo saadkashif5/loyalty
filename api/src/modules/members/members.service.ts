@@ -1,9 +1,12 @@
-import { BusinessMember, User } from "@/models";
+import { env } from "@/config/env";
+import { queueEmail } from "@/services/outbox.service";
+import { Business, BusinessMember, User } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { BUSINESS_ROLES, MEMBER_STATUS } from "@taptapsell/constants";
 import type { InviteMemberInput, UpdateMemberInput } from "@taptapsell/validation";
+import { BRAND } from "@taptapsell/brand";
 
 export async function listMembers(businessId: string) {
   return BusinessMember.find({ businessId }).populate("userId", "name email phone status");
@@ -46,6 +49,18 @@ export async function inviteMember(
     metadata: { role: input.role, invitedUserId: user._id.toString() },
   });
 
+  const business = await Business.findById(businessId).select("name");
+  await queueEmail({
+    to: user.email,
+    subject: `You are invited to join ${business?.name ?? "a business"} on ${BRAND.name}`,
+    text: [
+      `Hi ${user.name},`,
+      "",
+      `You have been invited to ${business?.name ?? "a business"} as ${input.role.toLowerCase()}.`,
+      `Sign in to accept: ${env.DASHBOARD_URL.replace(/\/$/, "")}/businesses`,
+    ].join("\n"),
+  });
+
   return member;
 }
 
@@ -62,6 +77,11 @@ export async function updateMember(
   // through an explicit transfer flow (§5.2).
   if (member.role === BUSINESS_ROLES.OWNER) {
     throw ApiError.forbidden("The business owner cannot be modified here");
+  }
+
+  // Only the invited person can accept an invitation (acceptInvite below).
+  if (member.status === MEMBER_STATUS.INVITED && input.status === MEMBER_STATUS.ACTIVE) {
+    throw ApiError.forbidden("The invited person has to accept the invitation themselves");
   }
 
   if (input.role) member.role = input.role;

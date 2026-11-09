@@ -1,3 +1,4 @@
+import { cursorParams } from "@/utils/cursor";
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "@/middleware/auth";
@@ -7,6 +8,9 @@ import { sendSuccess } from "@/utils/response";
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
 import {
   addChargeSchema,
+  applyCouponSchema,
+  createCouponSchema,
+  creditNoteSchema,
   addTeamMemberSchema,
   billingSettingsSchema,
   changeSubscriptionPlanSchema,
@@ -23,6 +27,11 @@ import {
   updateTeamMemberSchema,
 } from "@taptapsell/validation";
 import * as service from "./admin.service";
+import * as support from "@/modules/support/support.service";
+import { getPilotMetrics } from "@/modules/metrics/pilot.service";
+import * as coupons from "@/modules/billing/coupons.service";
+import * as creditNotes from "@/modules/billing/creditNotes.service";
+import * as exportsService from "@/services/exports.service";
 import * as invitations from "@/modules/invitations/invitations.service";
 import * as leads from "@/modules/leads/leads.service";
 import * as fraud from "@/modules/fraud/fraud.service";
@@ -44,12 +53,26 @@ const can = requirePlatformPermission;
 
 router.use(requireAuth);
 
+// Page numbers for lists that grow with the number of businesses (businesses,
+// stampers, leads), where counts are cheap and the overview needs them. Lists
+// that grow with customers and activity use cursors (utils/cursor.ts).
 function pagination(query: Record<string, unknown>) {
   return {
     page: Math.max(1, Number(query.page) || 1),
     limit: Math.min(100, Math.max(1, Number(query.limit) || 25)),
   };
 }
+
+const str = (v: unknown, max = 100) => (typeof v === "string" && v ? v.slice(0, max) : undefined);
+
+/** A yyyy-mm-dd day from the query string, or undefined. */
+function day(value: unknown): Date | undefined {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(`${value}T00:00:00+05:00`); // Pakistan time
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+const reasonSchema = z.object({ reason: z.string().trim().min(5).max(300) });
 
 const statusSchema = z.object({
   status: z.enum(["ACTIVE", "SUSPENDED"]),
@@ -71,10 +94,52 @@ router.get(
   can(P.BUSINESS_VIEW),
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
-    const status = typeof req.query.status === "string" ? req.query.status : undefined;
-    const query = typeof req.query.q === "string" ? req.query.q.slice(0, 100) : undefined;
-    const { items, total } = await service.listBusinesses({ status, query, page, limit });
+    const { items, total } = await service.listBusinesses({
+      status: str(req.query.status),
+      query: str(req.query.q),
+      plan: str(req.query.plan, 31),
+      city: str(req.query.city, 80),
+      page,
+      limit,
+    });
     sendSuccess(res, items, { meta: { page, limit, total } });
+  }),
+);
+
+router.get(
+  "/metrics/pilot",
+  can(P.ANALYTICS_VIEW),
+  asyncHandler(async (req, res) => {
+    const days = Math.min(365, Math.max(1, Number(req.query.days) || 30));
+    sendSuccess(res, await getPilotMetrics(days));
+  }),
+);
+
+// Support notes: what the team learned about a business. Added, never edited.
+const noteSchema = z.object({ body: z.string().trim().min(1).max(2000) });
+router.get(
+  "/businesses/:businessId/notes",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await service.listNotes(req.params.businessId));
+  }),
+);
+router.post(
+  "/businesses/:businessId/notes",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    const { body } = noteSchema.parse(req.body);
+    sendSuccess(res, await service.addNote(req.userId!, req.params.businessId, body), {
+      status: 201,
+    });
+  }),
+);
+
+router.get(
+  "/businesses/cities",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await service.listBusinessCities());
   }),
 );
 
@@ -95,6 +160,26 @@ router.get(
   can(P.BUSINESS_VIEW),
   asyncHandler(async (req, res) => {
     sendSuccess(res, await service.getBusinessDetail(req.params.businessId));
+  }),
+);
+
+// Read-only support view of a business's dashboard: 30 minutes, with a reason, audited.
+router.post(
+  "/businesses/:businessId/support-view",
+  can(P.BUSINESS_VIEW_AS),
+  asyncHandler(async (req, res) => {
+    const { reason } = reasonSchema.parse(req.body);
+    sendSuccess(res, await support.startSupportView(req.userId!, req.params.businessId, reason), {
+      status: 201,
+    });
+  }),
+);
+
+router.delete(
+  "/businesses/:businessId/support-view",
+  can(P.BUSINESS_VIEW_AS),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await support.endSupportView(req.userId!, req.params.businessId));
   }),
 );
 
@@ -230,6 +315,15 @@ router.delete(
   }),
 );
 
+// One-click reminder from the overdue list; at most one a day per business.
+router.post(
+  "/businesses/:businessId/billing/remind",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await billing.sendPaymentReminder(req.userId!, req.params.businessId));
+  }),
+);
+
 router.post(
   "/businesses/:businessId/subscription/extend-trial",
   can(P.BILLING_MANAGE),
@@ -299,6 +393,66 @@ router.get(
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${invoice.number}.pdf"`);
     res.send(pdf);
+  }),
+);
+
+// ---- Coupons and credit notes -------------------------------------------------
+
+router.get(
+  "/coupons",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await coupons.listCoupons());
+  }),
+);
+
+router.post(
+  "/coupons",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = createCouponSchema.parse(req.body);
+    sendSuccess(res, await coupons.createCoupon(req.userId!, input), { status: 201 });
+  }),
+);
+
+router.patch(
+  "/coupons/:couponId",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { active } = z.object({ active: z.boolean() }).parse(req.body);
+    sendSuccess(res, await coupons.setCouponActive(req.userId!, req.params.couponId, active));
+  }),
+);
+
+// The finance team may replace a coupon still in use; owners may not.
+router.post(
+  "/businesses/:businessId/coupon",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { code } = applyCouponSchema.parse(req.body);
+    sendSuccess(
+      res,
+      await coupons.applyCoupon(req.userId!, req.params.businessId, code, { replace: true }),
+    );
+  }),
+);
+
+router.delete(
+  "/businesses/:businessId/coupon",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await coupons.removeCoupon(req.userId!, req.params.businessId));
+  }),
+);
+
+router.post(
+  "/invoices/:invoiceId/credit-notes",
+  can(P.BILLING_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = creditNoteSchema.parse(req.body);
+    sendSuccess(res, await creditNotes.issueCreditNote(req.userId!, req.params.invoiceId, input), {
+      status: 201,
+    });
   }),
 );
 
@@ -373,6 +527,47 @@ router.get(
   }),
 );
 
+// Larger exports are built by the worker; the console lists them with a download link.
+router.post(
+  "/exports",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const now = new Date();
+    const from =
+      day(req.query.from ?? req.body?.from) ??
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const to = day(req.query.to ?? req.body?.to);
+    const job = await exportsService.requestExport({
+      kind: "INVOICES_CSV",
+      requestedBy: req.userId!,
+      params: { from, to: to ? new Date(to.getTime() + 86_400_000) : now },
+    });
+    sendSuccess(res, job, { status: 202 });
+  }),
+);
+
+router.get(
+  "/exports",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await exportsService.listExports({ requestedBy: req.userId! }));
+  }),
+);
+
+router.get(
+  "/exports/:exportId/file",
+  can(P.BILLING_VIEW),
+  asyncHandler(async (req, res) => {
+    const { stream, fileName } = await exportsService.openExport(req.params.exportId, {
+      requestedBy: req.userId!,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    stream.on("error", () => res.status(404).end());
+    stream.pipe(res);
+  }),
+);
+
 // ---- Alerts across all businesses ---------------------------------------------
 
 router.get(
@@ -390,10 +585,10 @@ router.get(
   "/customers",
   can(P.USER_VIEW),
   asyncHandler(async (req, res) => {
-    const { page, limit } = pagination(req.query);
+    const paging = cursorParams(req.query);
     const query = typeof req.query.q === "string" ? req.query.q : undefined;
-    const { items, total } = await service.listCustomers({ query, page, limit });
-    sendSuccess(res, items, { meta: { page, limit, total } });
+    const { items, nextCursor } = await service.listCustomers({ query, ...paging });
+    sendSuccess(res, items, { meta: { limit: paging.limit, nextCursor } });
   }),
 );
 
@@ -402,7 +597,10 @@ router.patch(
   can(P.USER_MANAGE),
   asyncHandler(async (req, res) => {
     const { status } = statusSchema.parse(req.body);
-    sendSuccess(res, await service.setUserStatus(req.params.userId, req.userId!, status));
+    sendSuccess(
+      res,
+      await service.setUserStatus(req.params.userId, req.userId!, status, req.platformRole),
+    );
   }),
 );
 
@@ -410,7 +608,7 @@ router.post(
   "/users/:userId/sign-out",
   can(P.USER_MANAGE),
   asyncHandler(async (req, res) => {
-    await service.signOutUser(req.userId!, req.params.userId);
+    await service.signOutUser(req.userId!, req.params.userId, req.platformRole);
     sendSuccess(res, { signedOut: true });
   }),
 );
@@ -422,7 +620,6 @@ router.get(
   can(P.BUSINESS_VIEW),
   asyncHandler(async (req, res) => {
     const { page, limit } = pagination(req.query);
-    const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
     const { items, total } = await service.listDevices({
       status: str(req.query.status),
       businessId: str(req.query.businessId),
@@ -436,16 +633,57 @@ router.get(
 router.post("/devices", can(P.DEVICE_MANAGE), registerDevicesHandler);
 router.patch("/devices/:deviceId/assign", can(P.DEVICE_MANAGE), assignDeviceHandler);
 
+router.get(
+  "/devices/labels",
+  can(P.BUSINESS_VIEW),
+  asyncHandler(async (req, res) => {
+    const ids = (str(req.query.ids, 2600) ?? "").split(",");
+    sendSuccess(res, await service.listDeviceLabels(ids));
+  }),
+);
+
+const shipSchema = z.object({
+  courier: z.string().trim().max(60).optional(),
+  trackingNumber: z.string().trim().max(60).optional(),
+});
+
+router.post(
+  "/devices/:deviceId/ship",
+  can(P.DEVICE_MANAGE),
+  asyncHandler(async (req, res) => {
+    const input = shipSchema.parse(req.body ?? {});
+    sendSuccess(res, await service.shipDevice(req.userId!, req.params.deviceId, input));
+  }),
+);
+
+// After a stamper's tag is re-written or swapped: forget the bound chip and counter.
+router.post(
+  "/devices/:deviceId/reset-tag",
+  can(P.DEVICE_MANAGE),
+  asyncHandler(async (req, res) => {
+    const { reason } = reasonSchema.parse(req.body);
+    sendSuccess(res, await service.resetDeviceTag(req.userId!, req.params.deviceId, reason));
+  }),
+);
+
 // ---- Audit log ----------------------------------------------------------------
 
 router.get(
   "/audit-logs",
   can(P.AUDIT_VIEW),
   asyncHandler(async (req, res) => {
-    const { page, limit } = pagination(req.query);
-    const businessId = typeof req.query.businessId === "string" ? req.query.businessId : undefined;
-    const { items, total } = await service.listAuditLogs({ businessId, page, limit });
-    sendSuccess(res, items, { meta: { page, limit, total } });
+    const paging = cursorParams(req.query);
+    const to = day(req.query.to);
+    const { items, nextCursor } = await service.listAuditLogs({
+      businessId: str(req.query.businessId, 24),
+      action: str(req.query.action, 60),
+      actor: str(req.query.actor, 254),
+      from: day(req.query.from),
+      // "to" is inclusive: everything before the start of the next day.
+      to: to && new Date(to.getTime() + 86_400_000),
+      ...paging,
+    });
+    sendSuccess(res, items, { meta: { limit: paging.limit, nextCursor } });
   }),
 );
 

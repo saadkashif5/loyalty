@@ -88,6 +88,8 @@ export const PLATFORM_PERMISSIONS = {
   BILLING_VIEW: "platform:billing:view",
   BILLING_MANAGE: "platform:billing:manage",
   TEAM_MANAGE: "platform:team:manage",
+  /** Open a business's dashboard read-only, for support. Time-limited and audited. */
+  BUSINESS_VIEW_AS: "platform:business:view_as",
 } as const;
 
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[keyof typeof PLATFORM_PERMISSIONS];
@@ -100,6 +102,7 @@ export const DEFAULT_PLATFORM_ROLE_PERMISSIONS: Record<PlatformRole, PlatformPer
   [PLATFORM_ROLES.ADMIN]: [
     P.BUSINESS_VIEW,
     P.BUSINESS_MANAGE,
+    P.BUSINESS_VIEW_AS,
     P.USER_VIEW,
     P.USER_MANAGE,
     P.DEVICE_MANAGE,
@@ -108,6 +111,12 @@ export const DEFAULT_PLATFORM_ROLE_PERMISSIONS: Record<PlatformRole, PlatformPer
     P.BILLING_VIEW,
   ],
   // Read-only, for answering customer and business questions.
-  [PLATFORM_ROLES.SUPPORT]: [P.BUSINESS_VIEW, P.USER_VIEW, P.AUDIT_VIEW, P.ANALYTICS_VIEW],
+  [PLATFORM_ROLES.SUPPORT]: [
+    P.BUSINESS_VIEW,
+    P.BUSINESS_VIEW_AS,
+    P.USER_VIEW,
+    P.AUDIT_VIEW,
+    P.ANALYTICS_VIEW,
+  ],
   [PLATFORM_ROLES.FINANCE]: [P.BUSINESS_VIEW, P.BILLING_VIEW, P.BILLING_MANAGE, P.ANALYTICS_VIEW],
 };

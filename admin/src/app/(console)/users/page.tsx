@@ -1,4 +1,5 @@
 import { PLATFORM_PERMISSIONS } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 import { setUserStatusAction, signOutUserAction } from "@/app/actions";
 import { apiFetchPage } from "@/lib/api";
 import { can, requirePermission } from "@/lib/me";
@@ -7,7 +8,7 @@ import {
   EmptyState,
   Input,
   PageHeader,
-  Pagination,
+  CursorPagination,
   SecondaryButton,
   StatusBadge,
   Table,
@@ -29,13 +30,14 @@ interface User {
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; cursor?: string }>;
 }) {
-  const { q, page } = await searchParams;
+  const { q, cursor } = await searchParams;
   const me = await requirePermission(PLATFORM_PERMISSIONS.USER_VIEW);
   const canManage = can(me.platformRole, PLATFORM_PERMISSIONS.USER_MANAGE);
 
-  const query = new URLSearchParams({ page: page ?? "1", limit: "25" });
+  const query = new URLSearchParams({ limit: "25" });
+  if (cursor) query.set("cursor", cursor);
   if (q) query.set("q", q);
   const { data, meta } = await apiFetchPage<User[]>(`/admin/customers?${query.toString()}`);
 
@@ -43,7 +45,7 @@ export default async function UsersPage({
     <>
       <PageHeader
         title="Users"
-        description="Every account: customers, business owners and staff, and the TapTapSell team."
+        description={`Every account: customers, business owners and staff, and the ${BRAND.name} team.`}
       />
 
       <form className="mb-4 flex gap-2">
@@ -99,12 +101,11 @@ export default async function UsersPage({
         </Table>
       )}
 
-      <Pagination
+      <CursorPagination
         basePath="/users"
         params={{ q }}
-        page={meta.page}
-        limit={meta.limit}
-        total={meta.total}
+        nextCursor={meta.nextCursor}
+        isFirstPage={!cursor}
       />
     </>
   );

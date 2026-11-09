@@ -1,3 +1,4 @@
+import { cursorParams } from "@/utils/cursor";
 import type { Request, Response } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { sendSuccess } from "@/utils/response";
@@ -32,12 +33,10 @@ export const validateRedemptionHandler = asyncHandler(async (req: Request, res: 
 });
 
 export const listBusinessRedemptionsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
-  const { items, total } = await service.listBusinessRedemptions(req.businessId!, {
-    page,
-    limit,
+  const paging = cursorParams(req.query);
+  const { items, nextCursor } = await service.listBusinessRedemptions(req.businessId!, {
+    ...paging,
     branchIds: req.branchScope,
   });
-  sendSuccess(res, items, { meta: { page, limit, total } });
+  sendSuccess(res, items, { meta: { limit: paging.limit, nextCursor } });
 });

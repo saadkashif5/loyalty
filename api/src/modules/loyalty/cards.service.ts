@@ -1,5 +1,8 @@
 import { LoyaltyCard, LoyaltyProgram, Redemption, Stamp } from "@/models";
 import { ApiError } from "@/utils/ApiError";
+import { bumpStat } from "@/services/stats.service";
+import { grantWelcomeStamp } from "@/modules/stamps/stamps.service";
+import { expireCardIfLapsed, stampExpiryDays, stampsExpireAt } from "./stampExpiry";
 import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { LOYALTY_CARD_STATUS, PROGRAM_STATUS, REDEMPTION_STATUS } from "@taptapsell/constants";
 
@@ -25,11 +28,14 @@ export async function joinProgram(customerId: string, programId: string) {
     await assertWithinPlan(businessId, "customers");
   }
 
-  return LoyaltyCard.create({
+  const card = await LoyaltyCard.create({
     customerId,
     programId,
     businessId: program.businessId,
   });
+  bumpStat(program.businessId, "newCards");
+  await grantWelcomeStamp(customerId, card, program);
+  return (await LoyaltyCard.findById(card._id)) ?? card;
 }
 
 export async function listCustomerCards(customerId: string) {
@@ -42,11 +48,21 @@ export async function listCustomerCards(customerId: string) {
 }
 
 export async function getCardDetail(customerId: string, cardId: string) {
-  const card = await LoyaltyCard.findOne({ _id: cardId, customerId })
-    .populate("businessId", "name logo category")
-    .populate("programId", "name description requiredStamps branding terms status");
+  const find = () =>
+    LoyaltyCard.findOne({ _id: cardId, customerId })
+      .populate("businessId", "name logo category")
+      .populate("programId", "name description requiredStamps branding terms status settings");
 
+  let card = await find();
   if (!card) throw ApiError.notFound("Loyalty card not found");
+
+  // Show stamps that have expired as gone, even before the hourly job runs.
+  const program = card.programId as unknown as { settings?: unknown } | null;
+  if (program && (await expireCardIfLapsed(card._id, program))) card = (await find())!;
+  const expiry = {
+    stampExpiryDays: program ? stampExpiryDays(program) : null,
+    stampsExpireAt: program ? stampsExpireAt(program, card) : null,
+  };
 
   const [recentStamps, availableRewards] = await Promise.all([
     Stamp.find({ loyaltyCardId: card._id }).sort({ createdAt: -1 }).limit(10),
@@ -58,7 +74,12 @@ export async function getCardDetail(customerId: string, cardId: string) {
     }).populate("rewardId"),
   ]);
 
-  return { card, recentStamps, availableRewards };
+  // Program caps are not the customer's business; only the expiry is shown.
+  const shown = card.toJSON() as unknown as Record<string, unknown> & {
+    programId?: Record<string, unknown>;
+  };
+  if (shown.programId) delete shown.programId.settings;
+  return { card: { ...shown, ...expiry }, recentStamps, availableRewards };
 }
 
 export async function getCardForCustomerAndProgram(customerId: string, programId: string) {

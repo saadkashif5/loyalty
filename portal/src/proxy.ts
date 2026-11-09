@@ -9,7 +9,7 @@ import { clientHeadersFrom } from "@/lib/forwarding";
 import { applyContentSecurityPolicy } from "@/lib/security";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000/api/v1";
-const PRIVATE_PREFIXES = ["/cards", "/rewards", "/profile"];
+const PRIVATE_PREFIXES = ["/cards", "/rewards", "/profile", "/notifications"];
 
 function isPrivate(pathname: string) {
   return PRIVATE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

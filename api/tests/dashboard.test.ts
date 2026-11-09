@@ -127,7 +127,8 @@ describe("business dashboard backend", () => {
 
     // Activity lists only show their branch.
     const stamps = await api().get(path("/stamps")).set(bearer(manager));
-    expect(stamps.body.meta.total).toBe(1);
+    expect(stamps.body.data).toHaveLength(1);
+    expect(stamps.body.meta.nextCursor).toBeNull();
     const otherBranch = await api()
       .get(path(`/stamps?branchId=${fx.branchB}`))
       .set(bearer(manager));
@@ -165,7 +166,7 @@ describe("business dashboard backend", () => {
     expect(JSON.stringify(list.body)).not.toContain("4561234");
 
     const byDigits = await api().get(path("/customers?q=1234")).set(bearer(fx.owner));
-    expect(byDigits.body.meta.total).toBe(1);
+    expect(byDigits.body.data).toHaveLength(1);
 
     const detail = await api()
       .get(path(`/customers/${customerId}`))

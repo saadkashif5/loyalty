@@ -13,6 +13,7 @@ import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { SUBSCRIPTION_STATUS, type BillingCycle } from "@taptapsell/constants";
 import { getBillingSettings } from "./settings.service";
 import { addPeriods } from "./billing.config";
+import { BRAND } from "@taptapsell/brand";
 
 /** Pakistan's fiscal year runs 1 July – 30 June: "2026-27". */
 export function fiscalYear(date: Date): string {
@@ -24,9 +25,14 @@ export function fiscalYear(date: Date): string {
 
 /** Gap-free numbering per fiscal year, safe under concurrency. */
 async function nextInvoiceNumber(prefix: string, date: Date): Promise<string> {
+  return nextDocumentNumber("invoice", prefix, date);
+}
+
+/** Gap-free numbering per kind of document and fiscal year: TTS-2026-27-00001. */
+export async function nextDocumentNumber(kind: string, prefix: string, date: Date) {
   const fy = fiscalYear(date);
   const counter = await Counter.findOneAndUpdate(
-    { _id: `invoice:${fy}` },
+    { _id: `${kind}:${fy}` },
     { $inc: { seq: 1 } },
     { upsert: true, new: true },
   );
@@ -106,11 +112,25 @@ export async function issueInvoice(
     .filter((c) => c.kind === CHARGE_KIND.HARDWARE)
     .reduce((sum, c) => sum + c.amountPkr, 0);
   const subtotalPkr = planPkr + charges.reduce((sum, c) => sum + c.amountPkr, 0);
+  const discountable = subtotalPkr - hardwarePkr;
   const discountPercent = subscription.discountPercent ?? 0;
-  const discountPkr = Math.round(((subtotalPkr - hardwarePkr) * discountPercent) / 100);
-  const taxable = subtotalPkr - discountPkr;
+  const discountPkr = Math.round((discountable * discountPercent) / 100);
+  // A coupon comes off what is left of the plan part after the standing discount.
+  const coupon = subscription.coupon?.invoicesLeft ? subscription.coupon : null;
+  const couponBase = discountable - discountPkr;
+  const couponPkr = coupon
+    ? Math.min(
+        couponBase,
+        coupon.percentOff
+          ? Math.round((couponBase * coupon.percentOff) / 100)
+          : (coupon.amountOffPkr ?? 0),
+      )
+    : 0;
+  const taxable = subtotalPkr - discountPkr - couponPkr;
   const taxRatePercent = settings.taxRatePercent ?? 0;
   const taxPkr = Math.round((taxable * taxRatePercent) / 100);
+  // Credit notes kept as credit pay towards the total, tax included.
+  const creditAppliedPkr = Math.min(subscription.creditBalancePkr ?? 0, taxable + taxPkr);
 
   const invoice = await Invoice.create({
     number: await nextInvoiceNumber(settings.invoicePrefix ?? "TTS", now),
@@ -145,9 +165,19 @@ export async function issueInvoice(
     taxLabel: settings.taxLabel ?? "Sales tax",
     taxRatePercent,
     taxPkr,
-    totalPkr: taxable + taxPkr,
+    coupon: couponPkr
+      ? {
+          couponId: coupon!.couponId,
+          code: coupon!.code,
+          percentOff: coupon!.percentOff,
+          amountOffPkr: coupon!.amountOffPkr,
+          amountPkr: couponPkr,
+        }
+      : null,
+    creditAppliedPkr,
+    totalPkr: taxable + taxPkr - creditAppliedPkr,
     seller: {
-      name: settings.companyName ?? "TapTapSell",
+      name: settings.companyName ?? BRAND.company,
       address: settings.address,
       ntn: settings.ntn,
       strn: settings.strn,
@@ -166,6 +196,22 @@ export async function issueInvoice(
     await Subscription.updateOne(
       { _id: subscription._id },
       { $pull: { pendingCharges: { _id: { $in: charges.map((c) => c._id) } } } },
+    );
+  }
+  if (couponPkr || creditAppliedPkr) {
+    await Subscription.updateOne(
+      { _id: subscription._id },
+      {
+        $inc: {
+          ...(couponPkr ? { "coupon.invoicesLeft": -1 } : {}),
+          creditBalancePkr: -creditAppliedPkr,
+        },
+      },
+    );
+    // A used-up coupon leaves the subscription.
+    await Subscription.updateOne(
+      { _id: subscription._id, "coupon.invoicesLeft": { $lte: 0 } },
+      { $set: { coupon: null } },
     );
   }
 
@@ -248,8 +294,41 @@ export async function voidInvoice(actorUserId: string, invoiceId: string, reason
   return invoice;
 }
 
-/** Charges on a voided invoice are still owed: they go back for the next one. */
+/**
+ * What a voided invoice used goes back: charges are still owed, the coupon
+ * use and any credit return to the subscription for the next invoice.
+ */
 async function returnCharges(invoice: InvoiceDocument) {
+  if (invoice.creditAppliedPkr) {
+    await Subscription.updateOne(
+      { _id: invoice.subscriptionId },
+      { $inc: { creditBalancePkr: invoice.creditAppliedPkr } },
+    );
+  }
+  const used = invoice.coupon;
+  if (used?.amountPkr) {
+    const restored = await Subscription.updateOne(
+      { _id: invoice.subscriptionId, "coupon.code": used.code },
+      { $inc: { "coupon.invoicesLeft": 1 } },
+    );
+    if (restored.modifiedCount === 0) {
+      await Subscription.updateOne(
+        { _id: invoice.subscriptionId, coupon: null },
+        {
+          $set: {
+            coupon: {
+              couponId: used.couponId,
+              code: used.code,
+              percentOff: used.percentOff,
+              amountOffPkr: used.amountOffPkr,
+              invoicesLeft: 1,
+            },
+          },
+        },
+      );
+    }
+  }
+
   const charges = invoice.lines
     .filter((line) => line.chargeKind)
     .map((line) => ({

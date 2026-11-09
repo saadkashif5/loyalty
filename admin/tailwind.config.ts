@@ -1,21 +1,10 @@
 import type { Config } from "tailwindcss";
+import brand, { brandContent } from "@taptapsell/brand/tailwind";
 
-// Indigo rather than the dashboard's teal, so the team can tell at a glance
-// that they are in the platform console.
+// Colours, logo and name come from packages/brand.
 const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      colors: {
-        brand: {
-          50: "#eef2ff",
-          500: "#4f46e5",
-          600: "#4338ca",
-          700: "#3730a3",
-        },
-      },
-    },
-  },
+  presets: [brand],
+  content: ["./src/**/*.{ts,tsx}", brandContent],
   plugins: [],
 };
 

@@ -37,7 +37,11 @@ async function postAuth(path: string, body: Record<string, unknown>, token?: str
 /** Only same-site paths, so a crafted link cannot bounce people to another site after sign-in. */
 function safeNext(value: FormDataEntryValue | null): string {
   const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/businesses";
+  // Browsers read "\" as "/" and drop tabs and newlines, so "/\evil.com" or
+  // "/\t/evil.com" would leave the site. Only plain same-site paths pass.
+  const unsafeChar = [...next].some((c) => c === "\\" || c.charCodeAt(0) < 0x20 || c === "\x7f");
+  const plainPath = next.startsWith("/") && !next.startsWith("//") && !unsafeChar;
+  return plainPath ? next : "/businesses";
 }
 
 /** Both sign-in steps: password first, then the authenticator code if the account needs one. */
@@ -256,4 +260,47 @@ export async function codeLoginAction(
   }
   await setSessionCookies(result);
   redirect(next);
+}
+
+// ---- Password reset ------------------------------------------------------------
+
+export interface ResetState {
+  error?: string;
+  sent?: boolean;
+}
+
+/** Always reports success: whether an account exists is not given away. */
+export async function forgotPasswordAction(
+  _prev: ResetState,
+  formData: FormData,
+): Promise<ResetState> {
+  const { ok, payload } = await postAuth("/auth/password/forgot", {
+    email: String(formData.get("email") ?? ""),
+    app: "dashboard",
+  });
+  if (!ok) {
+    return {
+      error:
+        payload?.error?.code === "BAD_REQUEST"
+          ? "Enter a valid email address."
+          : "Too many attempts. Please wait a few minutes and try again.",
+    };
+  }
+  return { sent: true };
+}
+
+export async function resetPasswordAction(
+  _prev: ResetState,
+  formData: FormData,
+): Promise<ResetState> {
+  const password = String(formData.get("password") ?? "");
+  if (password !== String(formData.get("confirm") ?? "")) {
+    return { error: "The two passwords do not match." };
+  }
+  const { ok, payload } = await postAuth("/auth/password/reset", {
+    token: String(formData.get("token") ?? ""),
+    password,
+  });
+  if (!ok) return { error: payload?.error?.message ?? "Could not change the password." };
+  redirect("/login?reset=1");
 }

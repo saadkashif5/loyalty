@@ -7,7 +7,14 @@ const stampSchema = new Schema(
     loyaltyCardId: { type: Schema.Types.ObjectId, ref: "LoyaltyCard", required: true },
     programId: { type: Schema.Types.ObjectId, ref: "LoyaltyProgram", required: true },
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true },
-    branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
+    // Absent only for a welcome stamp, which is given on joining, not at a branch.
+    branchId: {
+      type: Schema.Types.ObjectId,
+      ref: "Branch",
+      required(this: { source?: string }) {
+        return this.source !== STAMP_SOURCE.WELCOME;
+      },
+    },
     deviceId: { type: Schema.Types.ObjectId, ref: "NfcDevice" }, // absent for ADMIN/STAFF stamps
     // Staff member who added the stamp (counter and manual stamps).
     issuedBy: { type: Schema.Types.ObjectId, ref: "User" },
@@ -24,7 +31,7 @@ stampSchema.index({ customerId: 1, idempotencyKey: 1 }, { unique: true });
 stampSchema.index({ customerId: 1, programId: 1, createdAt: -1 });
 stampSchema.index({ businessId: 1, branchId: 1, createdAt: -1 });
 // Business-wide time ranges (activity feed, analytics) without a branch filter.
-stampSchema.index({ businessId: 1, createdAt: -1 });
+stampSchema.index({ businessId: 1, createdAt: -1, _id: -1 });
 // Daily caps: per card, per staff member, and per stamper for burst detection.
 stampSchema.index({ loyaltyCardId: 1, createdAt: -1 });
 stampSchema.index({ businessId: 1, issuedBy: 1, createdAt: -1 });

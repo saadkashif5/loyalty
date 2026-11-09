@@ -1,4 +1,5 @@
 import { Router } from "express";
+import publicPlansRoutes from "@/modules/billing/publicPlans.routes";
 import authRoutes from "@/modules/auth/auth.routes";
 import usersRoutes from "@/modules/users/users.routes";
 import businessesRoutes from "@/modules/businesses/businesses.routes";
@@ -25,6 +26,7 @@ router.use("/discover", discoveryRoutes);
 // Owner invitations (link holder) and the "request access" form
 router.use("/invitations", invitationsRoutes);
 router.use("/leads", leadsRoutes);
+router.use("/plans", publicPlansRoutes);
 
 // Business dashboard surface
 router.use("/businesses", businessesRoutes);

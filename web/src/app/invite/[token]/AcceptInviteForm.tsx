@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { acceptInvitationAction } from "@/app/actions/auth";
 import { Button, ErrorText, Field, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -35,18 +36,11 @@ export function AcceptInviteForm({
             <Input name="name" defaultValue={defaultName} required autoComplete="name" />
           </Field>
           <Field label="Choose a password">
-            <Input
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
+            <PasswordInput name="password" required minLength={8} autoComplete="new-password" />
           </Field>
           <Field label="Confirm password">
-            <Input
+            <PasswordInput
               name="confirmPassword"
-              type="password"
               required
               minLength={8}
               autoComplete="new-password"

@@ -2,8 +2,10 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { BRAND } from "@taptapsell/brand";
 import { codeLoginAction, loginAction, type CodeLoginState } from "@/app/actions/auth";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -30,7 +32,7 @@ export function LoginForm({ next }: { next: string }) {
           <p className="text-sm text-slate-600">
             {useRecovery
               ? "Enter one of the recovery codes you saved when you set up two-step verification."
-              : "Open your authenticator app and enter the 6-digit code for TapTapSell."}
+              : `Open your authenticator app and enter the 6-digit code for ${BRAND.name}.`}
           </p>
           {useRecovery ? (
             <Field label="Recovery code">
@@ -73,7 +75,7 @@ export function LoginForm({ next }: { next: string }) {
           <Input name="email" type="email" required autoComplete="email" />
         </Field>
         <Field label="Password">
-          <Input name="password" type="password" required autoComplete="current-password" />
+          <PasswordInput name="password" required autoComplete="current-password" />
         </Field>
         <ErrorText>{state.error}</ErrorText>
         <SubmitButton label="Sign in" pendingLabel="Signing in…" />

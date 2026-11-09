@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { mintDevicesAction } from "@/app/actions";
 import { Button, Card, ErrorText, Field, Input, Select } from "@/components/ui";
+import { LabelSheet } from "@/components/LabelSheet";
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -45,25 +46,10 @@ export function MintForm() {
       {state.devices ? (
         <div className="space-y-2">
           <p className="text-sm text-amber-700">
-            Write each identifier onto its tag (see docs/stamper-provisioning.md) and print the
-            activation code with it. <strong>Activation codes are shown only now.</strong>
+            Write each identifier onto its tag (see docs/stamper-provisioning.md) and print these
+            labels to pack with them. <strong>Activation codes are shown only now.</strong>
           </p>
-          <table className="w-full max-w-md text-left text-sm">
-            <thead className="text-xs uppercase text-slate-500">
-              <tr>
-                <th className="py-1">Stamper</th>
-                <th className="py-1">Activation code</th>
-              </tr>
-            </thead>
-            <tbody className="font-mono">
-              {state.devices.map((d) => (
-                <tr key={d.deviceIdentifier}>
-                  <td className="py-1">{d.deviceIdentifier}</td>
-                  <td className="py-1">{d.activationCode}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <LabelSheet labels={state.devices} />
         </div>
       ) : null}
     </Card>

@@ -1,3 +1,4 @@
+import { ApiError } from "@/utils/ApiError";
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "@/middleware/auth";
@@ -21,6 +22,28 @@ router.get(
   }),
 );
 
+router.get(
+  "/summary",
+  asyncHandler(async (req, res) => {
+    const unread = await Notification.countDocuments({
+      userId: req.userId,
+      status: { $ne: NOTIFICATION_STATUS.READ },
+    });
+    sendSuccess(res, { unread });
+  }),
+);
+
+router.post(
+  "/read-all",
+  asyncHandler(async (req, res) => {
+    const result = await Notification.updateMany(
+      { userId: req.userId, status: { $ne: NOTIFICATION_STATUS.READ } },
+      { $set: { status: NOTIFICATION_STATUS.READ } },
+    );
+    sendSuccess(res, { marked: result.modifiedCount });
+  }),
+);
+
 router.post(
   "/:notificationId/read",
   asyncHandler(async (req, res) => {
@@ -29,6 +52,7 @@ router.post(
       { status: NOTIFICATION_STATUS.READ },
       { new: true },
     );
+    if (!notification) throw ApiError.notFound("Notification not found");
     sendSuccess(res, notification);
   }),
 );

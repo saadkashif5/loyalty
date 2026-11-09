@@ -65,6 +65,8 @@ export const STAMP_SOURCE = {
   ADMIN: "ADMIN",
   // Added by staff at the counter after scanning the customer's card code.
   STAFF: "STAFF",
+  // Given on joining, when the program offers a welcome stamp.
+  WELCOME: "WELCOME",
 } as const;
 export type StampSource = (typeof STAMP_SOURCE)[keyof typeof STAMP_SOURCE];
 
@@ -112,6 +114,10 @@ export const FRAUD_FLAG_TYPE = {
   TAG_MISMATCH: "TAG_MISMATCH",
   /** A staff member reached their daily stamp limit. */
   STAFF_DAILY_CAP: "STAFF_DAILY_CAP",
+  /** A stamp given while the branch is closed. */
+  OUTSIDE_HOURS: "OUTSIDE_HOURS",
+  /** Many brand-new accounts collecting their first stamp at one stamper. */
+  NEW_ACCOUNT_BURST: "NEW_ACCOUNT_BURST",
 } as const;
 export type FraudFlagType = (typeof FRAUD_FLAG_TYPE)[keyof typeof FRAUD_FLAG_TYPE];
 
@@ -144,3 +150,21 @@ export type PaymentMethod = (typeof PAYMENT_METHOD)[keyof typeof PAYMENT_METHOD]
 /** Why a business is suspended: billing suspensions lift automatically on payment. */
 export const SUSPENSION_KIND = { ADMIN: "ADMIN", BILLING: "BILLING" } as const;
 export type SuspensionKind = (typeof SUSPENSION_KIND)[keyof typeof SUSPENSION_KIND];
+
+// ---- Plan features (switched on or off per plan) ----------------------------------
+
+export const PLAN_FEATURES = {
+  /** Staff add stamps by scanning the customer's card code. */
+  COUNTER_MODE: "counterMode",
+  /** A free stamp when a customer joins. */
+  WELCOME_STAMP: "welcomeStamp",
+  /** Stamps that expire after a spell without visits. */
+  STAMP_EXPIRY: "stampExpiry",
+} as const;
+export type PlanFeature = (typeof PLAN_FEATURES)[keyof typeof PLAN_FEATURES];
+
+export const PLAN_FEATURE_LABELS: Record<PlanFeature, string> = {
+  counterMode: "Counter mode (stamp by card code)",
+  welcomeStamp: "Welcome stamp on joining",
+  stampExpiry: "Stamp expiry",
+};

@@ -22,7 +22,7 @@ const redemptionSchema = new Schema(
   { timestamps: true },
 );
 
-redemptionSchema.index({ businessId: 1, createdAt: -1 });
+redemptionSchema.index({ businessId: 1, createdAt: -1, _id: -1 });
 // The expiry reminder job scans pending rewards by expiry date.
 redemptionSchema.index({ status: 1, expiresAt: 1 });
 

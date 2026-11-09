@@ -26,10 +26,13 @@ router.post(
   optionalAuth,
   asyncHandler(async (req, res) => {
     const input = acceptInvitationSchema.parse(req.body ?? {});
-    const result = await service.acceptInvitation(req.params.token, input, req.userId, {
-      userAgent: req.clientUserAgent,
-      ip: req.clientIp,
-    });
+    const result = await service.acceptInvitation(
+      req.params.token,
+      input,
+      req.userId,
+      { userAgent: req.clientUserAgent, ip: req.clientIp },
+      req.sessionId,
+    );
     sendSuccess(res, result, { status: 201 });
   }),
 );

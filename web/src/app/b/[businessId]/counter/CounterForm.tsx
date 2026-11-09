@@ -60,6 +60,21 @@ function CounterRound({
     lookupForm.current?.requestSubmit();
   }, []);
 
+  if (stampState.pending) {
+    return (
+      <Card className="space-y-3 text-center">
+        <p className="text-lg font-semibold text-amber-700">Sent for approval</p>
+        <p className="text-sm text-slate-600">
+          You have added a lot of stamps today, so a manager needs to approve this one. The customer
+          gets the stamp as soon as they do.
+        </p>
+        <Button type="button" onClick={onNext} className="w-full py-3">
+          Next customer
+        </Button>
+      </Card>
+    );
+  }
+
   if (stampState.done) {
     const { stampCount, requiredStamps, rewards } = stampState.done;
     return (

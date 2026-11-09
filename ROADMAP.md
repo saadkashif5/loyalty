@@ -9,7 +9,7 @@ The platform owner (Super Admin) controls who gets onboarded and whether they ha
 
 ---
 
-## Where things stand (2026-11-01)
+## Where things stand (2026-11-06)
 
 Development is paused while the platform is reviewed by hand. `[x]` means built, `[~]` means partly
 built (the note says what is missing), `[ ]` means not started.
@@ -17,14 +17,17 @@ built (the note says what is missing), `[ ]` means not started.
 | Phase | Status | What is left |
 |---|---|---|
 | 0 Foundation | Mostly done | Decisions in §10: OTP providers, hosting; CI has not run on a push |
-| 1 Console and onboarding | Mostly done | View as business, label printing, logo upload, email and WhatsApp delivery of invitations |
-| 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, Urdu, Web NFC, push. Never tested on a real stamper |
-| 3 Billing | Built, except the card gateway | Gateway, coupons, credit notes and refunds, feature flags |
-| 4 Scale and security | In progress | Cursor pagination, threat model, customer-isolation check, staging load test, monitoring, backups, pentest |
-| 5 Pilot and launch | Not started | Needs a hosting decision first |
+| 1 Console and onboarding | Mostly done | Logo upload, WhatsApp delivery of invitations, SUN keys for NTAG 424 DNA |
+| 2 Customer portal | Core flow built | Phone sign-in, NTAG 424 DNA, push. Urdu on the dashboard. Never tested on a real stamper or phone matrix |
+| 3 Billing | Built, except the card gateway | Card gateway and card refunds |
+| 4 Scale and security | In progress | Threat model, OWASP checklist, staging load test, monitoring, backups, pentest |
+| 5 Pilot and launch | Marketing site built | Hosting, legal, the pilot itself, operations |
 
-Automated tests pass and three flows have been clicked through in Chrome (plan switching, receipt
-upload, receipt approval). The rest of the UI has not been tested by hand. No staging environment
+Automated tests pass. In Chrome: plan switching, receipt upload and approval, password reset on
+both apps, account deletion and data export, cursor paging, console filters, stamper tag reset,
+support view, stamper labels, shipping and QR activation, finance reminders, opening hours,
+stamp expiry, the notification centre, offline cards, pilot metrics, coupons, credit notes,
+stamp approvals, the marketing site and request-access form, Urdu, and both exports. The rest of the UI has not been tested by hand. No staging environment
 exists.
 
 Where §1, §2 and §3 describe phone sign-in or NTAG 424 DNA, that is the eventual design. What is
@@ -296,10 +299,13 @@ Engineering
       — _[docs/environments.md](docs/environments.md); the API refuses to start in staging or
       production without Redis, without CORS origins, or with identical JWT secrets. Provisioning
       the actual staging and production infrastructure is still to do_
-- [~] Fix known defects: manual stamp (no transaction, no cooldown, no route), duplicate
+- [x] Fix known defects: manual stamp (no transaction, no cooldown, no route), duplicate
       `redemptionCode` index, reward-tier selection, analytics `distinct` over all stamps,
       raw Mongoose documents returned to clients (add response serializers)
-      — _all fixed and tested except response serializers. Also fixed: the compiled API could
+      — _all fixed and tested. Responses: every model drops fields that are never selected by
+      default (password and MFA secrets, activation codes) and fields marked `private` (token and
+      code hashes, file keys) when sent, even if a query selected them; a JSON replacer strips
+      those names from plain objects too; a test sweeps every GET route. Also fixed: the compiled API could
       not start (`node dist/server.js` crashed on the shared TypeScript packages); it is now
       bundled with tsup_
 - [x] Seed scripts: Super Admin, demo business, demo customers — _`seed:admin`, `seed:demo`_
@@ -336,9 +342,9 @@ Platform roles and security
 Business invitations
 - [~] `business_invitations` collection: hashed single-use token, 7-day expiry, plan and trial preset
       — _built, including plan and trial length_
-- [~] Delivery by email and WhatsApp; resend and revoke — _resend (new link, old one dies) and
-      revoke built; the invite link is returned to the platform team to share by hand until an email
-      and WhatsApp provider is chosen_
+- [~] Delivery by email and WhatsApp; resend and revoke — _owners are emailed their link on invite
+      and on resend (through the outbox), and the link is still shown to the team to share by hand;
+      staff are emailed when invited. WhatsApp waits for a provider_
 - [~] Accept page: set password, verify phone, enrol MFA, land in onboarding wizard — _`/invite/[token]`
       handles new accounts, existing accounts (must sign in first) and wrong-account cases, then
       sends owners to set up MFA; phone is stored but not verified (phone OTP comes later, per D2); the
@@ -352,18 +358,27 @@ Admin console
 - [x] Overview: tenants by status, active stampers, stamps today, signups — _separate `admin/` app:
       "needs attention" (new leads, pending invitations, suspended businesses, stampers to assign)
       and platform totals. Stamps-today and signup trends need the Phase 4 aggregates_
-- [~] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
+- [x] Businesses: list, search, filter by status/plan/city; detail page with branches, devices,
       members, subscription and audit trail; activate, suspend and restore with reason — _search by
       name/slug/phone, status filter, invite form (also pre-filled from a lead), detail page with
       counts, people, branches, stampers, invitations (new link / revoke) and suspend/restore with a
-      reason. Subscription card built; plan and city filters not built_
+      reason. Subscription card built; filter by plan and by city (businesses now have a city,
+      set on invite and in the owner's settings; a lead's city carries over)_
 - [~] Stamper fleet: mint batches, provision SUN keys, assign to business/branch, track status
       (provisioned → shipped → active → revoked/replaced), print labels and QR — _fleet list with
       filters, mint batches (activation codes shown once), assign from the business page.
-      Shipped status, labels/QR printing and SUN keys (NTAG 424 DNA) not built_
+      Printable labels: right after minting with the activation code, and reprints (without it)
+      for a business's stampers; each has a QR code that opens the dashboard's activation form
+      with the stamper ID filled in. "Mark shipped" with courier and tracking number emails the
+      owners, and the owner's Stampers page shows it on its way. SUN keys (NTAG 424 DNA) not built_
 - [x] Users: search customers and business users; suspend/restore; force sign-out
-- [~] Audit log viewer with filters — _filter by business only_
-- [ ] Support "view as business" — read-only, time-limited, banner shown, fully audited
+- [x] Audit log viewer with filters — _by kind of action, by who did it (email), by business and by
+      date range (Pakistan days)_
+- [x] Support "view as business" — read-only, time-limited, banner shown, fully audited — _Super
+      Admin, Admin and Support open it from the business page with a reason; for 30 minutes they
+      sign in to the dashboard with their own account and see it as the owner does, under a banner.
+      Every write is refused, every page opened is kept with the view, start and end are in the
+      audit log, and the business page lists recent views_
 - [x] Platform team page — _add by email, change role, remove (signs them out); own role locked_
 
 Business dashboard
@@ -405,7 +420,9 @@ Secure taps (server)
 - [x] `POST /stamps` consumes a tap token inside the stamp transaction; a bare device identifier is
       accepted only for `STATIC` stampers
 - [x] NTAG 21x UID + counter mirror verifier
-- [ ] Admin action to reset a stamper's bound UID and counter (after a tag is re-written or replaced)
+- [x] Admin action to reset a stamper's bound UID and counter (after a tag is re-written or replaced)
+      — _from the business page or the fleet list, with a reason; the old UID and counter go in the
+      audit log and the next verified tap binds the new chip_
 - [x] Portal route `/t/:deviceIdentifier` that forwards the URL's query parameters to `POST /taps`
 - [ ] Before public launch: NTAG 424 DNA (SUN) verifier, per-tag keys derived from a KMS master
       key, key rotation procedure
@@ -420,23 +437,36 @@ Customer authentication
 - [ ] Phone OTP over WhatsApp/SMS, with per-prefix limits and CAPTCHA — _later, per D2_
 - [x] Cookie sessions for the portal (httpOnly, Secure, SameSite=Lax) — _server actions carry
       Next.js's built-in origin check; background renewal like the other apps_
-- [ ] Account deletion and data export for customers
+- [x] Account deletion and data export for customers — _from the portal's profile page: a JSON download of everything held, and deletion with typed confirmation. Deletion erases name, email, phone and password, signs out everywhere, cancels pending rewards and deletes notifications; stamps stay unnamed in each business's records. Staff and team accounts must be removed from those roles first_
 
 Customer portal (PWA)
 - [x] Tap landing: business branding, program explanation, sign up or log in, join — _`/t/<id>`
       route handler verifies the tap; signed-out or new customers go to `/join` with the tap held
       for 5 minutes_
 - [x] First tap = join; later taps = stamp — _a signed-in member gets the stamp straight from the
-      tap; a member whose session had ended can collect it after signing in. No welcome stamp yet_
-- [~] Live card update with clear success and error states (cooldown, not enrolled, stamper inactive,
-      business unavailable, offline) — _plain-language results on the card and a tap-error page;
-      offline handling not built_
+      tap; a member whose session had ended can collect it after signing in. A program can give a
+      free welcome stamp on joining; it does not count towards the cooldown before the first visit_
+- [x] Live card update with clear success and error states (cooldown, not enrolled, stamper inactive,
+      business unavailable, offline) — _plain-language results on the card and a tap-error page.
+      Offline: a service worker keeps the last copy of the card and rewards pages, so they open
+      without signal, with an offline notice; the copies are cleared on sign-out_
 - [x] "My cards": every business the customer has joined, each card separate
 - [x] Rewards: unlocked rewards with code and QR to show staff; history
-- [ ] Web NFC listening inside the page on Android Chrome
-- [ ] Urdu and English (RTL support), PKR formatting, Asia/Karachi time
-- [ ] Notification centre; consent for WhatsApp messages per business
-- [ ] Install-to-home-screen prompt
+- [x] Web NFC listening inside the page on Android Chrome — _a "Tap the stamper with this page"
+      button on My cards, shown only where the browser has Web NFC; it reads the tag, keeps only
+      TapTapSell stamper links and opens them; stops listening after a minute. Not yet tried on a
+      real phone and stamper_
+- [~] Urdu and English (RTL support), PKR formatting, Asia/Karachi time — _the customer portal
+      is in English and Urdu, right to left in Urdu, chosen on the home or profile page (or by
+      the phone's language); shop, program and reward names stay as the business wrote them.
+      PKR and Pakistan time throughout. The dashboard, console, emails and the marketing site are
+      English only; the Urdu wording needs a native speaker's review_
+- [x] Notification centre; consent for WhatsApp messages per business — _bell with unread count,
+      a notifications page that marks them read; the profile takes a mobile number and has an
+      allow switch per business (needs the number; removing it withdraws all). Owners see how many
+      customers agreed. Sending on WhatsApp waits for a provider_
+- [x] Install-to-home-screen prompt — _web app manifest and icons; Android's install prompt, or
+      the Share steps on iPhone; dismissable_
 
 Counter mode for businesses (mobile web)
 - [x] Staff add a stamp by scanning the customer's rotating card code (camera or typed);
@@ -445,24 +475,30 @@ Counter mode for businesses (mobile web)
       code; stamping by search stays with managers and owners. Camera scanning uses the browser's
       barcode reader (Chrome on Android); elsewhere staff type the code_
 - [x] Staff validate redemptions by scanning the reward QR or entering the code
-- [ ] Optional manager approval for stamps above a threshold
+- [x] Optional manager approval for stamps above a threshold — _the owner sets how many counter
+      stamps one staff member may add in a day before the rest wait for a manager; the card code is
+      spent when asked so it cannot be reused; managers and owners approve or turn down on
+      Approvals, all audited; managers and owners are never held_
 
 Programs and rewards
 - [x] Multiple reward tiers per program (fix the current single-threshold logic) — _done in Phase 0_
-- [~] Stamp expiry and reward expiry options; reward-expiring reminder job — _rewards can be
-      valid for N days after unlocking; expired codes are refused at the counter;
-      `npm run jobs` marks expired rewards and emails/notifies customers once when
-      3 days are left (the worker runs it hourly). Stamp expiry not built_
+- [x] Stamp expiry and reward expiry options; reward-expiring reminder job — _rewards can be
+      valid for N days after unlocking; expired codes are refused at the counter. A program can
+      expire stamps after 7–730 days without a visit: customers are warned in the app and by email
+      a week before, the hourly job empties lapsed cards and tells them, the card page shows the
+      date, and a stamp on a lapsed card starts again at one even before the job runs_
 
 Fraud controls
 - [x] Daily cap per card per business, cooldown per card, velocity rules per device and per staff —
       _per-card daily limit (program setting, resets at midnight Pakistan time), cooldown, per-staff
       daily limit (business setting), burst check per stamper_
-- [~] Anomaly flags: stamps outside opening hours, bursts from one stamper, many new accounts on one
+- [x] Anomaly flags: stamps outside opening hours, bursts from one stamper, many new accounts on one
       stamper; review queue for owners and admins — _alerts for stamper bursts, replayed links,
-      copied-chip suspicion and staff limits, one alert per problem with a repeat count; owners and
-      managers review on Alerts, the platform team sees all businesses in the console. Opening hours
-      and new-account bursts not built (no opening hours in the data model yet)_
+      copied-chip suspicion, staff limits, stamps while the branch is closed (branches have
+      opening hours in Pakistan time, past midnight allowed, 30 minutes' grace) and ten or more
+      brand-new accounts getting a first stamp at one stamper within an hour; one alert per
+      problem with a repeat count; owners and managers review on Alerts, the platform team sees
+      all businesses in the console_
 
 **Exit:** the device test matrix (about 10 Android phones across price bands, plus iPhones) joins and
 stamps by tapping; replayed URLs are rejected; end-to-end tests cover join, stamp, unlock and redeem.
@@ -477,8 +513,11 @@ revenue and collections at a glance.
 Plans and entitlements
 - [x] `plans` collection, editable by the Super Admin, **versioned** so existing customers can keep
       ("grandfather") their price — _four default plans created on first use; edits bump the version; subscriptions keep a copy of price and limits_
-- [~] Entitlements service: limits on branches, active programs, stampers, staff, customers, plus
-      feature flags; enforced in API middleware and reflected in the UI — _limits on branches, active programs, active stampers, staff and customers enforced in the API; feature flags not built_
+- [x] Entitlements service: limits on branches, active programs, stampers, staff, customers, plus
+      feature flags; enforced in API middleware and reflected in the UI — _limits enforced in the
+      API. Plans switch features on or off (counter mode, welcome stamp, stamp expiry); the
+      switches are copied into each subscription, so businesses already on a plan keep what they
+      signed up for. The dashboard hides or greys out what the plan does not include_
 - [x] Limits never break existing customers: at the customer limit, **new joins** are blocked and the
       owner is prompted to upgrade; existing cards keep working — _a customer new to the business is refused at the limit with a customer-friendly message; existing cards keep working_
 
@@ -503,7 +542,14 @@ Invoices and payments
       signature-verified, idempotent webhooks — _deferred: card gateway comes later_
 - [x] Bank transfer / Raast with proof upload and admin approval — _owner uploads a photo or PDF (5 MB, type checked by content, not name) against the open invoice, even while suspended for non-payment; console Receipts page to open, approve (records the payment) or reject with a reason (owner emailed). Files are kept on local disk (`STORAGE_DIR`) until object storage is set up_
 - [x] Manual payment entry (cash, cheque) by `FINANCE` or `SUPER_ADMIN`, audited — _bank transfer, Raast, cash, cheque; paid time starts after any remaining trial or paid period; owner emailed a receipt_
-- [~] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds — _trial extensions (also revive an expired, never-paid trial); a percentage discount per business on future invoices (100% = complimentary, invoices settle themselves); void an unpaid invoice with a reason. Coupons, credit notes and refunds not built_
+- [x] Coupons, discounts, trial extensions, complimentary accounts; credit notes and refunds —
+      _trial extensions, a standing percentage discount (100% = complimentary), voiding unpaid
+      invoices. Coupons: percentage or PKR off the plan part of the next N invoices, limited by
+      plan, expiry and number of businesses, once per business; owners enter them on Billing and
+      Finance applies or removes them; an open invoice is reissued with the coupon, and voiding
+      gives the use back. Credit notes (CN-… numbers) on paid invoices, as a recorded refund or as
+      credit taken off the next invoices after tax; never more than the invoice charged. Shown on
+      invoice PDFs, both billing pages and the accountant's CSV. Card refunds wait for the gateway_
 - [x] Hardware charges (stamper fee, replacement fee) as invoice line items — _Finance adds charges from the business page; they join the open or next invoice, are never discounted, and return to pending if that invoice is voided_
 
 Owner billing page
@@ -511,7 +557,10 @@ Owner billing page
 
 Super Admin finance console
 - [x] MRR, ARR, active / trialing / past-due / suspended counts, churn, trial conversion — _also collected this month; churn over 30 days, trial conversion over 90 days_
-- [~] Overdue list with ageing and one-click reminders; revenue by plan and city — _overdue list with due date and suspension date; reminders are automatic; revenue by plan built, by city not_
+- [x] Overdue list with ageing and one-click reminders; revenue by plan and city — _overdue list
+      with due date and suspension date; reminders are automatic, and Finance can send one more by
+      hand from the list (at most once a day per business, audited); revenue by plan and by the
+      city on each business's profile_
 - [x] CSV export for the accountant — _invoices by issue date with subtotal, discount, tax, total and payment; Excel-safe (UTF-8 BOM, cells that could run as formulas are neutralised)_
 
 **Exit:** in staging, with the gateway sandbox, a business moves through trial → active → past due →
@@ -524,17 +573,31 @@ suspended → reactivated, with correct invoices and notifications at every step
 **Goal:** prove the platform survives "the masses" and an attacker before public launch.
 
 Scalability
-- [~] Outbox + worker service for notifications, aggregates, billing jobs and exports — _`npm run worker` sends queued email with retries and backoff and runs the hourly jobs, under a Redis lock; owner and reward email go through the outbox; sign-in codes stay direct. Aggregates, exports and push not moved yet_
-- [ ] Pre-aggregated analytics; analytics queries on an analytics node
-- [ ] Cursor pagination on all list endpoints
+- [x] Outbox + worker service for notifications, aggregates, billing jobs and exports — _`npm run
+      worker` sends queued email, runs the hourly jobs under a Redis lock, and builds exports:
+      the accountant's invoice CSV in the console and the owner's customer CSV (contact details
+      masked) are queued, claimed one at a time, retried if a worker dies, and kept a week. Daily
+      counters are bumped as things happen rather than by a job. Sign-in codes stay direct_
+- [~] Pre-aggregated analytics; analytics queries on an analytics node — _daily counters per
+      business (taps verified and refused, stamps, new cards, rewards unlocked and used) are bumped
+      as things happen and feed the pilot page. The owner dashboard still reads raw stamps; no
+      analytics node_
+- [~] Cursor pagination on all list endpoints — _lists that grow with customers and activity (business customers, stamps, redemptions, platform users, audit log) page by cursor with matching indexes. Businesses, stampers and leads keep page numbers and counts: they grow with tenants, and the overview uses the counts. Public discovery search still uses pages_
 - [~] Redis caches for device resolution, user status and entitlements, with explicit invalidation — _stamper, business status, user status and public business data cached; watched fields clear the entry from a schema hook on every write path, so revocation and suspension apply at once. Entitlements not cached: only read on writes, not on the tap path_
 - [ ] Shard-key plan documented and validated on a staging cluster
 - [ ] Autoscaling, at least two availability zones, zero-downtime deploys
-- [~] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run — _`loadtests/run.sh` runs the tap storm in Docker with a query profile. Laptop results only compare builds; the staging run against a target is still to do, and the other scenarios are not written. See `loadtests/README.md`_
+- [~] Load tests (k6) at 3× target: tap storm, OTP storm, dashboard and analytics, billing run —
+      _all four written (`loadtests/`): tap storm, sign-in code storm (email to a local sink),
+      dashboard reads, and `benchBilling.ts` for the hourly billing run. The dashboard run found
+      paging indexes missing their tie-break (activity p95 1.05 s → 226 ms after the fix); the
+      billing run found the job re-reading the same 500 subscriptions, so beyond 500 some were
+      never invoiced (fixed). Laptop numbers only; the staging run against a target is still to
+      do. See `loadtests/README.md`_
 - [ ] Tune per-address rate limits with real traffic (carrier-grade NAT puts many customers
       behind one address); confirm `CLIENT_IP_HEADER` for the chosen host
 
 Security
+- [x] Customer-to-customer isolation checked — _tests show a customer cannot read another's card, counter code, rewards, stamps or notifications, or claim a reward on another's card_
 - [ ] Threat model per surface (portal, dashboard, admin, API, stamper, payments)
 - [ ] OWASP ASVS Level 2 checklist completed
 - [x] Tenant-isolation data-layer enforcement plus generated cross-tenant tests in CI — _once `requireBusinessRole` proves access, the rest of the request runs as that business (`api/src/models/tenantGuard.ts`): every read and write on a collection with `businessId` is limited to it, and naming another business is an error. A test walks the real router, so each new business route is checked for no token, another owner and a malformed id. Customer-to-customer isolation is by query filters and not covered by this guard_
@@ -546,7 +609,11 @@ Security
 
 Reliability and operations
 - [ ] Point-in-time backups; quarterly restore drill
-- [ ] Tracing (OpenTelemetry), dashboards for tap success rate, OTP delivery rate, payment success
+- [~] Tracing (OpenTelemetry), dashboards for tap success rate, OTP delivery rate, payment success
+      — _API and worker send traces (HTTP, Express, MongoDB, Redis) to any OTLP collector when
+      `OTEL_EXPORTER_OTLP_ENDPOINT` is set; URLs are scrubbed like the logs and database values
+      are never recorded. Tap success is on the console's Pilot page. Hosted dashboards and
+      alerting wait for hosting_
 - [ ] Alerting, on-call rotation, runbooks, public status page
 
 **Exit:** load test passes at 3× target; pentest criticals and highs closed; restore drill done within
@@ -562,10 +629,17 @@ RTO.
 - [ ] Pilot with 10–20 businesses (cafés first) in one city, free or discounted
 - [ ] Stamper operations: provisioning line, packaging, delivery, installation guide
 - [ ] Staff training: short Urdu video and printed counter card
-- [ ] WhatsApp support line and an admin-side support workflow
-- [ ] Pilot metrics: tap success rate, sign-up conversion from first tap, repeat visits, redemption
-      rate, owner satisfaction
-- [ ] Public launch: marketing site, pricing page, request-access funnel, sales playbook
+- [~] WhatsApp support line and an admin-side support workflow — _support notes per business
+      (kept as written, audited) and the read-only support view are built; the WhatsApp line is
+      operations_
+- [~] Pilot metrics: tap success rate, sign-up conversion from first tap, repeat visits, redemption
+      rate, owner satisfaction — _console Pilot page for 7/30/90 days, overall and per business:
+      tap success, cards that came back on another day, rewards used, stamps and new cards.
+      Sign-up conversion from first tap and owner satisfaction are not measured_
+- [~] Public launch: marketing site, pricing page, request-access funnel, sales playbook —
+      _`/business` on the portal: landing page, pricing read live from the public plans, and a
+      request-access form that becomes a lead in the console (rate limited, with a hidden field
+      that catches bots). The sales playbook is not code_
 
 **Exit:** pilot targets met (agree the numbers before the pilot starts); billing live with real
 payments.

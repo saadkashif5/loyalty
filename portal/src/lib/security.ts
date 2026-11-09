@@ -12,6 +12,9 @@ export function contentSecurityPolicy(nonce: string): string {
     "font-src 'self'",
     `connect-src 'self'${sentry ? ` ${new URL(sentry).origin}` : ""}${dev ? " ws:" : ""}`,
     "media-src 'self' blob:",
+    // The offline helper (public/sw.js) and the home-screen manifest.
+    "worker-src 'self'",
+    "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

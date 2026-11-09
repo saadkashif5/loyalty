@@ -72,14 +72,17 @@ export async function getCustomersNearCompletion(businessId: string, within = 2)
     minimum: Math.max(1, p.requiredStamps - within),
   }));
 
-  return LoyaltyCard.find({
-    businessId,
-    $or: thresholds.map((t) => ({
-      programId: t.programId,
-      stampCount: { $gte: t.minimum },
-    })),
-  })
-    .populate("customerId", "name email")
-    .populate("programId", "name requiredStamps")
-    .limit(200);
+  return (
+    LoyaltyCard.find({
+      businessId,
+      $or: thresholds.map((t) => ({
+        programId: t.programId,
+        stampCount: { $gte: t.minimum },
+      })),
+    })
+      // Name only: contact details stay masked for businesses (see customers.service).
+      .populate("customerId", "name")
+      .populate("programId", "name requiredStamps")
+      .limit(200)
+  );
 }

@@ -12,13 +12,16 @@ import {
 import { env } from "@/config/env";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
+import { queueEmail } from "@/services/outbox.service";
 import { generateUniqueSlug } from "@/modules/businesses/businesses.service";
 import { hashPassword, issueTokenPair, type AuthContext } from "@/modules/auth/auth.service";
 import { toPublicUser } from "@/modules/auth/auth.serializer";
+import { revokeAllUserSessions, revokeOtherSessions } from "@/modules/auth/token.service";
 import { createTrialSubscription, startTrial } from "@/modules/billing/subscriptions.service";
 import { findActivePlan } from "@/modules/billing/plans.service";
 import { BUSINESS_ROLES, BUSINESS_STATUS, MEMBER_STATUS } from "@taptapsell/constants";
 import type { AcceptInvitationInput, CreateBusinessWithOwnerInput } from "@taptapsell/validation";
+import { BRAND } from "@taptapsell/brand";
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60_000;
 
@@ -128,7 +131,25 @@ export async function createBusinessWithInvitation(
     metadata: { email: input.owner.email, leadId: input.leadId },
   });
 
-  return { business, invitation: toInvitationView(invitation), inviteUrl: inviteUrl(token.raw) };
+  const url = inviteUrl(token.raw);
+  await emailInvitation(input.owner.email, input.owner.name, business.name, url);
+  return { business, invitation: toInvitationView(invitation), inviteUrl: url };
+}
+
+/** The link is also returned to the team, to share by WhatsApp if the email does not arrive. */
+async function emailInvitation(to: string, name: string, businessName: string, url: string) {
+  await queueEmail({
+    to,
+    subject: `You are invited to run ${businessName} on ${BRAND.name}`,
+    text: [
+      `Hi ${name},`,
+      "",
+      `The ${BRAND.name} team has set up ${businessName} for you. Open this link to create your account and start your free trial:`,
+      url,
+      "",
+      "The link works for 7 days.",
+    ].join("\n"),
+  });
 }
 
 export async function listInvitations(businessId: string) {
@@ -160,7 +181,10 @@ export async function resendInvitation(actorUserId: string, invitationId: string
     resourceId: invitation._id,
   });
 
-  return { invitation: toInvitationView(invitation), inviteUrl: inviteUrl(token.raw) };
+  const url = inviteUrl(token.raw);
+  const business = await Business.findById(invitation.businessId).select("name");
+  await emailInvitation(invitation.email, invitation.name, business?.name ?? "your business", url);
+  return { invitation: toInvitationView(invitation), inviteUrl: url };
 }
 
 export async function revokeInvitation(actorUserId: string, invitationId: string) {
@@ -217,6 +241,7 @@ export async function acceptInvitation(
   input: AcceptInvitationInput,
   actorUserId: string | undefined,
   ctx: AuthContext,
+  actorSessionId?: string,
 ) {
   const invitation = await findUsableInvitation(rawToken);
   const existing = await User.findOne({ email: invitation.email });
@@ -264,6 +289,8 @@ export async function acceptInvitation(
               email: invitation.email,
               ...(phoneTaken ? {} : { phone: invitation.phone }),
               passwordHash,
+              // The invitation link was emailed to this address.
+              emailVerifiedAt: new Date(),
             },
           ],
           { session },
@@ -293,6 +320,16 @@ export async function acceptInvitation(
     });
   } finally {
     await session.endSession();
+  }
+
+  // The account is about to hold OWNER rights: only the session that just
+  // accepted (and so held the emailed link) keeps access.
+  if (existing) {
+    if (!existing.emailVerifiedAt) {
+      await User.updateOne({ _id: existing._id }, { $set: { emailVerifiedAt: new Date() } });
+    }
+    if (actorSessionId) await revokeOtherSessions(existing.id, actorSessionId);
+    else await revokeAllUserSessions(existing._id);
   }
 
   await recordAudit({

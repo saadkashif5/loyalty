@@ -6,8 +6,9 @@ import { ApiError } from "@/utils/ApiError";
 import { sendEmail } from "@/services/email.service";
 import type { RequestEmailCodeInput, VerifyEmailCodeInput } from "@taptapsell/validation";
 import { issueTokenPair, type AuthContext } from "./auth.service";
-import { signMfaChallenge } from "./token.service";
+import { revokeAllUserSessions, signMfaChallenge } from "./token.service";
 import { toPublicUser } from "./auth.serializer";
+import { BRAND } from "@taptapsell/brand";
 
 const CODE_TTL_MS = 5 * 60_000;
 const MAX_ATTEMPTS = 5;
@@ -27,15 +28,15 @@ function normalise(email: string): string {
 
 function codeEmail(code: string) {
   const text = [
-    `Your TapTapSell code is ${code}`,
+    `Your ${BRAND.name} code is ${code}`,
     "",
     "Enter it on the page you came from. It expires in 5 minutes.",
     "If you did not ask for this code, you can ignore this email.",
     "",
-    `آپ کا TapTapSell کوڈ ${code} ہے۔ یہ 5 منٹ میں ختم ہو جائے گا۔`,
+    `آپ کا ${BRAND.name} کوڈ ${code} ہے۔ یہ 5 منٹ میں ختم ہو جائے گا۔`,
   ].join("\n");
 
-  return { subject: `${code} is your TapTapSell code`, text };
+  return { subject: `${code} is your ${BRAND.name} code`, text };
 }
 
 /**
@@ -161,8 +162,16 @@ export async function verifyEmailCode(
       if (!user) throw err;
     }
   } else if (!user.emailVerifiedAt) {
+    // First proof that this person owns the email. Anyone can register a
+    // password account for an address they do not own, so whatever was set up
+    // before now is untrusted: drop that password and end every session, or
+    // the squatter would share the account with its real owner.
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { emailVerifiedAt: now }, $unset: { passwordHash: "" } },
+    );
+    await revokeAllUserSessions(user._id);
     user.emailVerifiedAt = now;
-    await user.save();
   }
 
   // The email code replaces the password, not the second factor.

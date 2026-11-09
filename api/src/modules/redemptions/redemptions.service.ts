@@ -1,3 +1,5 @@
+import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
+import { bumpStat } from "@/services/stats.service";
 import { LoyaltyCard, Redemption, Reward } from "@/models";
 import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
@@ -106,6 +108,8 @@ export async function validateRedemption(params: {
     { new: true },
   ).populate("rewardId", "name description");
 
+  if (redemption) bumpStat(params.businessId, "rewardsRedeemed");
+
   if (!redemption) {
     // Covers unknown code, another business's code, and an already-redeemed code.
     const existing = await Redemption.findOne({
@@ -156,20 +160,16 @@ export async function validateRedemption(params: {
 
 export async function listBusinessRedemptions(
   businessId: string,
-  options: { page: number; limit: number; branchIds?: string[] },
+  options: { branchIds?: string[] } & CursorRequest,
 ) {
   const filter: Record<string, unknown> = { businessId };
   if (options.branchIds?.length) filter.branchId = { $in: options.branchIds };
 
-  const [items, total] = await Promise.all([
-    Redemption.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit)
-      .populate("rewardId", "name")
-      .populate("customerId", "name email"),
-    Redemption.countDocuments(filter),
-  ]);
-
-  return { items, total };
+  const rows = await Redemption.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1)
+    .populate("rewardId", "name")
+    // Name only: contact details stay masked for businesses (see customers.service).
+    .populate("customerId", "name");
+  return toPage(rows, options.limit, "createdAt");
 }

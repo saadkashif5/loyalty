@@ -19,7 +19,14 @@ const planSchema = new Schema(
       staff: limit,
       customers: limit,
     },
+    // Marketing bullet points shown on the plan.
     features: [{ type: String, maxlength: 80 }],
+    // What the plan switches on (PLAN_FEATURES); enforced by the API.
+    flags: {
+      counterMode: { type: Boolean, default: true },
+      welcomeStamp: { type: Boolean, default: true },
+      stampExpiry: { type: Boolean, default: true },
+    },
     isActive: { type: Boolean, default: true },
     // Hidden plans (e.g. Enterprise deals) can be assigned but are not offered.
     isPublic: { type: Boolean, default: true },

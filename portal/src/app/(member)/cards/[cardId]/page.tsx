@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import { apiFetch } from "@/lib/api";
 import { Card, Notice, StampDots, formatDate } from "@/components/ui";
 import { CounterCodePanel } from "@/components/CounterCodePanel";
+import { getT, type MessageKey } from "@/lib/i18n";
 
 interface CardDetail {
   card: {
@@ -10,6 +11,9 @@ interface CardDetail {
     status: string;
     businessId: { name: string } | null;
     programId: { name: string; requiredStamps: number; terms?: string } | null;
+    stampExpiryDays: number | null;
+    stampsExpireAt: string | null;
+    lastExpiry?: { at?: string; stamps?: number } | null;
   };
   recentStamps: Array<{ _id: string; createdAt: string; source: string }>;
   availableRewards: Array<{
@@ -21,23 +25,20 @@ interface CardDetail {
   }>;
 }
 
-const RESULTS: Record<string, { tone: "success" | "info"; text: string }> = {
-  stamped: { tone: "success", text: "Stamp added. Thank you for your visit!" },
-  unlocked: { tone: "success", text: "You earned a reward! Show the code below at the counter." },
-  joined: {
-    tone: "info",
-    text: "You are in! Tap the stamper again to collect your first stamp.",
-  },
+const RESULT_TONE: Record<string, "success" | "info"> = {
+  stamped: "success",
+  unlocked: "success",
+  joined: "info",
 };
 
 // Why a tap did not give a stamp, in the customer's terms.
-const ERRORS: Record<string, string> = {
-  STAMP_COOLDOWN: "You already got a stamp here a moment ago. One stamp per visit.",
-  DAILY_STAMP_LIMIT: "You have collected today's stamps for this card. Come back tomorrow!",
-  TAP_EXPIRED: "That tap expired. Tap the stamper again to collect your stamp.",
-  TAP_ALREADY_USED: "That tap was already used. Tap the stamper again.",
-  NOT_ENROLLED: "Join this shop's card first, then tap again.",
-};
+const ERROR_CODES = new Set([
+  "STAMP_COOLDOWN",
+  "DAILY_STAMP_LIMIT",
+  "TAP_EXPIRED",
+  "TAP_ALREADY_USED",
+  "NOT_ENROLLED",
+]);
 
 export default async function CardPage({
   params,
@@ -48,6 +49,7 @@ export default async function CardPage({
 }) {
   const { cardId } = await params;
   const { result, error } = await searchParams;
+  const t = await getT();
   const { card, recentStamps, availableRewards } = await apiFetch<CardDetail>(
     `/loyalty-cards/${cardId}`,
   );
@@ -61,12 +63,12 @@ export default async function CardPage({
 
   return (
     <>
-      {result && RESULTS[result] ? (
-        <Notice tone={RESULTS[result].tone}>{RESULTS[result].text}</Notice>
+      {result && RESULT_TONE[result] ? (
+        <Notice tone={RESULT_TONE[result]}>{t(`card.result.${result}` as MessageKey)}</Notice>
       ) : null}
       {error ? (
         <Notice tone="warning">
-          {ERRORS[error] ?? "That stamp did not go through. Please tap the stamper again."}
+          {ERROR_CODES.has(error) ? t(`card.error.${error}` as MessageKey) : t("card.errorGeneric")}
         </Notice>
       ) : null}
 
@@ -79,8 +81,24 @@ export default async function CardPage({
           <>
             <StampDots count={card.stampCount} required={card.programId.requiredStamps} />
             <p className="text-sm text-slate-600">
-              {card.stampCount} of {card.programId.requiredStamps} stamps
+              {t("card.stamps", { n: card.stampCount, m: card.programId.requiredStamps })}
             </p>
+            {card.stampsExpireAt ? (
+              <p className="text-xs text-slate-500">
+                {t("card.expiry", {
+                  days: card.stampExpiryDays ?? "",
+                  date: formatDate(card.stampsExpireAt),
+                })}
+              </p>
+            ) : null}
+            {card.stampCount === 0 && card.lastExpiry?.stamps ? (
+              <p className="text-xs text-amber-700">
+                {t("card.expired", {
+                  n: card.lastExpiry.stamps,
+                  date: formatDate(card.lastExpiry.at),
+                })}
+              </p>
+            ) : null}
           </>
         ) : null}
       </Card>
@@ -89,14 +107,16 @@ export default async function CardPage({
 
       {rewards.map((reward) => (
         <Card key={reward._id} className="space-y-3 border-brand-500 text-center">
-          <p className="text-sm font-medium uppercase tracking-wide text-brand-600">Your reward</p>
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-600">
+            {t("card.yourReward")}
+          </p>
           <p className="text-lg font-semibold">{reward.rewardId?.name ?? "Reward"}</p>
           {/* A data URL generated on the server; next/image adds nothing here. */}
           <img src={reward.qr} alt="" width={160} height={160} className="mx-auto" />
           <p className="font-mono text-2xl tracking-[0.3em]">{reward.redemptionCode}</p>
           <p className="text-xs text-slate-500">
-            Show this code to the staff to redeem.
-            {reward.expiresAt ? ` Use by ${formatDate(reward.expiresAt)}.` : ""}
+            {t("card.showCode")}
+            {reward.expiresAt ? ` ${t("card.useBy", { date: formatDate(reward.expiresAt) })}` : ""}
           </p>
         </Card>
       ))}

@@ -10,12 +10,13 @@ import { applyContentSecurityPolicy } from "@/lib/security";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000/api/v1";
 
-const PROTECTED = /^\/(businesses|b|account)(\/|$)/;
+const PROTECTED = /^\/(businesses|b|account|activate)(\/|$)/;
 // Files keep their own headers: a policy for pages does not apply to a PDF.
 const isFile = (pathname: string) => pathname.includes("/billing/invoices/");
 function toLogin(request: NextRequest) {
   const loginUrl = new URL("/login", request.url);
-  loginUrl.searchParams.set("next", request.nextUrl.pathname);
+  // The query string matters: /activate?device=... must survive signing in.
+  loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
   const response = NextResponse.redirect(loginUrl);
   response.cookies.delete(ACCESS_TOKEN_COOKIE);
   response.cookies.delete(REFRESH_TOKEN_COOKIE);

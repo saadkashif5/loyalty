@@ -47,6 +47,22 @@ const invoiceSchema = new Schema(
     subtotalPkr: { type: Number, required: true },
     discountPercent: { type: Number, default: 0 },
     discountPkr: { type: Number, default: 0 },
+    // The coupon used on this invoice, kept so voiding can give the use back.
+    coupon: {
+      type: new Schema(
+        {
+          couponId: { type: Schema.Types.ObjectId, ref: "Coupon" },
+          code: { type: String },
+          percentOff: { type: Number, default: null },
+          amountOffPkr: { type: Number, default: null },
+          amountPkr: { type: Number, required: true },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
+    // Credit from earlier credit notes, taken off after tax.
+    creditAppliedPkr: { type: Number, default: 0 },
     taxLabel: { type: String, default: "Sales tax" },
     taxRatePercent: { type: Number, default: 0 },
     taxPkr: { type: Number, default: 0 },

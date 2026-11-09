@@ -12,14 +12,11 @@ import {
   REMIND_BEFORE_DAYS,
 } from "@/modules/billing/billing.config";
 import { findOpenInvoice, issueInvoice, renewalPrice } from "@/modules/billing/invoices.service";
-import { getPaymentDetails } from "@/modules/billing/settings.service";
+import { day, invoiceEmail } from "@/modules/billing/emails";
 import { SUBSCRIPTION_STATUS } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 
 const BATCH = 500;
-
-function day(d: Date) {
-  return d.toLocaleDateString("en-PK", { timeZone: "Asia/Karachi" });
-}
 
 /**
  * Moves subscriptions through their lifecycle and tells owners at each step:
@@ -63,34 +60,36 @@ export async function runSubscriptionJob(now: Date = new Date()) {
 
   // 0. Invoices: a week before a trial or period ends, and for anyone overdue without one.
   const billBy = new Date(now.getTime() + INVOICE_LEAD_DAYS * DAY_MS);
-  const toBill = await Subscription.find({
+  // Walked in full: these keep their status, so a limit would re-read the same
+  // first batch every run and never reach the rest.
+  const toBill = Subscription.find({
     $or: [
       { status: SUBSCRIPTION_STATUS.TRIALING, trialEndsAt: { $ne: null, $lte: billBy } },
       { status: SUBSCRIPTION_STATUS.ACTIVE, currentPeriodEnd: { $ne: null, $lte: billBy } },
       { status: { $in: [SUBSCRIPTION_STATUS.PAST_DUE, SUBSCRIPTION_STATUS.SUSPENDED] } },
     ],
-  }).limit(BATCH);
-  for (const sub of toBill) {
+  }).cursor();
+  for await (const sub of toBill) {
     if (await findOpenInvoice(sub._id)) continue;
     const invoice = await issueInvoice(sub);
     result.invoiced += 1;
     if (invoice.status === INVOICE_STATUS.ISSUED) {
       await emailOwners(
         String(sub.businessId),
-        `Invoice ${invoice.number} from TapTapSell`,
+        `Invoice ${invoice.number} from ${BRAND.name}`,
         await invoiceEmail(invoice.number, invoice.totalPkr, invoice.dueDate),
       );
     }
   }
 
   // 1. Reminders before a trial or a paid period ends.
-  const ending = await Subscription.find({
+  const ending = Subscription.find({
     $or: [
       { status: SUBSCRIPTION_STATUS.TRIALING, trialEndsAt: { $gt: now, $lte: soon } },
       { status: SUBSCRIPTION_STATUS.ACTIVE, currentPeriodEnd: { $gt: now, $lte: soon } },
     ],
-  }).limit(BATCH);
-  for (const sub of ending) {
+  }).cursor();
+  for await (const sub of ending) {
     const trial = sub.status === SUBSCRIPTION_STATUS.TRIALING;
     const end = (trial ? sub.trialEndsAt : sub.currentPeriodEnd)!;
     const key = `${trial ? "trial-ending" : "renewal"}:${end.toISOString()}`;
@@ -99,8 +98,8 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     await emailOwners(
       String(sub.businessId),
       trial
-        ? `Your TapTapSell trial ends on ${day(end)}`
-        : `Your TapTapSell plan renews on ${day(end)}`,
+        ? `Your ${BRAND.name} trial ends on ${day(end)}`
+        : `Your ${BRAND.name} plan renews on ${day(end)}`,
       `${trial ? "Your free trial" : "Your current period"} ends on ${day(end)}. ` +
         `To keep stamping without interruption, pay PKR ${renewalPrice(sub).toLocaleString("en-PK")} ` +
         `for your plan. See Billing in your dashboard for how to pay.`,
@@ -130,7 +129,7 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     await audit(sub.businessId, sub._id, sub.status, SUBSCRIPTION_STATUS.PAST_DUE);
     await emailOwners(
       String(sub.businessId),
-      "Your TapTapSell payment is due",
+      `Your ${BRAND.name} payment is due`,
       `Your ${sub.status === SUBSCRIPTION_STATUS.TRIALING ? "trial" : "plan"} has ended. ` +
         `Please pay PKR ${renewalPrice(sub).toLocaleString("en-PK")} by ${day(graceEndsAt)}; ` +
         "after that, stamping stops until payment arrives.",
@@ -170,7 +169,7 @@ export async function runSubscriptionJob(now: Date = new Date()) {
     );
     await emailOwners(
       String(sub.businessId),
-      "Your TapTapSell account is suspended",
+      `Your ${BRAND.name} account is suspended`,
       "We have not received payment, so customers can no longer collect stamps. " +
         "Rewards they already earned can still be redeemed for 30 days. " +
         "Pay any time to switch everything back on straight away.",
@@ -205,26 +204,6 @@ export async function runSubscriptionJob(now: Date = new Date()) {
   }
 
   return result;
-}
-
-async function invoiceEmail(number: string, totalPkr: number, dueDate: Date): Promise<string> {
-  const pay = await getPaymentDetails();
-  const accounts = pay.bankAccounts
-    .map(
-      (a) =>
-        `${a.bankName} — ${a.accountTitle}, account ${a.accountNumber}${a.iban ? `, IBAN ${a.iban}` : ""}`,
-    )
-    .join("\n");
-  return [
-    `Invoice ${number} for PKR ${totalPkr.toLocaleString("en-PK")} is due on ${day(dueDate)}.`,
-    "",
-    accounts ? `Pay by bank transfer to:\n${accounts}` : "",
-    pay.raastId ? `Or by Raast to: ${pay.raastId}` : "",
-    "",
-    "Then upload the receipt from Billing in your dashboard. The invoice PDF is there too.",
-  ]
-    .filter((line, i, all) => line !== "" || all[i - 1] !== "")
-    .join("\n");
 }
 
 /** Marks a reminder as sent; false if this exact reminder already went out. */

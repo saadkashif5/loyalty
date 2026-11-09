@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { BRAND } from "@taptapsell/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TapTapSell Loyalty",
+  title: { default: `${BRAND.name} Business`, template: `%s · ${BRAND.name} Business` },
   description: "Manage your loyalty programs, stampers and rewards.",
 };
 

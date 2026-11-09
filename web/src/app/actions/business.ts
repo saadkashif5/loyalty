@@ -62,6 +62,7 @@ export async function updateBusinessProfileAction(
           phone: text(formData, "phone"),
           email: text(formData, "email"),
           address: text(formData, "address"),
+          city: text(formData, "city"),
         },
       },
     }),
@@ -96,12 +97,28 @@ export async function updateBranchAction(
         name: text(formData, "name"),
         address: text(formData, "address"),
         status: text(formData, "status"),
+        openingHours: openingHours(formData),
       },
     }),
   );
 }
 
+/** One entry per day with both times filled in; a day left blank is closed. */
+function openingHours(formData: FormData) {
+  return [0, 1, 2, 3, 4, 5, 6].flatMap((day) => {
+    const open = text(formData, `open-${day}`);
+    const close = text(formData, `close-${day}`);
+    return open && close ? [{ day, open, close }] : [];
+  });
+}
+
 // ---- Programs and rewards ---------------------------------------------------------------
+
+/** Blank means stamps never expire. */
+function expiryDays(formData: FormData): number | null {
+  const value = text(formData, "stampExpiryDays");
+  return value ? Number(value) : null;
+}
 
 export async function createProgramAction(
   businessId: string,
@@ -117,6 +134,8 @@ export async function createProgramAction(
         requiredStamps: Number(formData.get("requiredStamps")),
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps") ?? 5),
         maxStampsPerDay: Number(formData.get("maxStampsPerDay") ?? 3),
+        stampExpiryDays: expiryDays(formData),
+        welcomeStamp: formData.get("welcomeStamp") === "on",
       },
     }),
   );
@@ -138,6 +157,8 @@ export async function updateProgramAction(
         requiredStamps: Number(formData.get("requiredStamps")),
         minMinutesBetweenStamps: Number(formData.get("minMinutesBetweenStamps")),
         maxStampsPerDay: Number(formData.get("maxStampsPerDay")),
+        stampExpiryDays: expiryDays(formData),
+        welcomeStamp: formData.get("welcomeStamp") === "on",
         status: text(formData, "status"),
       },
     }),
@@ -314,6 +335,8 @@ export interface CounterState {
   code?: string;
   lookup?: CounterLookup;
   done?: { stampCount: number; requiredStamps: number; rewards: string[] };
+  /** Past the day's approval threshold: a manager has to approve it. */
+  pending?: boolean;
 }
 
 /** Step one: show staff whose card this is before anything is recorded. */
@@ -336,10 +359,12 @@ export async function lookupCounterAction(
   }
 }
 
-interface StampResponse {
-  card: { stampCount: number; requiredStamps: number };
-  unlockedRewards: Array<{ rewardName: string }>;
-}
+type StampResponse =
+  | {
+      card: { stampCount: number; requiredStamps: number };
+      unlockedRewards: Array<{ rewardName: string }>;
+    }
+  | { pendingApproval: true; requestId: string };
 
 /** Step two: add the stamp. The idempotency key comes from the form, so a double tap is one stamp. */
 export async function counterStampAction(
@@ -354,6 +379,7 @@ export async function counterStampAction(
       idempotencyKey: text(formData, "idempotencyKey"),
     });
     refresh(businessId);
+    if ("pendingApproval" in result) return { pending: true };
     return {
       done: {
         stampCount: result.card.stampCount,
@@ -364,6 +390,25 @@ export async function counterStampAction(
   } catch (error) {
     return { ...prev, error: messageFrom(error, "Could not add the stamp.") };
   }
+}
+
+/** Queues the customer list as a CSV; the worker builds it. */
+export async function requestCustomerExportAction(businessId: string): Promise<void> {
+  await apiFetch(`/businesses/${businessId}/exports`, { method: "POST" }).catch(() => undefined);
+  refresh(businessId);
+}
+
+/** Managers and owners decide stamps that waited for approval. */
+export async function decideStampRequestAction(
+  businessId: string,
+  requestId: string,
+  approve: boolean,
+): Promise<void> {
+  await apiFetch(
+    `/businesses/${businessId}/stamp-requests/${requestId}/${approve ? "approve" : "reject"}`,
+    { method: "POST", body: {} },
+  ).catch(() => undefined);
+  refresh(businessId);
 }
 
 /** Managers and owners: stamp a customer found by search. */
@@ -402,7 +447,12 @@ export async function updateStaffCapAction(
   return run(businessId, "Could not save the limit.", () =>
     apiFetch(`/businesses/${businessId}`, {
       method: "PATCH",
-      body: { staffDailyStampCap: Number(formData.get("staffDailyStampCap")) },
+      body: {
+        staffDailyStampCap: Number(formData.get("staffDailyStampCap")),
+        stampApprovalAfter: text(formData, "stampApprovalAfter")
+          ? Number(formData.get("stampApprovalAfter"))
+          : null,
+      },
     }),
   );
 }
@@ -428,6 +478,19 @@ export async function changePlanAction(
 export async function cancelPlanChangeAction(businessId: string): Promise<FormState> {
   return run(businessId, "Could not cancel the plan change.", () =>
     apiFetch(`/businesses/${businessId}/billing/scheduled-change`, { method: "DELETE" }),
+  );
+}
+
+export async function applyCouponAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return run(businessId, "Could not apply the code.", () =>
+    apiFetch(`/businesses/${businessId}/billing/coupon`, {
+      method: "POST",
+      body: { code: text(formData, "code") },
+    }),
   );
 }
 

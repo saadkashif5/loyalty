@@ -3,8 +3,10 @@
 import QRCode from "qrcode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { BRAND } from "@taptapsell/brand";
 import { API_BASE_URL, ApiRequestError, apiFetch } from "@/lib/api";
 import { clientHeaders } from "@/lib/forwarding";
+import { labelQr } from "@/lib/qr";
 import { clearSessionCookies, getRefreshToken, setSessionCookies } from "@/lib/session";
 
 export interface FormState {
@@ -48,7 +50,7 @@ interface SignedIn {
 async function startSession(data: SignedIn): Promise<LoginState> {
   if (!data.user.platformRole) {
     await postAuth("/auth/logout", { refreshToken: data.refreshToken });
-    return { error: "This account is not on the TapTapSell team." };
+    return { error: `This account is not on the ${BRAND.name} team.` };
   }
   await setSessionCookies(data);
   redirect("/");
@@ -148,6 +150,7 @@ export async function inviteBusinessAction(
 ): Promise<InviteState> {
   const phone = text(formData, "businessPhone");
   const address = text(formData, "address");
+  const city = text(formData, "city");
 
   try {
     const result = await apiFetch<{ business: { _id: string }; inviteUrl: string }>(
@@ -159,7 +162,7 @@ export async function inviteBusinessAction(
             name: text(formData, "businessName"),
             category: text(formData, "category") ?? "OTHER",
             description: text(formData, "description"),
-            ...(phone || address ? { contact: { phone, address } } : {}),
+            ...(phone || address || city ? { contact: { phone, address, city } } : {}),
           },
           owner: {
             name: text(formData, "ownerName"),
@@ -195,6 +198,50 @@ export async function setBusinessStatusAction(
   } catch (error) {
     return { error: messageFrom(error, "Could not change the status.") };
   }
+}
+
+export async function addNoteAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/notes`, {
+      method: "POST",
+      body: { body: text(formData, "body") },
+    });
+    revalidatePath(`/businesses/${businessId}`);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not save the note.") };
+  }
+}
+
+export interface SupportViewState extends FormState {
+  dashboardUrl?: string;
+}
+
+/** Opens a 30-minute read-only view of the business's dashboard. */
+export async function startSupportViewAction(
+  businessId: string,
+  _prev: SupportViewState,
+  formData: FormData,
+): Promise<SupportViewState> {
+  try {
+    const result = await apiFetch<{ dashboardUrl: string }>(
+      `/admin/businesses/${businessId}/support-view`,
+      { method: "POST", body: { reason: text(formData, "reason") } },
+    );
+    revalidatePath(`/businesses/${businessId}`);
+    return { done: true, dashboardUrl: result.dashboardUrl };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not open the support view.") };
+  }
+}
+
+export async function endSupportViewAction(businessId: string): Promise<void> {
+  await apiFetch(`/admin/businesses/${businessId}/support-view`, { method: "DELETE" });
+  revalidatePath(`/businesses/${businessId}`);
 }
 
 export async function resendInvitationAction(
@@ -245,29 +292,74 @@ export async function assignDeviceAction(
 
 // ---- Stamper fleet ------------------------------------------------------------------
 
+/** Forgets a stamper's bound chip and counter so a replacement tag can bind on its first tap. */
+export async function resetDeviceTagAction(
+  deviceId: string,
+  businessId: string | null,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/devices/${deviceId}/reset-tag`, {
+      method: "POST",
+      body: { reason: text(formData, "reason") },
+    });
+    if (businessId) revalidatePath(`/businesses/${businessId}`);
+    revalidatePath("/devices");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not reset the stamper.") };
+  }
+}
+
+/** Records that an assigned stamper has been sent; the owners are emailed. */
+export async function shipDeviceAction(
+  deviceId: string,
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/devices/${deviceId}/ship`, {
+      method: "POST",
+      body: {
+        courier: text(formData, "courier"),
+        trackingNumber: text(formData, "trackingNumber"),
+      },
+    });
+    revalidatePath(`/businesses/${businessId}`);
+    revalidatePath("/devices");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not mark the stamper as shipped.") };
+  }
+}
+
 export interface MintState extends FormState {
-  devices?: Array<{ deviceIdentifier: string; activationCode: string }>;
+  devices?: Array<{ deviceIdentifier: string; activationCode: string; qrDataUrl: string }>;
 }
 
 export async function mintDevicesAction(_prev: MintState, formData: FormData): Promise<MintState> {
   try {
-    const devices = await apiFetch<Array<{ deviceIdentifier: string; activationCode: string }>>(
-      "/admin/devices",
-      {
-        method: "POST",
-        body: {
-          quantity: Number(formData.get("quantity") ?? 1),
-          tagType: text(formData, "tagType") ?? "NTAG21X_MIRROR",
-        },
+    const devices = await apiFetch<
+      Array<{ deviceIdentifier: string; activationCode: string; activateUrl: string }>
+    >("/admin/devices", {
+      method: "POST",
+      body: {
+        quantity: Number(formData.get("quantity") ?? 1),
+        tagType: text(formData, "tagType") ?? "NTAG21X_MIRROR",
       },
-    );
+    });
     revalidatePath("/devices");
     return {
       done: true,
-      devices: devices.map((d) => ({
-        deviceIdentifier: d.deviceIdentifier,
-        activationCode: d.activationCode,
-      })),
+      devices: await Promise.all(
+        devices.map(async (d) => ({
+          deviceIdentifier: d.deviceIdentifier,
+          activationCode: d.activationCode,
+          qrDataUrl: await labelQr(d.activateUrl),
+        })),
+      ),
     };
   } catch (error) {
     return { error: messageFrom(error, "Could not create stampers.") };
@@ -361,6 +453,11 @@ function planBody(formData: FormData) {
       staff: limitValue(formData, "staff"),
       customers: limitValue(formData, "customers"),
     },
+    flags: {
+      counterMode: formData.get("flag-counterMode") === "on",
+      welcomeStamp: formData.get("flag-welcomeStamp") === "on",
+      stampExpiry: formData.get("flag-stampExpiry") === "on",
+    },
     isPublic: formData.get("isPublic") === "on",
   };
 }
@@ -444,6 +541,16 @@ export async function removeChargeAction(businessId: string, chargeId: string): 
   refreshBilling(businessId);
 }
 
+export async function sendReminderAction(businessId: string, _prev: FormState): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/billing/remind`, { method: "POST" });
+    revalidatePath("/finance");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not send the reminder.") };
+  }
+}
+
 export async function extendTrialAction(
   businessId: string,
   _prev: FormState,
@@ -509,6 +616,112 @@ export async function voidInvoiceAction(
     return { done: true };
   } catch (error) {
     return { error: messageFrom(error, "Could not void the invoice.") };
+  }
+}
+
+/** Queues the accountant's invoice export; the worker builds it. */
+export async function requestInvoiceExportAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch("/admin/exports", {
+      method: "POST",
+      body: { from: text(formData, "from"), to: text(formData, "to") },
+    });
+    revalidatePath("/finance");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not start the export.") };
+  }
+}
+
+// ---- Coupons and credit notes ---------------------------------------------------------
+
+export async function createCouponAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const kind = text(formData, "kind");
+  const value = Number(formData.get("value"));
+  const plans = text(formData, "planCodes");
+  try {
+    await apiFetch("/admin/coupons", {
+      method: "POST",
+      body: {
+        code: text(formData, "code"),
+        description: text(formData, "description"),
+        ...(kind === "AMOUNT" ? { amountOffPkr: value } : { percentOff: value }),
+        invoices: Number(formData.get("invoices") ?? 1),
+        planCodes: plans
+          ? plans
+              .split(",")
+              .map((p) => p.trim())
+              .filter(Boolean)
+          : [],
+        maxRedemptions: text(formData, "maxRedemptions")
+          ? Number(formData.get("maxRedemptions"))
+          : undefined,
+        expiresAt: text(formData, "expiresAt"),
+      },
+    });
+    revalidatePath("/coupons");
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not create the coupon.") };
+  }
+}
+
+export async function setCouponActiveAction(couponId: string, active: boolean): Promise<void> {
+  await apiFetch(`/admin/coupons/${couponId}`, { method: "PATCH", body: { active } });
+  revalidatePath("/coupons");
+}
+
+export async function applyCouponAction(
+  businessId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  try {
+    await apiFetch(`/admin/businesses/${businessId}/coupon`, {
+      method: "POST",
+      body: { code: text(formData, "code") },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not apply the coupon.") };
+  }
+}
+
+export async function removeCouponAction(businessId: string): Promise<void> {
+  await apiFetch(`/admin/businesses/${businessId}/coupon`, { method: "DELETE" });
+  refreshBilling(businessId);
+}
+
+export async function creditNoteAction(
+  businessId: string,
+  invoiceId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const outcome = text(formData, "outcome");
+  try {
+    await apiFetch(`/admin/invoices/${invoiceId}/credit-notes`, {
+      method: "POST",
+      body: {
+        amountPkr: Number(formData.get("amountPkr")),
+        reason: text(formData, "reason"),
+        outcome,
+        ...(outcome === "REFUND"
+          ? {
+              refundMethod: text(formData, "refundMethod"),
+              refundReference: text(formData, "refundReference"),
+            }
+          : {}),
+      },
+    });
+    refreshBilling(businessId);
+    return { done: true };
+  } catch (error) {
+    return { error: messageFrom(error, "Could not issue the credit note.") };
   }
 }
 
@@ -594,4 +807,47 @@ export async function saveBillingSettingsAction(
   } catch (error) {
     return { error: messageFrom(error, "Could not save the settings.") };
   }
+}
+
+// ---- Password reset ------------------------------------------------------------
+
+export interface ResetState {
+  error?: string;
+  sent?: boolean;
+}
+
+/** Always reports success: whether an account exists is not given away. */
+export async function forgotPasswordAction(
+  _prev: ResetState,
+  formData: FormData,
+): Promise<ResetState> {
+  const { ok, payload } = await postAuth("/auth/password/forgot", {
+    email: String(formData.get("email") ?? ""),
+    app: "console",
+  });
+  if (!ok) {
+    return {
+      error:
+        payload?.error?.code === "BAD_REQUEST"
+          ? "Enter a valid email address."
+          : "Too many attempts. Please wait a few minutes and try again.",
+    };
+  }
+  return { sent: true };
+}
+
+export async function resetPasswordAction(
+  _prev: ResetState,
+  formData: FormData,
+): Promise<ResetState> {
+  const password = String(formData.get("password") ?? "");
+  if (password !== String(formData.get("confirm") ?? "")) {
+    return { error: "The two passwords do not match." };
+  }
+  const { ok, payload } = await postAuth("/auth/password/reset", {
+    token: String(formData.get("token") ?? ""),
+    password,
+  });
+  if (!ok) return { error: payload?.error?.message ?? "Could not change the password." };
+  redirect("/login?reset=1");
 }

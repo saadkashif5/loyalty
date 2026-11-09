@@ -6,15 +6,20 @@ import { ApiError } from "@/utils/ApiError";
 import { env } from "@/config/env";
 import { mfaSetupRequired } from "@/middleware/auth";
 import { REDEEM_DURING_BILLING_SUSPENSION_DAYS } from "@/modules/billing/billing.config";
+import { findActiveGrant, recordSupportView } from "@/modules/support/support.service";
 import {
   BUSINESS_ROLE_HIERARCHY,
   BUSINESS_ROLES,
   BUSINESS_STATUS,
+  DEFAULT_PLATFORM_ROLE_PERMISSIONS,
   DEFAULT_ROLE_PERMISSIONS,
   MEMBER_STATUS,
+  PLATFORM_PERMISSIONS,
+  type PlatformRole,
   type BusinessPermission,
   type BusinessRole,
 } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -23,6 +28,8 @@ declare module "express-serve-static-core" {
     businessPermissions?: BusinessPermission[];
     /** Branches this member may act at; empty means every branch. */
     branchScope?: string[];
+    /** Set when a platform team member is looking at the business read-only. */
+    supportView?: boolean;
   }
 }
 
@@ -82,6 +89,11 @@ export function requireBusinessRole(options: Options = {}) {
       Business.findById(businessId).select("status suspension"),
     ]);
 
+    if ((!member || member.status !== MEMBER_STATUS.ACTIVE) && business && req.platformRole) {
+      await authorizeSupportView(req, businessId, next);
+      return;
+    }
+
     if (!member || member.status !== MEMBER_STATUS.ACTIVE || !business) {
       // Same error for "not a member" and "disabled member" — avoids leaking membership existence.
       next(ApiError.forbidden("You do not have access to this business"));
@@ -114,7 +126,7 @@ export function requireBusinessRole(options: Options = {}) {
         new ApiError(
           403,
           "BUSINESS_SUSPENDED",
-          `This business is suspended${reason ? `: ${reason}` : ""}. Contact TapTapSell to restore it.`,
+          `This business is suspended${reason ? `: ${reason}` : ""}. Contact ${BRAND.name} to restore it.`,
         ),
       );
       return;
@@ -148,6 +160,47 @@ export function requireBusinessRole(options: Options = {}) {
     // Everything after this point can only touch this business's data.
     runAsTenant(String(businessId), next);
   }
+}
+
+/**
+ * A platform team member with an open support view sees the business as its
+ * owner would, but can change nothing. Each request is kept with the view.
+ */
+async function authorizeSupportView(
+  req: Request,
+  businessId: string,
+  next: NextFunction,
+): Promise<void> {
+  const role = req.platformRole as PlatformRole;
+  const allowed = DEFAULT_PLATFORM_ROLE_PERMISSIONS[role]?.includes(
+    PLATFORM_PERMISSIONS.BUSINESS_VIEW_AS,
+  );
+  const grant =
+    allowed && (req.mfaEnabled || env.SKIP_MFA)
+      ? await findActiveGrant(req.userId!, businessId)
+      : null;
+  if (!grant) {
+    next(ApiError.forbidden("You do not have access to this business"));
+    return;
+  }
+  if (!READ_METHODS.has(req.method)) {
+    next(
+      new ApiError(
+        403,
+        "SUPPORT_VIEW_READ_ONLY",
+        "Support view is read-only. Nothing was changed.",
+      ),
+    );
+    return;
+  }
+
+  recordSupportView(grant._id, req.method, req.originalUrl.split("?")[0]);
+  req.businessId = businessId;
+  req.businessRole = BUSINESS_ROLES.OWNER;
+  req.businessPermissions = [...DEFAULT_ROLE_PERMISSIONS[BUSINESS_ROLES.OWNER]];
+  req.branchScope = [];
+  req.supportView = true;
+  runAsTenant(businessId, next);
 }
 
 /** Rejects acting at a branch outside the member's assigned branches. */

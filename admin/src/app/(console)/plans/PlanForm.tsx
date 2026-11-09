@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAN_FEATURE_LABELS } from "@taptapsell/constants";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { createPlanAction, updatePlanAction } from "@/app/actions";
@@ -68,6 +69,21 @@ export function PlanForm({ plan }: { plan?: Plan }) {
           </Field>
         ))}
       </div>
+      <fieldset className="space-y-1 text-sm">
+        <legend className="mb-1 font-medium text-slate-700">Features in this plan</legend>
+        {(
+          Object.entries(PLAN_FEATURE_LABELS) as Array<[keyof typeof PLAN_FEATURE_LABELS, string]>
+        ).map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name={`flag-${key}`}
+              defaultChecked={plan?.flags?.[key] ?? true}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <div className="flex flex-wrap gap-4 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" name="isPublic" defaultChecked={plan?.isPublic ?? true} />

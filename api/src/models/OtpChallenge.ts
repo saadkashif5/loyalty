@@ -7,7 +7,7 @@ import { Schema, model } from "mongoose";
 const otpChallengeSchema = new Schema(
   {
     email: { type: String, required: true, lowercase: true, trim: true },
-    codeHash: { type: String, required: true },
+    codeHash: { type: String, required: true, private: true },
     attempts: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true },
     consumedAt: { type: Date, default: null },

@@ -18,6 +18,12 @@ const planSnapshotSchema = new Schema(
       staff: limit,
       customers: limit,
     },
+    // Absent on snapshots taken before flags existed: everything allowed.
+    flags: {
+      counterMode: { type: Boolean },
+      welcomeStamp: { type: Boolean },
+      stampExpiry: { type: Boolean },
+    },
   },
   { _id: false },
 );
@@ -47,6 +53,19 @@ const scheduledChangeSchema = new Schema(
   { _id: false },
 );
 
+// A coupon applied to this business, copied in so later edits to the coupon
+// do not change what was promised.
+const appliedCouponSchema = new Schema(
+  {
+    couponId: { type: Schema.Types.ObjectId, ref: "Coupon", required: true },
+    code: { type: String, required: true },
+    percentOff: { type: Number, default: null },
+    amountOffPkr: { type: Number, default: null },
+    invoicesLeft: { type: Number, required: true, min: 0 },
+  },
+  { _id: false },
+);
+
 // One per business. `plan` is a snapshot taken when the plan was chosen, so a
 // later price or limit change on the Plan does not affect this business.
 const subscriptionSchema = new Schema(
@@ -68,6 +87,11 @@ const subscriptionSchema = new Schema(
     discountPercent: { type: Number, default: 0, min: 0, max: 100 },
     pendingCharges: { type: [chargeSchema], default: [] },
     scheduledChange: { type: scheduledChangeSchema, default: null },
+    coupon: { type: appliedCouponSchema, default: null },
+    // Codes this business has used; each works once per business.
+    couponsUsed: { type: [String], default: [] },
+    // From credit notes; taken off the next invoices' totals.
+    creditBalancePkr: { type: Number, default: 0, min: 0 },
     // Set when the owner accepts the invitation: the trial starts then.
     trialEndsAt: { type: Date, default: null },
     currentPeriodStart: { type: Date, default: null },
@@ -77,6 +101,8 @@ const subscriptionSchema = new Schema(
     cancelledAt: { type: Date, default: null },
     // Remembers which reminder was last sent, so each one goes out once.
     lastReminderKey: { type: String, default: null },
+    // Last reminder the finance team sent by hand; at most one a day.
+    lastManualReminderAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

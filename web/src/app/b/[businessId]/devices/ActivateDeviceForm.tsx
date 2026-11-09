@@ -17,9 +17,12 @@ function SubmitButton() {
 export function ActivateDeviceForm({
   businessId,
   branches,
+  deviceIdentifier,
 }: {
   businessId: string;
   branches: { _id: string; name: string }[];
+  /** Filled in from the QR code on the stamper's label. */
+  deviceIdentifier?: string;
 }) {
   const action = activateDeviceAction.bind(null, businessId);
   const [state, formAction] = useActionState(action, {});
@@ -37,10 +40,22 @@ export function ActivateDeviceForm({
       <h2 className="mb-4 text-sm font-semibold text-slate-700">Activate a stamper</h2>
       <form action={formAction} className="space-y-4">
         <Field label="Stamper ID">
-          <Input name="deviceIdentifier" required placeholder="TAP123" className="uppercase" />
+          <Input
+            name="deviceIdentifier"
+            required
+            placeholder="TAP123"
+            className="uppercase"
+            defaultValue={deviceIdentifier}
+          />
         </Field>
         <Field label="Activation code">
-          <Input name="activationCode" required placeholder="ACTIV8ME" className="uppercase" />
+          <Input
+            name="activationCode"
+            required
+            placeholder="ACTIV8ME"
+            className="uppercase"
+            autoFocus={Boolean(deviceIdentifier)}
+          />
         </Field>
         <Field label="Branch">
           <select

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND } from "@taptapsell/brand";
 import { apiFetch } from "@/lib/api";
 import { revokeOtherSessionsAction, revokeSessionAction } from "@/app/actions/auth";
 import { Card, PageHeader } from "@/components/ui";
@@ -49,7 +50,8 @@ export default async function SecurityPage({
 
       {welcome && !mfa.enabled ? (
         <Card className="border-brand-500 bg-brand-50 text-sm">
-          Welcome to TapTapSell. Set up two-step verification below to open your business dashboard.
+          Welcome to {BRAND.name}. Set up two-step verification below to open your business
+          dashboard.
         </Card>
       ) : null}
 

@@ -10,6 +10,8 @@ const notificationSchema = new Schema(
         "STAMP_ADDED",
         "REWARD_UNLOCKED",
         "REWARD_EXPIRING",
+        "STAMPS_EXPIRING",
+        "STAMPS_EXPIRED",
         "REWARD_REDEEMED",
         "LOYALTY_MILESTONE",
         "BUSINESS_ANNOUNCEMENT",
@@ -30,5 +32,6 @@ const notificationSchema = new Schema(
 );
 
 notificationSchema.index({ userId: 1, status: 1 });
+notificationSchema.index({ userId: 1, createdAt: -1 });
 
 export const Notification = model("Notification", notificationSchema, "notifications");

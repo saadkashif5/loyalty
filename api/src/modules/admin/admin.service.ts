@@ -1,20 +1,35 @@
+import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
 import {
   AuditLog,
   Branch,
   Business,
+  BusinessNote,
   BusinessMember,
   LoyaltyCard,
   NfcDevice,
   Redemption,
   Stamp,
+  Subscription,
   User,
 } from "@/models";
+import { Types, isValidObjectId } from "mongoose";
+import { activateUrl } from "@/modules/devices/devices.service";
+import { emailOwners } from "@/modules/billing/subscriptions.service";
+import { env } from "@/config/env";
+import { listSupportViews } from "@/modules/support/support.service";
 import { listInvitations } from "@/modules/invitations/invitations.service";
 import { applyBusinessStatus } from "@/modules/businesses/businesses.service";
 import { ApiError } from "@/utils/ApiError";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { revokeAllUserSessions } from "@/modules/auth/token.service";
-import { BUSINESS_STATUS, DEVICE_STATUS, USER_STATUS } from "@taptapsell/constants";
+import {
+  BUSINESS_STATUS,
+  DEFAULT_PLATFORM_ROLE_PERMISSIONS,
+  DEVICE_STATUS,
+  PLATFORM_PERMISSIONS,
+  USER_STATUS,
+  type PlatformRole,
+} from "@taptapsell/constants";
 import type { AddTeamMemberInput, UpdateTeamMemberInput } from "@taptapsell/validation";
 
 function escapeRegex(input: string): string {
@@ -24,6 +39,9 @@ function escapeRegex(input: string): string {
 export async function listBusinesses(options: {
   status?: string;
   query?: string;
+  /** Plan code, e.g. "GROWTH". */
+  plan?: string;
+  city?: string;
   page: number;
   limit: number;
 }) {
@@ -34,8 +52,16 @@ export async function listBusinesses(options: {
     const pattern = { $regex: escapeRegex(options.query), $options: "i" };
     filter.$or = [{ name: pattern }, { slug: pattern }, { "contact.phone": pattern }];
   }
+  if (options.city) {
+    filter["contact.city"] = { $regex: `^${escapeRegex(options.city.trim())}$`, $options: "i" };
+  }
+  if (options.plan) {
+    filter._id = {
+      $in: await Subscription.distinct("businessId", { "plan.code": options.plan.toUpperCase() }),
+    };
+  }
 
-  const [items, total] = await Promise.all([
+  const [businesses, total] = await Promise.all([
     Business.find(filter)
       .sort({ createdAt: -1 })
       .skip((options.page - 1) * options.limit)
@@ -43,7 +69,29 @@ export async function listBusinesses(options: {
     Business.countDocuments(filter),
   ]);
 
+  const subscriptions = await Subscription.find({
+    businessId: { $in: businesses.map((b) => b._id) },
+  }).select("businessId plan.code plan.name status");
+  const planOf = new Map(subscriptions.map((s) => [String(s.businessId), s]));
+  const items = businesses.map((b) => {
+    const sub = planOf.get(b.id);
+    return {
+      ...b.toObject(),
+      plan: sub ? { code: sub.plan.code, name: sub.plan.name, status: sub.status } : null,
+    };
+  });
+
   return { items, total };
+}
+
+/** Distinct cities on file, for the console's filter list. */
+export async function listBusinessCities(): Promise<string[]> {
+  const cities = (await Business.distinct("contact.city")) as Array<string | null>;
+  const seen = new Map<string, string>();
+  for (const city of cities) {
+    if (city && !seen.has(city.toLowerCase())) seen.set(city.toLowerCase(), city);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
 export async function setBusinessStatus(
@@ -69,7 +117,7 @@ export async function setBusinessStatus(
   return business;
 }
 
-export async function listCustomers(options: { query?: string; page: number; limit: number }) {
+export async function listCustomers(options: { query?: string } & CursorRequest) {
   const filter: Record<string, unknown> = {};
   if (options.query) {
     const escaped = options.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -79,23 +127,41 @@ export async function listCustomers(options: { query?: string; page: number; lim
     ];
   }
 
-  const [items, total] = await Promise.all([
-    User.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit),
-    User.countDocuments(filter),
-  ]);
+  const rows = await User.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1);
+  return toPage(rows, options.limit, "createdAt");
+}
 
-  return { items, total };
+/**
+ * Platform team members are managed under TEAM_MANAGE, not USER_MANAGE: an
+ * ADMIN must not be able to suspend, restore or sign out a SUPER_ADMIN (or any
+ * other team member) through the customer routes.
+ */
+async function assertCanActOnUser(userId: string, actorPlatformRole: string | null | undefined) {
+  if (!isValidObjectId(userId)) throw ApiError.notFound("User not found");
+  const target = await User.findById(userId).select("platformRole");
+  if (!target) throw ApiError.notFound("User not found");
+  if (!target.platformRole) return;
+
+  const canManageTeam = Boolean(
+    actorPlatformRole &&
+    DEFAULT_PLATFORM_ROLE_PERMISSIONS[actorPlatformRole as PlatformRole]?.includes(
+      PLATFORM_PERMISSIONS.TEAM_MANAGE,
+    ),
+  );
+  if (!canManageTeam)
+    throw ApiError.forbidden("Platform team members are managed from the team page");
 }
 
 export async function setUserStatus(
   userId: string,
   actorUserId: string,
   status: "ACTIVE" | "SUSPENDED",
+  actorPlatformRole?: string | null,
 ) {
   if (userId === actorUserId) throw ApiError.forbidden("You cannot change your own account status");
+  await assertCanActOnUser(userId, actorPlatformRole);
 
   const user = await User.findByIdAndUpdate(userId, { status }, { new: true });
   if (!user) throw ApiError.notFound("User not found");
@@ -116,19 +182,45 @@ export async function setUserStatus(
   return user;
 }
 
-export async function listAuditLogs(options: { businessId?: string; page: number; limit: number }) {
-  const filter = options.businessId ? { businessId: options.businessId } : {};
+export interface AuditFilters {
+  businessId?: string;
+  /** An exact action ("device.revoked") or a family ending in a dot ("device."). */
+  action?: string;
+  /** Email of the person who acted. */
+  actor?: string;
+  from?: Date;
+  to?: Date;
+}
 
-  const [items, total] = await Promise.all([
-    AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit)
-      .populate("actorUserId", "name email"),
-    AuditLog.countDocuments(filter),
-  ]);
+export async function listAuditLogs(options: AuditFilters & CursorRequest) {
+  const filter: Record<string, unknown> = {};
+  if (options.businessId) {
+    if (!isValidObjectId(options.businessId)) throw ApiError.badRequest("Invalid business id");
+    filter.businessId = options.businessId;
+  }
+  if (options.action) {
+    filter.action = options.action.endsWith(".")
+      ? { $regex: `^${escapeRegex(options.action)}` }
+      : options.action;
+  }
+  if (options.actor) {
+    const actor = await User.findOne({ email: options.actor.trim().toLowerCase() }).select("_id");
+    // An unknown email matches nothing rather than everything.
+    if (!actor) return { items: [], nextCursor: null };
+    filter.actorUserId = actor._id;
+  }
+  if (options.from || options.to) {
+    filter.createdAt = {
+      ...(options.from ? { $gte: options.from } : {}),
+      ...(options.to ? { $lt: options.to } : {}),
+    };
+  }
 
-  return { items, total };
+  const rows = await AuditLog.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1)
+    .populate("actorUserId", "name email");
+  return toPage(rows, options.limit, "createdAt");
 }
 
 export async function getPlatformOverview() {
@@ -147,8 +239,12 @@ export async function getPlatformOverview() {
 }
 
 /** Ends every session a user has, e.g. after a lost phone or a suspected compromise. */
-export async function signOutUser(actorUserId: string, userId: string) {
-  if (!(await User.exists({ _id: userId }))) throw ApiError.notFound("User not found");
+export async function signOutUser(
+  actorUserId: string,
+  userId: string,
+  actorPlatformRole?: string | null,
+) {
+  await assertCanActOnUser(userId, actorPlatformRole);
   await revokeAllUserSessions(userId);
 
   await recordAudit({
@@ -241,6 +337,7 @@ export async function getBusinessDetail(businessId: string) {
       Stamp.countDocuments({ businessId }),
       Redemption.countDocuments({ businessId }),
     ]);
+  const supportViews = await listSupportViews(businessId);
 
   return {
     business,
@@ -248,6 +345,8 @@ export async function getBusinessDetail(businessId: string) {
     branches,
     devices,
     invitations,
+    supportViews,
+    dashboardUrl: `${env.DASHBOARD_URL}/b/${businessId}`,
     counts: { customers, stamps, redemptions },
   };
 }
@@ -277,4 +376,127 @@ export async function listDevices(options: {
   ]);
 
   return { items, total };
+}
+
+/**
+ * Forgets the chip a stamper is bound to and its last tap counter, after the
+ * tag is re-written or swapped for a new one. The next verified tap binds the
+ * new chip. Until then any chip carrying this stamper's link would be
+ * accepted once, so this is done just before the new tag goes in.
+ */
+export async function resetDeviceTag(actorUserId: string, deviceId: string, reason: string) {
+  if (!isValidObjectId(deviceId)) throw ApiError.notFound("Stamper not found");
+  const device = await NfcDevice.findById(deviceId);
+  if (!device) throw ApiError.notFound("Stamper not found");
+  if (device.status === DEVICE_STATUS.REVOKED || device.status === DEVICE_STATUS.REPLACED) {
+    throw ApiError.badRequest("This stamper is retired. Use a new stamper instead.");
+  }
+
+  const previous = { tagUid: device.tagUid, lastTapCounter: device.lastTapCounter };
+  device.tagUid = null;
+  device.lastTapCounter = null;
+  await device.save();
+
+  await recordAudit({
+    actorUserId,
+    businessId: device.businessId ?? undefined,
+    action: AUDIT_ACTIONS.DEVICE_TAG_RESET,
+    resourceType: "NfcDevice",
+    resourceId: device._id,
+    metadata: { reason, ...previous },
+  });
+
+  return device;
+}
+
+/**
+ * Marks an assigned stamper as sent to its business and tells the owners it
+ * is on the way, with the courier's tracking number if there is one.
+ */
+export async function shipDevice(
+  actorUserId: string,
+  deviceId: string,
+  input: { courier?: string; trackingNumber?: string },
+) {
+  if (!isValidObjectId(deviceId)) throw ApiError.notFound("Stamper not found");
+  const device = await NfcDevice.findById(deviceId).populate("branchId", "name");
+  if (!device) throw ApiError.notFound("Stamper not found");
+  if (device.status !== DEVICE_STATUS.ASSIGNED || !device.businessId) {
+    throw ApiError.badRequest("Only a stamper assigned to a business and not yet active can ship.");
+  }
+
+  device.shipment = {
+    shippedAt: new Date(),
+    courier: input.courier,
+    trackingNumber: input.trackingNumber,
+    shippedBy: new Types.ObjectId(actorUserId),
+  };
+  await device.save();
+
+  await recordAudit({
+    actorUserId,
+    businessId: device.businessId,
+    action: AUDIT_ACTIONS.DEVICE_SHIPPED,
+    resourceType: "NfcDevice",
+    resourceId: device._id,
+    metadata: { courier: input.courier, trackingNumber: input.trackingNumber },
+  });
+
+  const branch = (device.branchId as unknown as { name?: string } | null)?.name;
+  const tracking = input.trackingNumber
+    ? `It is with ${input.courier ?? "the courier"}, tracking number ${input.trackingNumber}.`
+    : input.courier
+      ? `It is with ${input.courier}.`
+      : "";
+  await emailOwners(
+    String(device.businessId),
+    `Your stamper ${device.deviceIdentifier} is on its way`,
+    [
+      `We have sent stamper ${device.deviceIdentifier}${branch ? ` for ${branch}` : ""}. ${tracking}`.trim(),
+      "",
+      "When it arrives, scan the QR code on its card or open this link, then type the activation code printed on the card:",
+      activateUrl(device.deviceIdentifier),
+    ].join("\n"),
+  );
+
+  return device;
+}
+
+/** What goes on printed stamper labels. Activation codes are not included: they exist only at mint time. */
+export async function listDeviceLabels(ids: string[]) {
+  const valid = ids.filter((id) => isValidObjectId(id)).slice(0, 100);
+  const devices = await NfcDevice.find({ _id: { $in: valid } })
+    .sort({ deviceIdentifier: 1 })
+    .populate("businessId", "name")
+    .populate("branchId", "name");
+  return devices.map((d) => ({
+    _id: d.id,
+    deviceIdentifier: d.deviceIdentifier,
+    business: (d.businessId as unknown as { name?: string } | null)?.name ?? null,
+    branch: (d.branchId as unknown as { name?: string } | null)?.name ?? null,
+    activateUrl: activateUrl(d.deviceIdentifier),
+  }));
+}
+
+export async function listNotes(businessId: string) {
+  if (!isValidObjectId(businessId)) throw ApiError.notFound("Business not found");
+  return BusinessNote.find({ businessId })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .populate("authorId", "name email");
+}
+
+export async function addNote(actorUserId: string, businessId: string, body: string) {
+  if (!isValidObjectId(businessId) || !(await Business.exists({ _id: businessId }))) {
+    throw ApiError.notFound("Business not found");
+  }
+  const note = await BusinessNote.create({ businessId, authorId: actorUserId, body });
+  await recordAudit({
+    actorUserId,
+    businessId,
+    action: AUDIT_ACTIONS.SUPPORT_NOTE_ADDED,
+    resourceType: "BusinessNote",
+    resourceId: note._id,
+  });
+  return note.populate("authorId", "name email");
 }

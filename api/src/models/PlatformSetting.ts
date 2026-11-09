@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import { BRAND } from "@taptapsell/brand";
 
 // Platform-wide settings edited by the team, one document per key.
 // "billing": who issues invoices, tax, and where owners send money.
@@ -16,7 +17,7 @@ const platformSettingSchema = new Schema(
   {
     key: { type: String, required: true, unique: true },
     billing: {
-      companyName: { type: String, default: "TapTapSell", maxlength: 160 },
+      companyName: { type: String, default: BRAND.company, maxlength: 160 },
       address: { type: String, maxlength: 500 },
       ntn: { type: String, maxlength: 20 },
       strn: { type: String, maxlength: 20 },

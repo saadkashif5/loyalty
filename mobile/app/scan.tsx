@@ -8,7 +8,16 @@ import {
   type NfcAvailability,
   type StamperTap,
 } from "@/lib/nfc";
-import { Button, Card, Muted, Screen, StampProgress, Title, colors } from "@/components/ui";
+import {
+  BRAND_NAME,
+  Button,
+  Card,
+  Muted,
+  Screen,
+  StampProgress,
+  Title,
+  colors,
+} from "@/components/ui";
 
 interface StampResult {
   alreadyRecorded: boolean;
@@ -79,7 +88,7 @@ export default function ScanScreen() {
         kind: "error",
         message: unreadable ? "That is not a loyalty stamper" : "No stamper detected",
         hint: unreadable
-          ? "Hold your phone against the TapTapSell stamper on the counter."
+          ? `Hold your phone against the ${BRAND_NAME} stamper on the counter.`
           : "Hold your phone steady against the stamper and try again.",
       });
       return;
@@ -131,7 +140,7 @@ export default function ScanScreen() {
           <Card>
             <Title>{phase.kind === "scanning" ? "Hold against the stamper" : "Ready to tap"}</Title>
             <Muted>
-              Touch the back of your phone to the TapTapSell stamper on the counter after you have
+              Touch the back of your phone to the {BRAND_NAME} stamper on the counter after you have
               paid.
             </Muted>
             <Button

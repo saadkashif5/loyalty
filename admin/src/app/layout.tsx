@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { BRAND } from "@taptapsell/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TapTapSell Admin",
-  description: "Platform console for the TapTapSell team.",
+  title: { default: `${BRAND.name} Admin`, template: `%s · ${BRAND.name} Admin` },
+  description: `Platform console for the ${BRAND.name} team.`,
   robots: { index: false, follow: false },
 };
 

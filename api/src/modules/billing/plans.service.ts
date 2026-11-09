@@ -57,7 +57,11 @@ export async function ensureDefaultPlans(): Promise<void> {
   if ((await Plan.estimatedDocumentCount()) > 0) return;
   await Plan.bulkWrite(
     DEFAULT_PLANS.map((plan) => ({
-      updateOne: { filter: { code: plan.code }, update: { $setOnInsert: plan }, upsert: true },
+      updateOne: {
+        filter: { code: plan.code },
+        update: { $setOnInsert: plan as Record<string, unknown> },
+        upsert: true,
+      },
     })),
   );
 }
@@ -92,9 +96,13 @@ export async function createPlan(actorUserId: string, input: CreatePlanInput) {
 
 /** Every change bumps the version; businesses already on the plan keep their copy. */
 export async function updatePlan(actorUserId: string, planId: string, input: UpdatePlanInput) {
+  // Flags are set one by one, so switching one leaves the others as they are.
+  const { flags, ...rest } = input;
+  const set: Record<string, unknown> = { ...rest };
+  for (const [key, value] of Object.entries(flags ?? {})) set[`flags.${key}`] = value;
   const plan = await Plan.findByIdAndUpdate(
     planId,
-    { $set: input, $inc: { version: 1 } },
+    { $set: set, $inc: { version: 1 } },
     { new: true, runValidators: true },
   );
   if (!plan) throw ApiError.notFound("Plan not found");

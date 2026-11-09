@@ -5,6 +5,7 @@ import { cached } from "@/services/cache.service";
 import { assertWithinPlan } from "@/modules/billing/entitlements.service";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { generateActivationCode, generateDeviceIdentifier } from "@/utils/codes";
+import { env } from "@/config/env";
 import { BUSINESS_STATUS, DEVICE_STATUS, type TagType } from "@taptapsell/constants";
 import type {
   ReportDeviceProblemInput,
@@ -37,8 +38,26 @@ export async function registerDevices(actorUserId: string, input: RegisterDevice
   }
 
   // Activation codes are returned only here, at mint time, so they can be
-  // printed/shipped with the hardware. They are never readable again.
-  return NfcDevice.find({ _id: { $in: devices.map((d) => d._id) } }).select("+activationCode");
+  // printed/shipped with the hardware. They are never readable again, and a
+  // stamper document sent as JSON never carries one (models/serialize.ts).
+  return devices.map((d) => ({
+    _id: d._id,
+    deviceIdentifier: d.deviceIdentifier,
+    activationCode: d.activationCode!,
+    deviceType: d.deviceType,
+    tagType: d.tagType,
+    status: d.status,
+    activateUrl: activateUrl(d.deviceIdentifier),
+  }));
+}
+
+/**
+ * Printed as a QR code on the stamper's label: opens the dashboard's
+ * activation form with the stamper ID filled in. The activation code is
+ * never in the link; the owner types it from the card.
+ */
+export function activateUrl(deviceIdentifier: string): string {
+  return `${env.DASHBOARD_URL}/activate?device=${encodeURIComponent(deviceIdentifier)}`;
 }
 
 export async function assignDevice(

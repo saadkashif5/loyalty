@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { Card, PageHeader } from "@/components/ui";
-import { EditProgramForm, type EditableProgram } from "../../EditForms";
+import { EditProgramForm, type EditableProgram, type ProgramFeatures } from "../../EditForms";
 
 export default async function EditProgramPage({
   params,
@@ -9,9 +9,10 @@ export default async function EditProgramPage({
   params: Promise<{ businessId: string; programId: string }>;
 }) {
   const { businessId, programId } = await params;
-  const program = await apiFetch<EditableProgram>(
-    `/businesses/${businessId}/programs/${programId}`,
-  );
+  const [program, features] = await Promise.all([
+    apiFetch<EditableProgram>(`/businesses/${businessId}/programs/${programId}`),
+    apiFetch<ProgramFeatures>(`/businesses/${businessId}/features`),
+  ]);
 
   return (
     <div className="max-w-3xl">
@@ -23,7 +24,7 @@ export default async function EditProgramPage({
       </Link>
       <PageHeader title={`Edit ${program.name}`} />
       <Card>
-        <EditProgramForm businessId={businessId} program={program} />
+        <EditProgramForm businessId={businessId} program={program} features={features} />
       </Card>
     </div>
   );

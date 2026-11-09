@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { BUSINESS_PERMISSIONS, type BusinessPermission } from "@taptapsell/constants";
+import { BRAND } from "@taptapsell/brand";
+import { LogoMark } from "@taptapsell/brand/logo";
 import { logoutAction } from "@/app/actions/auth";
 import { can, getMembership } from "@/lib/membership";
 import { apiFetch } from "@/lib/api";
@@ -43,6 +45,7 @@ const NAV: Array<{ href: string; label: string; permissions: BusinessPermission[
   { href: "/devices", label: "Stampers", permissions: [P.DEVICE_MANAGE, P.DEVICE_REPORT_PROBLEM] },
   { href: "/branches", label: "Branches", permissions: [P.BRANCH_MANAGE] },
   { href: "/activity", label: "Activity", permissions: [P.STAMP_VIEW] },
+  { href: "/approvals", label: "Approvals", permissions: [P.STAMP_ISSUE_MANUAL] },
   { href: "/alerts", label: "Alerts", permissions: [P.FRAUD_REVIEW] },
   { href: "/staff", label: "Staff", permissions: [P.MEMBER_VIEW] },
   { href: "/billing", label: "Billing", permissions: [P.BUSINESS_MANAGE_BILLING] },
@@ -57,9 +60,17 @@ export default async function BusinessLayout({
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = await params;
-  const { role, business } = await getMembership(businessId);
+  const { role, business, supportView } = await getMembership(businessId);
   const base = `/b/${businessId}`;
-  const items = NAV.filter((item) => item.permissions.some((p) => can(role, p)));
+  const features = await apiFetch<{ counterMode: boolean }>(
+    `/businesses/${businessId}/features`,
+  ).catch(() => ({ counterMode: true }));
+  const items = NAV.filter(
+    (item) =>
+      item.permissions.some((p) => can(role, p)) &&
+      // Counter mode is a plan feature.
+      (item.href !== "/counter" || features.counterMode),
+  );
   const billing = can(role, P.BUSINESS_MANAGE_BILLING)
     ? await apiFetch<BillingStatus>(`/businesses/${businessId}/billing`).catch(() => null)
     : null;
@@ -69,11 +80,16 @@ export default async function BusinessLayout({
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <div className="min-w-0">
-            <Link href="/businesses" className="text-sm font-semibold">
+          <div className="flex min-w-0 items-center">
+            <Link href="/businesses" className="me-3 shrink-0" aria-label="Your businesses">
+              <LogoMark size={28} />
+            </Link>
+            <Link href="/businesses" className="truncate text-sm font-semibold">
               {business.name}
             </Link>
-            <span className="ml-2 text-xs text-slate-400">{role.toLowerCase()}</span>
+            <span className="ml-2 shrink-0 text-xs text-slate-400">
+              {supportView ? "support view" : role.toLowerCase()}
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/account/security" className="text-sm text-slate-500 hover:text-slate-900">
@@ -89,13 +105,28 @@ export default async function BusinessLayout({
             <Link
               key={item.href}
               href={`${base}${item.href}`}
-              className="whitespace-nowrap rounded-t-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              className="whitespace-nowrap rounded-t-md px-3 py-2 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
             >
               {item.label}
             </Link>
           ))}
         </nav>
       </header>
+
+      {supportView ? (
+        <div className="border-b border-violet-200 bg-violet-50">
+          <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-violet-900">
+            <strong>Support view, read-only.</strong> You are seeing this business as its owner
+            does. Nothing can be changed, and every page you open is recorded. Ends at{" "}
+            {new Date(supportView.expiresAt).toLocaleTimeString("en-PK", {
+              timeZone: "Asia/Karachi",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+            . Reason: {supportView.reason}
+          </p>
+        </div>
+      ) : null}
 
       {business.status === "SUSPENDED" ? (
         <div className="border-b border-red-200 bg-red-50">
@@ -114,7 +145,7 @@ export default async function BusinessLayout({
             <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-red-800">
               <strong>This business is suspended.</strong>{" "}
               {business.suspension?.reason ? `Reason: ${business.suspension.reason}. ` : ""}
-              Customers cannot collect stamps and nothing can be changed until TapTapSell restores
+              Customers cannot collect stamps and nothing can be changed until {BRAND.name} restores
               it. Your data is safe and still visible.
             </p>
           )}

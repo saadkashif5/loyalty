@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { BRAND } from "@taptapsell/brand";
 import { inviteMemberAction } from "@/app/actions/business";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
 
@@ -35,7 +36,7 @@ export function InviteMemberForm({ businessId }: { businessId: string }) {
           </select>
         </Field>
         <p className="text-xs text-slate-500">
-          They need a TapTapSell account already. They accept the invite from their own account.
+          They need a {BRAND.name} account already. They accept the invite from their own account.
         </p>
         <ErrorText>{state.error}</ErrorText>
         <SubmitButton />

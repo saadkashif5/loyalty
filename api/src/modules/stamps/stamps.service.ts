@@ -1,3 +1,4 @@
+import { afterCursor, sortFor, toPage, type CursorRequest } from "@/utils/cursor";
 import mongoose, { type ClientSession, type Types } from "mongoose";
 import {
   Branch,
@@ -8,7 +9,12 @@ import {
   Redemption,
   Reward,
   Stamp,
+  StampRequest,
+  User,
 } from "@/models";
+import { STAMP_REQUEST_STATUS } from "@/models/StampRequest";
+import { expireCardIfLapsed } from "@/modules/loyalty/stampExpiry";
+import { hasFeature } from "@/modules/billing/entitlements.service";
 import { ApiError } from "@/utils/ApiError";
 import { generateRedemptionCode } from "@/utils/codes";
 import { resolveDeviceForStamping } from "@/modules/devices/devices.service";
@@ -16,7 +22,13 @@ import { consumeTap, findUsableTap } from "@/modules/taps/taps.service";
 import { logger } from "@/config/logger";
 import { recordAudit, AUDIT_ACTIONS } from "@/services/audit.service";
 import { queueNotification } from "@/services/notification.service";
-import { checkDeviceBurst, raiseFlag } from "@/services/fraud.service";
+import { bumpStat } from "@/services/stats.service";
+import {
+  checkDeviceBurst,
+  checkNewAccountBurst,
+  checkOutsideHours,
+  raiseFlag,
+} from "@/services/fraud.service";
 import {
   LOYALTY_CARD_STATUS,
   PROGRAM_STATUS,
@@ -139,9 +151,10 @@ async function buildResultForExistingStamp(
 interface StampContext {
   customerId: string;
   cardId: Types.ObjectId;
-  program: { _id: Types.ObjectId; requiredStamps: number };
+  program: { _id: Types.ObjectId; requiredStamps: number; settings?: unknown };
   businessId: string;
-  branchId: string;
+  /** Absent only for a welcome stamp. */
+  branchId?: string;
   deviceId?: string;
   /** Staff member who added the stamp (counter and manual stamps). */
   issuedBy?: string;
@@ -185,6 +198,10 @@ async function applyStamp(ctx: StampContext, session: ClientSession): Promise<St
     ],
     { session },
   );
+
+  // A card idle past the program's stamp expiry starts again from this stamp,
+  // even if the hourly expiry job has not reached it yet.
+  await expireCardIfLapsed(ctx.cardId, ctx.program, new Date(), session);
 
   const updatedCard = await LoyaltyCard.findOneAndUpdate(
     { _id: ctx.cardId },
@@ -253,10 +270,14 @@ async function commitStamp(
   const session = await mongoose.startSession();
 
   try {
-    return await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
       if (beforeWrite) await beforeWrite(session);
       return applyStamp(ctx, session);
     });
+    // Counted once committed: a retried transaction must not count twice.
+    bumpStat(ctx.businessId, "stamps");
+    bumpStat(ctx.businessId, "rewardsUnlocked", result.unlockedRewards.length);
+    return result;
   } catch (err) {
     // A retried request carrying the same idempotency key is not an error —
     // it returns the original outcome instead of creating a second stamp (§28).
@@ -311,10 +332,15 @@ async function assertDailyCardCap(cardId: Types.ObjectId, program: { settings?: 
 
 /** All card-level rules every stamp path applies before writing. */
 async function assertCardMayStamp(
-  card: { _id: Types.ObjectId; lastStampAt?: Date | null },
+  card: { _id: Types.ObjectId; lastStampAt?: Date | null; welcomeStampAt?: Date | null },
   program: { settings?: unknown },
 ) {
-  assertStampCooldown(card.lastStampAt, programSettings(program).minMinutesBetweenStamps);
+  // The welcome stamp was not a visit: the customer's first real stamp is never too soon.
+  const lastVisit =
+    card.welcomeStampAt && card.lastStampAt?.getTime() === card.welcomeStampAt.getTime()
+      ? null
+      : card.lastStampAt;
+  assertStampCooldown(lastVisit, programSettings(program).minMinutesBetweenStamps);
   await assertDailyCardCap(card._id, program);
 }
 
@@ -358,6 +384,16 @@ export async function createStamp(request: StampRequest): Promise<StampResult> {
   );
   await assertCardMayStamp(card, program);
 
+  // A first stamp for an account made today; many of these at one stamper is an alert.
+  const newCustomer =
+    !card.lastStampAt &&
+    Boolean(
+      await User.exists({
+        _id: request.customerId,
+        createdAt: { $gte: new Date(Date.now() - DAY_MS) },
+      }),
+    );
+
   const usedTap = tap;
   const result = await commitStamp(
     {
@@ -372,12 +408,21 @@ export async function createStamp(request: StampRequest): Promise<StampResult> {
       metadata: {
         ...(request.metadata ?? {}),
         ...(usedTap ? { tapCounter: usedTap.tapCounter } : {}),
+        ...(newCustomer ? { newCustomer: true } : {}),
       },
     },
     usedTap ? (session) => consumeTap(usedTap._id, request.customerId, session) : undefined,
   );
 
-  if (!result.alreadyRecorded) void checkDeviceBurst(device.businessId, device.deviceId);
+  if (!result.alreadyRecorded) {
+    void checkDeviceBurst(device.businessId, device.deviceId);
+    void checkOutsideHours({
+      businessId: device.businessId,
+      branchId: device.branchId,
+      deviceId: device.deviceId,
+    });
+    if (newCustomer) void checkNewAccountBurst(device.businessId, device.deviceId);
+  }
   // In-app history only: the customer already sees the stamp in this response.
   void notifyStamp(request.customerId, result).catch((err) =>
     logger.warn({ err }, "Stamp notification failed"),
@@ -393,6 +438,20 @@ async function staffDailyCap(businessId: string): Promise<number> {
   return cap ?? 100;
 }
 
+/** Counter stamps past this many by one staff member in a day wait for a manager. */
+async function approvalThreshold(businessId: string): Promise<number | null> {
+  const business = await Business.findById(businessId).select("settings");
+  const after = (business?.settings as { stampApprovalAfter?: number | null } | undefined)
+    ?.stampApprovalAfter;
+  return typeof after === "number" && after > 0 ? after : null;
+}
+
+/** A counter stamp waiting for a manager, instead of a stamp. */
+export interface PendingStamp {
+  pendingApproval: true;
+  requestId: string;
+}
+
 interface StaffStampParams {
   businessId: string;
   actorUserId: string;
@@ -404,6 +463,10 @@ interface StaffStampParams {
   /** Runs inside the stamp transaction (e.g. spending the customer's counter code). */
   beforeWrite?: (session: ClientSession) => Promise<void>;
   metadata?: Record<string, unknown>;
+  /** Ordinary staff: past the business's threshold, the stamp waits for a manager. */
+  approvalCheck?: boolean;
+  /** Set when a manager approves a waiting stamp: limits were checked when it was asked for. */
+  approvedBy?: string;
 }
 
 /**
@@ -411,7 +474,7 @@ interface StaffStampParams {
  * daily card limit and reward rules as a tap, plus a daily limit per staff
  * member; always audited (§13, §37).
  */
-async function createStaffStamp(params: StaffStampParams): Promise<StampResult> {
+async function createStaffStamp(params: StaffStampParams): Promise<StampResult | PendingStamp> {
   const { card } = params;
   const customerId = card.customerId.toString();
   if (await Stamp.exists({ customerId, idempotencyKey: params.idempotencyKey })) {
@@ -433,12 +496,14 @@ async function createStaffStamp(params: StaffStampParams): Promise<StampResult> 
     throw ApiError.badRequest("This loyalty program does not run at that branch");
   }
 
-  const cap = await staffDailyCap(params.businessId);
-  const issuedToday = await Stamp.countDocuments({
-    businessId: params.businessId,
-    issuedBy: params.actorUserId,
-    createdAt: { $gte: startOfPakistanDay() },
-  });
+  const cap = params.approvedBy ? Infinity : await staffDailyCap(params.businessId);
+  const issuedToday = params.approvedBy
+    ? 0
+    : await Stamp.countDocuments({
+        businessId: params.businessId,
+        issuedBy: params.actorUserId,
+        createdAt: { $gte: startOfPakistanDay() },
+      });
   if (issuedToday >= cap) {
     await raiseFlag({
       businessId: params.businessId,
@@ -456,6 +521,13 @@ async function createStaffStamp(params: StaffStampParams): Promise<StampResult> 
 
   await assertCardMayStamp(card, program);
 
+  if (params.approvalCheck) {
+    const threshold = await approvalThreshold(params.businessId);
+    if (threshold !== null && issuedToday >= threshold) {
+      return requestApproval(params, customerId, program._id);
+    }
+  }
+
   const result = await commitStamp(
     {
       customerId,
@@ -472,13 +544,23 @@ async function createStaffStamp(params: StaffStampParams): Promise<StampResult> 
   );
 
   if (!result.alreadyRecorded) {
-    await recordAudit({
-      actorUserId: params.actorUserId,
+    void checkOutsideHours({
       businessId: params.businessId,
-      action: params.auditAction,
+      branchId: params.branchId,
+      staffUserId: params.actorUserId,
+    });
+    await recordAudit({
+      actorUserId: params.approvedBy ?? params.actorUserId,
+      businessId: params.businessId,
+      action: params.approvedBy ? AUDIT_ACTIONS.STAMP_APPROVED : params.auditAction,
       resourceType: "Stamp",
       resourceId: result.stampId,
-      metadata: { customerId, loyaltyCardId: card._id.toString(), branchId: params.branchId },
+      metadata: {
+        customerId,
+        loyaltyCardId: card._id.toString(),
+        branchId: params.branchId,
+        ...(params.approvedBy ? { requestedBy: params.actorUserId } : {}),
+      },
     });
   }
 
@@ -504,12 +586,13 @@ export async function createManualStamp(params: {
   });
   if (!card) throw ApiError.notFound("Loyalty card not found for this business");
 
+  // Managers and owners only, so never held for approval.
   return createStaffStamp({
     ...params,
     card,
     source: STAMP_SOURCE.ADMIN,
     auditAction: AUDIT_ACTIONS.STAMP_ISSUED_MANUAL,
-  });
+  }) as Promise<StampResult>;
 }
 
 /**
@@ -523,7 +606,16 @@ export async function createCounterStamp(params: {
   code: string;
   branchId: string;
   idempotencyKey: string;
-}): Promise<StampResult> {
+  /** The staff member's role: ordinary staff may need a manager's approval. */
+  actorRole?: string;
+}): Promise<StampResult | PendingStamp> {
+  // A retry of a request that is waiting for a manager: its code is already spent.
+  const waiting = await StampRequest.findOne({
+    requestedBy: params.actorUserId,
+    idempotencyKey: params.idempotencyKey,
+  });
+  if (waiting) return { pendingApproval: true, requestId: waiting.id };
+
   const counterCode = await CounterCode.findOne({
     code: params.code,
     businessId: params.businessId,
@@ -555,6 +647,7 @@ export async function createCounterStamp(params: {
     idempotencyKey: params.idempotencyKey,
     source: STAMP_SOURCE.STAFF,
     auditAction: AUDIT_ACTIONS.STAMP_ISSUED_COUNTER,
+    approvalCheck: params.actorRole === "STAFF",
     beforeWrite: async (session) => {
       const spent = await CounterCode.findOneAndUpdate(
         { _id: counterCode._id, consumedAt: null },
@@ -583,19 +676,197 @@ export async function listCustomerStamps(customerId: string, limit = 50) {
 
 export async function listBusinessStamps(
   businessId: string,
-  options: { page: number; limit: number; branchIds?: string[] },
+  options: { branchIds?: string[] } & CursorRequest,
 ) {
   const filter: Record<string, unknown> = { businessId };
   if (options.branchIds?.length) filter.branchId = { $in: options.branchIds };
 
-  const [items, total] = await Promise.all([
-    Stamp.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((options.page - 1) * options.limit)
-      .limit(options.limit)
-      .populate("customerId", "name email"),
-    Stamp.countDocuments(filter),
-  ]);
+  const rows = await Stamp.find(afterCursor(filter, "createdAt", options.cursor))
+    .sort(sortFor("createdAt"))
+    .limit(options.limit + 1)
+    // Name only: contact details stay masked for businesses (see customers.service).
+    .populate("customerId", "name");
+  return toPage(rows, options.limit, "createdAt");
+}
 
-  return { items, total };
+/**
+ * The free first stamp some programs give on joining. Idempotent per card,
+ * counted like any stamp (rewards, daily limit, expiry), but not a visit for
+ * the cooldown between stamps.
+ */
+export async function grantWelcomeStamp(
+  customerId: string,
+  card: { _id: Types.ObjectId },
+  program: {
+    _id: Types.ObjectId;
+    requiredStamps: number;
+    businessId: Types.ObjectId;
+    settings?: unknown;
+  },
+): Promise<StampResult | null> {
+  if (!(program.settings as { welcomeStamp?: boolean } | undefined)?.welcomeStamp) return null;
+  // A plan without the feature gives none, even if the program still asks for it.
+  if (!(await hasFeature(String(program.businessId), "welcomeStamp"))) return null;
+  const result = await commitStamp({
+    customerId,
+    cardId: card._id,
+    program,
+    businessId: String(program.businessId),
+    source: STAMP_SOURCE.WELCOME,
+    idempotencyKey: `welcome-${String(card._id)}`,
+    metadata: { welcome: true },
+  });
+  if (!result.alreadyRecorded) {
+    await LoyaltyCard.updateOne({ _id: card._id }, [{ $set: { welcomeStampAt: "$lastStampAt" } }]);
+    void notifyStamp(customerId, result).catch((err) =>
+      logger.warn({ err }, "Welcome stamp notification failed"),
+    );
+  }
+  return result;
+}
+
+/**
+ * Records a counter stamp for a manager to approve. The customer's code is
+ * spent now, in the same transaction, so it cannot be used again meanwhile.
+ * A retry with the same request key returns the same waiting request.
+ */
+async function requestApproval(
+  params: StaffStampParams,
+  customerId: string,
+  programId: Types.ObjectId,
+): Promise<PendingStamp> {
+  const existing = await StampRequest.findOne({
+    requestedBy: params.actorUserId,
+    idempotencyKey: params.idempotencyKey,
+  });
+  if (existing) return { pendingApproval: true, requestId: existing.id };
+
+  const session = await mongoose.startSession();
+  try {
+    const request = await session.withTransaction(async () => {
+      if (params.beforeWrite) await params.beforeWrite(session);
+      const [created] = await StampRequest.create(
+        [
+          {
+            businessId: params.businessId,
+            branchId: params.branchId,
+            loyaltyCardId: params.card._id,
+            customerId,
+            programId,
+            requestedBy: params.actorUserId,
+            idempotencyKey: params.idempotencyKey,
+          },
+        ],
+        { session },
+      );
+      return created!;
+    });
+    await recordAudit({
+      actorUserId: params.actorUserId,
+      businessId: params.businessId,
+      action: AUDIT_ACTIONS.STAMP_APPROVAL_REQUESTED,
+      resourceType: "StampRequest",
+      resourceId: request._id,
+      metadata: { customerId, branchId: params.branchId },
+    });
+    return { pendingApproval: true, requestId: request.id };
+  } finally {
+    await session.endSession();
+  }
+}
+
+export async function listStampRequests(businessId: string, status = "PENDING") {
+  return StampRequest.find({ businessId, ...(status === "ALL" ? {} : { status }) })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .populate("customerId", "name")
+    .populate("requestedBy", "name")
+    .populate("branchId", "name")
+    .populate("decidedBy", "name");
+}
+
+/** A manager adds the waiting stamp; the staff member stays the one who gave it. */
+export async function approveStampRequest(
+  businessId: string,
+  requestId: string,
+  approverId: string,
+): Promise<StampResult> {
+  const request = await StampRequest.findOne({
+    _id: requestId,
+    businessId,
+    status: STAMP_REQUEST_STATUS.PENDING,
+  });
+  if (!request) throw ApiError.notFound("No waiting stamp with this id");
+  const card = await LoyaltyCard.findOne({ _id: request.loyaltyCardId, businessId });
+  if (!card) throw ApiError.notFound("Loyalty card not found for this business");
+
+  const claimed = await StampRequest.updateOne(
+    { _id: request._id, status: STAMP_REQUEST_STATUS.PENDING },
+    {
+      $set: {
+        status: STAMP_REQUEST_STATUS.APPROVED,
+        decidedBy: approverId,
+        decidedAt: new Date(),
+      },
+    },
+  );
+  if (claimed.modifiedCount !== 1) {
+    throw ApiError.conflict("Someone else has decided this already");
+  }
+
+  try {
+    const result = (await createStaffStamp({
+      businessId,
+      actorUserId: String(request.requestedBy),
+      card,
+      branchId: String(request.branchId),
+      idempotencyKey: `approved-${request.id}`,
+      source: STAMP_SOURCE.STAFF,
+      auditAction: AUDIT_ACTIONS.STAMP_ISSUED_COUNTER,
+      approvedBy: approverId,
+      metadata: { approvedBy: approverId, stampRequestId: request.id },
+    })) as StampResult;
+    await StampRequest.updateOne({ _id: request._id }, { $set: { stampId: result.stampId } });
+    return result;
+  } catch (err) {
+    // Not added (for example the card got a stamp meanwhile): it waits again.
+    await StampRequest.updateOne(
+      { _id: request._id },
+      {
+        $set: { status: STAMP_REQUEST_STATUS.PENDING },
+        $unset: { decidedBy: "", decidedAt: "" },
+      },
+    );
+    throw err;
+  }
+}
+
+export async function rejectStampRequest(
+  businessId: string,
+  requestId: string,
+  approverId: string,
+  reason?: string,
+) {
+  const request = await StampRequest.findOneAndUpdate(
+    { _id: requestId, businessId, status: STAMP_REQUEST_STATUS.PENDING },
+    {
+      $set: {
+        status: STAMP_REQUEST_STATUS.REJECTED,
+        decidedBy: approverId,
+        decidedAt: new Date(),
+        reason,
+      },
+    },
+    { new: true },
+  );
+  if (!request) throw ApiError.notFound("No waiting stamp with this id");
+  await recordAudit({
+    actorUserId: approverId,
+    businessId,
+    action: AUDIT_ACTIONS.STAMP_REJECTED,
+    resourceType: "StampRequest",
+    resourceId: request._id,
+    metadata: { requestedBy: String(request.requestedBy), reason },
+  });
+  return request;
 }

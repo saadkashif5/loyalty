@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { AuthShell } from "@taptapsell/brand/auth-shell";
 import { registerAction } from "@/app/actions/auth";
 import { Button, Card, ErrorText, Field, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -19,39 +21,36 @@ export default function RegisterPage() {
   const [state, formAction] = useActionState(registerAction, {});
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-semibold">Create your account</h1>
-
-        <Card>
-          <form action={formAction} className="space-y-4">
-            <Field label="Your name">
-              <Input name="name" required autoComplete="name" />
-            </Field>
-            <Field label="Email">
-              <Input name="email" type="email" required autoComplete="email" />
-            </Field>
-            <Field label="Password">
-              <Input
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </Field>
-            <ErrorText>{state.error}</ErrorText>
-            <SubmitButton />
-          </form>
-        </Card>
-
-        <p className="mt-4 text-center text-sm text-slate-500">
+    <AuthShell
+      area="Business"
+      title="Create your account"
+      subtitle="For staff joining a business. Owners get their link by invitation."
+      headline="Bring your regulars back."
+      blurb="Run your stamp cards, stampers and rewards from one place."
+      footer={
+        <p className="text-slate-500">
           Already have an account?{" "}
           <Link href="/login" className="font-medium text-brand-600 hover:underline">
             Sign in
           </Link>
         </p>
-      </div>
-    </main>
+      }
+    >
+      <Card>
+        <form action={formAction} className="space-y-4">
+          <Field label="Your name">
+            <Input name="name" required autoComplete="name" />
+          </Field>
+          <Field label="Email">
+            <Input name="email" type="email" required autoComplete="email" />
+          </Field>
+          <Field label="Password">
+            <PasswordInput name="password" required minLength={8} autoComplete="new-password" />
+          </Field>
+          <ErrorText>{state.error}</ErrorText>
+          <SubmitButton />
+        </form>
+      </Card>
+    </AuthShell>
   );
 }

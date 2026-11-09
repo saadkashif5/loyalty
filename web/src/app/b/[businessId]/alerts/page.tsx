@@ -29,6 +29,8 @@ const TITLES: Record<string, string> = {
   TAP_REPLAYED: "A stamper link was used again",
   TAG_MISMATCH: "A copied stamper may be in use",
   STAFF_DAILY_CAP: "A staff member hit the daily stamp limit",
+  OUTSIDE_HOURS: "A stamp was given while the branch was closed",
+  NEW_ACCOUNT_BURST: "Many brand-new accounts at one stamper",
 };
 
 const SEVERITY: Record<string, string> = {

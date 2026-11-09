@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { BRAND } from "@taptapsell/brand";
+import { AuthShell } from "@taptapsell/brand/auth-shell";
 import { logoutAction } from "@/app/actions";
 import { Card, SecondaryButton } from "@/components/ui";
 import { LoginForm } from "./LoginForm";
@@ -5,31 +8,44 @@ import { LoginForm } from "./LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ denied?: string }>;
+  searchParams: Promise<{ denied?: string; reset?: string }>;
 }) {
-  const { denied } = await searchParams;
+  const { denied, reset } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">TapTapSell Admin</h1>
-          <p className="text-sm text-slate-500">Platform console for the TapTapSell team</p>
-        </div>
-
-        {denied ? (
-          <Card className="space-y-3 text-sm">
-            <p>This account is not on the TapTapSell team.</p>
-            <form action={logoutAction}>
-              <SecondaryButton type="submit" className="w-full">
-                Sign out
-              </SecondaryButton>
-            </form>
-          </Card>
-        ) : (
+    <AuthShell
+      area="Admin"
+      title="Sign in"
+      subtitle={`Platform console for the ${BRAND.name} team.`}
+      headline="Platform console."
+      blurb="Businesses, stampers, billing and support, in one place."
+      footer={
+        denied ? null : (
+          <Link href="/forgot-password" className="text-slate-500 hover:text-slate-900">
+            Forgot your password?
+          </Link>
+        )
+      }
+    >
+      {denied ? (
+        <Card className="space-y-3 text-sm">
+          <p>This account is not on the {BRAND.name} team.</p>
+          <form action={logoutAction}>
+            <SecondaryButton type="submit" className="w-full">
+              Sign out
+            </SecondaryButton>
+          </form>
+        </Card>
+      ) : (
+        <>
+          {reset ? (
+            <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-center text-sm text-emerald-800">
+              Password changed. Sign in with your new password.
+            </p>
+          ) : null}
           <LoginForm />
-        )}
-      </div>
-    </main>
+        </>
+      )}
+    </AuthShell>
   );
 }
