@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BRAND, brandWithCompany } from "@taptapsell/brand";
+import { BRAND } from "@taptapsell/brand";
+import { Byline } from "@taptapsell/brand/byline";
 import { Logo } from "@taptapsell/brand/logo";
 
 export const metadata: Metadata = {
@@ -32,7 +33,10 @@ export default function BusinessSiteLayout({ children }: { children: React.React
       <main>{children}</main>
       <footer className="border-t border-slate-100">
         <div className="mx-auto flex max-w-5xl flex-wrap justify-between gap-3 px-5 py-6 text-sm text-slate-500">
-          <p>{brandWithCompany} · Made in Pakistan</p>
+          <p>
+            <Byline linkClassName="underline-offset-2 hover:text-slate-900 hover:underline" /> ·
+            Made in Pakistan
+          </p>
           <Link href="/" className="hover:text-slate-900">
             I am a customer →
           </Link>

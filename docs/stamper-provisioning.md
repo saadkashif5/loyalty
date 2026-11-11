@@ -8,7 +8,7 @@ is one NTAG 215 chip. The steps match `tagType: NTAG21X_MIRROR` in the API.
 One NDEF URI record:
 
 ```
-https://tap.taptapsell.pk/t/<DEVICE_IDENTIFIER>?m=00000000000000x000000
+https://stamply.taptapsell.pk/t/<DEVICE_IDENTIFIER>?m=00000000000000x000000
 ```
 
 - `<DEVICE_IDENTIFIER>` is the identifier printed when the device was minted
@@ -18,8 +18,9 @@ https://tap.taptapsell.pk/t/<DEVICE_IDENTIFIER>?m=00000000000000x000000
   and its 24-bit tap counter (6 hex characters), for example
   `04A1B2C3D4E5F6x00001A`.
 
-The domain is a placeholder until the portal domain is final. Changing it later
-means re-writing every tag, so settle it before provisioning at volume.
+`stamply.taptapsell.pk` is the customer portal's host. Changing it later means
+re-writing every tag, or keeping the old host alive as a redirect to the new
+one, so be sure of it before provisioning at volume.
 
 ## Chip settings
 

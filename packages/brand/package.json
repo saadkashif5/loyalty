@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./logo": "./src/Logo.tsx",
     "./auth-shell": "./src/AuthShell.tsx",
+    "./byline": "./src/Byline.tsx",
     "./tailwind": "./tailwind.preset.ts"
   },
   "peerDependencies": {

@@ -68,7 +68,7 @@ SUPER ADMIN                     BUSINESS OWNER                       CUSTOMER
    to branch, ships them ───────────► 5. Activates stamper at the branch
                                                                        6. Makes a purchase. Staff hold the
                                                                           stamper to the customer's phone
-                                                                       7. Phone opens tap.taptapsell.pk/t?...
+                                                                       7. Phone opens stamply.taptapsell.pk/t/...
                                                                           (one-time URL from the tag)
                                                                        8. First time: enter phone → OTP →
                                                                           name → joined; card created for
@@ -163,14 +163,14 @@ capped per day and audited.
 
 | Subdomain | App | Users | Notes |
 |---|---|---|---|
-| `tap.taptapsell.pk` (placeholder) | Customer portal (`portal/`) | Customers | Tiny bundle, cookie session, Urdu/English |
-| `business.taptapsell.pk` | Business dashboard | Owners, managers, staff | Responsive: staff use it on phones at the counter |
-| _To be decided_ | Platform console (`admin/`) | Super Admin, admins | MFA + Cloudflare Access/IP allowlist; isolated deploy |
-| `api.taptapsell.pk` | REST API | All of the above | Stateless, horizontally scaled |
-| `taptapsell.pk` | Marketing site | Public | Pricing, "request access" form |
+| `stamply.taptapsell.pk` | Customer portal (`portal/`), home and `/business` pages | Customers, prospects | Tiny bundle, cookie session, Urdu/English; written onto stamper tags |
+| `business.stamply.taptapsell.pk` | Business dashboard | Owners, managers, staff | Responsive: staff use it on phones at the counter |
+| `admin.stamply.taptapsell.pk` | Platform console (`admin/`) | Super Admin, admins | MFA + Cloudflare Access/IP allowlist; isolated deploy |
+| `api.stamply.taptapsell.pk` | REST API | All of the above | Stateless, horizontally scaled |
+| `taptapsell.pk` | Company site | Public | "by TapTapSell" links here |
 
-Separate apps mean separate cookies, separate attack surface and a small customer bundle. Domain names
-are placeholders; the admin console's domain is still to be decided (`admin.taptapsell.pk` is taken).
+Separate apps mean separate cookies, separate attack surface and a small customer bundle. Everything
+sits under `stamply.taptapsell.pk` for now; see [docs/environments.md](docs/environments.md#domains).
 
 ### D5. Multi-tenancy model
 

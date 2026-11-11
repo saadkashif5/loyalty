@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { BRAND, brandWithCompany } from "./index";
+import { BRAND } from "./index";
+import { Byline } from "./Byline";
 import { Logo } from "./Logo";
 
 /** A loyalty card's worth of stamps, the brand's motif. */
@@ -55,7 +56,9 @@ export function AuthShell({
             <p className="mt-3 max-w-sm text-lg text-brand-100">{blurb}</p>
           </div>
         </div>
-        <p className="text-sm text-brand-200">{brandWithCompany}</p>
+        <p className="text-sm text-brand-200">
+          <Byline linkClassName="underline-offset-2 hover:text-white hover:underline" />
+        </p>
       </aside>
 
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-10">
@@ -71,7 +74,9 @@ export function AuthShell({
           ) : null}
           <div className="mt-6">{children}</div>
           {footer ? <div className="mt-6 space-y-2 text-center text-sm">{footer}</div> : null}
-          <p className="mt-10 text-center text-xs text-slate-400 lg:hidden">{brandWithCompany}</p>
+          <p className="mt-10 text-center text-xs text-slate-400 lg:hidden">
+            <Byline linkClassName="underline-offset-2 hover:text-slate-600 hover:underline" />
+          </p>
         </div>
       </main>
     </div>

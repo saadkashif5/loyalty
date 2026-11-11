@@ -12,6 +12,7 @@ export MONGODB_URI="mongodb://localhost:27017/taptapsell_load?directConnection=t
 export REDIS_URL=redis://localhost:6379
 export NODE_ENV=production PORT=4600 RATE_LIMIT_MAX=1000000
 export INTERNAL_API_SECRET=$SECRET CORS_ORIGINS=http://localhost:3000
+export DASHBOARD_URL=https://business.example.com ADMIN_URL=https://admin.example.com
 export JWT_ACCESS_SECRET=load-test-access-secret-that-is-long-enough
 export JWT_REFRESH_SECRET=load-test-refresh-secret-that-is-long-enough
 export MFA_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")

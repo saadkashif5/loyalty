@@ -2,7 +2,7 @@ import type { TapVerifier } from "./index";
 
 // NTAG213/215/216 with the "UID and NFC counter mirror" enabled overwrite a
 // placeholder in the stamper URL on every read with `<UID>x<counter>`:
-//   https://tap.taptapsell.pk/t/AB12CD?m=04A1B2C3D4E5F6x00001A
+//   https://stamply.taptapsell.pk/t/AB12CD?m=04A1B2C3D4E5F6x00001A
 // UID is 7 bytes (14 hex chars); the counter is 24 bits (6 hex chars).
 //
 // The counter is not signed. Requiring it to increase stops a saved or shared

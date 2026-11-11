@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { brandWithCompany } from "@taptapsell/brand";
+import { Byline } from "@taptapsell/brand/byline";
 import { Logo } from "@taptapsell/brand/logo";
 import { getAccessToken } from "@/lib/session";
 import { ClearOfflineData } from "@/components/ClearOfflineData";
@@ -154,7 +154,8 @@ export default async function HomePage({
       <footer className="border-t border-slate-100">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-slate-500 sm:flex-row">
           <p>
-            {brandWithCompany} · {t("home.madeIn")}
+            <Byline linkClassName="underline-offset-2 hover:text-slate-900 hover:underline" /> ·{" "}
+            {t("home.madeIn")}
           </p>
           <LanguageSwitch />
         </div>

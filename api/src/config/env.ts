@@ -37,14 +37,16 @@ const envSchema = z
     // "smtp" sends through any SMTP provider (Gmail, SES, Brevo, ...).
     EMAIL_TRANSPORT: z.enum(["log", "smtp"]).default("log"),
     SMTP_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
-    EMAIL_FROM: z.string().default(`${BRAND.name} <no-reply@taptapsell.local>`),
+    EMAIL_FROM: z.string().default(`${BRAND.name} <no-reply@stamply.taptapsell.pk>`),
 
     // Where private uploads (payment receipts) are kept until cloud storage is chosen.
     STORAGE_DIR: z.string().default("./storage"),
 
-    // Business dashboard origin, used to build invitation links.
+    // Business dashboard origin, used to build invitation, activation and
+    // password reset links. Production: https://business.stamply.taptapsell.pk
     DASHBOARD_URL: z.url().default("http://localhost:3000"),
     // Platform console origin, used for the team's password reset links.
+    // Production: https://admin.stamply.taptapsell.pk
     ADMIN_URL: z.url().default("http://localhost:3001"),
 
     // 32 random bytes, base64. Encrypts MFA secrets at rest. Required in
@@ -91,6 +93,18 @@ const envSchema = z
         path: ["CORS_ORIGINS"],
         message: "Required in staging and production",
       });
+    }
+    // These go into emails and printed stamper labels, so a forgotten value
+    // would send people to localhost.
+    for (const key of ["DASHBOARD_URL", "ADMIN_URL"] as const) {
+      const url = new URL(e[key]);
+      if (url.protocol !== "https:" || ["localhost", "127.0.0.1"].includes(url.hostname)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [key],
+          message: "Must be the public https:// address in staging and production",
+        });
+      }
     }
     if (e.EMAIL_TRANSPORT !== "smtp" || !e.SMTP_URL) {
       ctx.addIssue({

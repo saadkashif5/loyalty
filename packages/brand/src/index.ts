@@ -7,6 +7,8 @@ export const BRAND = {
   name: "Stamply",
   /** The company behind it. Shown sparingly: footers, invoices, legal. */
   company: "TapTapSell",
+  /** The company's own site. "by TapTapSell" links here. */
+  companyUrl: "https://taptapsell.pk",
   /** "Stamply by TapTapSell", for the places that carry the company too. */
   byline: "by TapTapSell",
   tagline: "Loyalty cards that live on your phone.",
@@ -15,6 +17,23 @@ export const BRAND = {
 } as const;
 
 export const brandWithCompany = `${BRAND.name} ${BRAND.byline}`;
+
+/**
+ * Where each app is served in production. Runtime links are built from each
+ * app's environment (DASHBOARD_URL, ADMIN_URL, API_BASE_URL), not from here;
+ * this is the reference those values must match. The portal host is written
+ * onto every stamper tag, so it cannot change once tags are in the field.
+ */
+export const PRODUCTION_HOSTS = {
+  /** Customer portal, home page and /business pages; stamper taps land here. */
+  portal: "stamply.taptapsell.pk",
+  /** Business dashboard (`web/`). */
+  dashboard: "business.stamply.taptapsell.pk",
+  /** Platform console (`admin/`). */
+  admin: "admin.stamply.taptapsell.pk",
+  /** REST API. */
+  api: "api.stamply.taptapsell.pk",
+} as const;
 
 /**
  * Colour scales, 50 (lightest) to 950 (darkest). `brand` is the primary
