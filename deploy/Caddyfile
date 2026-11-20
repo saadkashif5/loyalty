@@ -1,0 +1,32 @@
+# Caddy gets and renews Let's Encrypt certificates for every host automatically.
+# DOMAIN and ACME_EMAIL come from deploy/.env (see docker-compose.yml).
+{
+	email {$ACME_EMAIL}
+}
+
+(common) {
+	encode zstd gzip
+	header -Server
+}
+
+# Customer portal, home page and /business pages. Written onto stamper tags:
+# this host must never change once tags ship.
+{$DOMAIN} {
+	import common
+	reverse_proxy portal:3000
+}
+
+business.{$DOMAIN} {
+	import common
+	reverse_proxy web:3000
+}
+
+admin.{$DOMAIN} {
+	import common
+	reverse_proxy admin:3000
+}
+
+api.{$DOMAIN} {
+	import common
+	reverse_proxy api:4000
+}
