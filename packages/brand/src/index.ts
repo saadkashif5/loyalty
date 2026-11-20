@@ -36,41 +36,109 @@ export const PRODUCTION_HOSTS = {
 } as const;
 
 /**
- * Colour scales, 50 (lightest) to 950 (darkest). `brand` is the primary
- * colour: buttons, links, filled stamps. It must keep white text readable
- * from 500 up. `accent` is for small highlights such as rewards.
+ * The seven colours on the brand board ("Fresh Ink"). Everything below is
+ * built from these; use the scales in code, these names when talking about it.
+ */
+export const PALETTE = {
+  /** Primary: logo, buttons, stamps. */
+  stampOrange: "#FF5A1F",
+  /** Petal shadow, pressed states. */
+  ember: "#D63A0A",
+  /** Text and dark surfaces, the stamper body. */
+  midnightInk: "#151A33",
+  /** Backgrounds. */
+  crema: "#FFF6EA",
+  /** Reward earned, success. */
+  mintReward: "#2ED3A6",
+  /** Highlights, streaks. */
+  honey: "#FFC24B",
+  /** Secondary text, borders. */
+  steam: "#8A90A6",
+} as const;
+
+/**
+ * Colour scales, 50 (lightest) to 950 (darkest), each a Tailwind colour
+ * (`bg-brand-500`, `text-ink`, `bg-crema`). `DEFAULT` is the board colour.
  *
- * Violet, after the purple ink of a rubber stamp pad.
+ * - `brand`: Stamp Orange at 500, Ember at 600. White text on 500 only passes
+ *   for large or bold type (3:1), so solid buttons use 600 and up.
+ * - `accent`: Honey, for highlights and streaks.
+ * - `ink`: Midnight Ink at 900 (text, dark surfaces), Steam at 400.
+ * - `crema`, `mint`, `steam`: backgrounds, rewards, secondary text.
  */
 export const COLORS = {
   brand: {
-    50: "#f5f3ff",
-    100: "#ece7ff",
-    200: "#dad0ff",
-    300: "#bfaaff",
-    400: "#9f7aff",
-    500: "#6d3ff0",
-    600: "#5b2ed6",
-    700: "#4a23b0",
-    800: "#3d1f8c",
-    900: "#331c70",
-    950: "#1f0f47",
+    DEFAULT: PALETTE.stampOrange,
+    50: "#fff4ee",
+    100: "#ffe4d5",
+    200: "#ffc6a8",
+    300: "#ff9f72",
+    400: "#ff7a45",
+    500: PALETTE.stampOrange,
+    600: PALETTE.ember,
+    700: "#b02e08",
+    800: "#8c260b",
+    900: "#72220e",
+    950: "#3e0e03",
   },
   accent: {
-    50: "#fff8eb",
-    100: "#ffedc6",
-    200: "#ffd988",
-    300: "#ffc14a",
-    400: "#ffa920",
-    500: "#f98a07",
-    600: "#dd6502",
-    700: "#b74606",
-    800: "#94350c",
-    900: "#7a2d0d",
-    950: "#461402",
+    DEFAULT: PALETTE.honey,
+    50: "#fffaeb",
+    100: "#fff0cc",
+    200: "#ffe199",
+    300: PALETTE.honey,
+    400: "#ffb22e",
+    500: "#f59b0b",
+    600: "#d97706",
+    700: "#b45309",
+    800: "#92400e",
+    900: "#78350f",
+    950: "#451a03",
+  },
+  ink: {
+    DEFAULT: PALETTE.midnightInk,
+    50: "#f4f5f8",
+    100: "#e6e8ef",
+    200: "#cdd0dd",
+    300: "#aab0c3",
+    400: PALETTE.steam,
+    500: "#656c87",
+    600: "#4a516c",
+    700: "#343a56",
+    800: "#232943",
+    900: PALETTE.midnightInk,
+    950: "#0b0e1e",
+  },
+  crema: {
+    DEFAULT: PALETTE.crema,
+    50: "#fffcf7",
+    100: PALETTE.crema,
+    200: "#fcebd4",
+    300: "#f6dbb7",
+  },
+  mint: {
+    DEFAULT: PALETTE.mintReward,
+    50: "#ebfbf6",
+    100: "#cbf5e9",
+    200: "#97ebd3",
+    500: PALETTE.mintReward,
+    600: "#1fae88",
+    700: "#178a6c",
+    800: "#126c55",
+  },
+  steam: {
+    DEFAULT: PALETTE.steam,
   },
 } as const;
 
+/** The two typefaces on the board. Each app loads them (next/font) into these CSS variables. */
+export const FONTS = {
+  /** Headlines and the wordmark. */
+  display: { family: "Outfit", variable: "--font-display" },
+  /** Body text. */
+  body: { family: "Inter", variable: "--font-body" },
+} as const;
+
 /** For places that cannot read CSS: browser chrome, PWA icons, emails. */
-export const THEME_COLOR = COLORS.brand[600];
-export const BACKGROUND_COLOR = "#f8fafc";
+export const THEME_COLOR = PALETTE.stampOrange;
+export const BACKGROUND_COLOR = PALETTE.crema;

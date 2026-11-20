@@ -17,8 +17,8 @@ export async function LanguageSwitch() {
             aria-pressed={locale === value}
             className={`rounded-full px-3 py-1 ${
               locale === value
-                ? "bg-brand-600 text-white"
-                : "border border-slate-300 text-slate-700"
+                ? "bg-ink text-crema"
+                : "border border-ink/15 text-ink-700 hover:border-ink/30"
             }`}
           >
             {label}
