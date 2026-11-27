@@ -24,7 +24,7 @@ export function LoginForm() {
       <Card>
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="mfaToken" value={state.mfaToken} />
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-600">
             {useRecovery
               ? "Enter one of your saved recovery codes."
               : "Enter the 6-digit code from your authenticator app."}
@@ -51,7 +51,7 @@ export function LoginForm() {
           <button
             type="button"
             onClick={() => setUseRecovery(!useRecovery)}
-            className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+            className="w-full text-center text-sm text-ink-500 hover:text-ink-900"
           >
             {useRecovery ? "Use a code from my app instead" : "Use a recovery code"}
           </button>

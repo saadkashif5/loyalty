@@ -23,7 +23,7 @@ function Submit({ label }: { label: string }) {
 }
 
 function Done({ show, text }: { show?: boolean; text: string }) {
-  return show ? <p className="text-sm text-emerald-700">{text}</p> : null;
+  return show ? <p className="text-sm text-mint-700">{text}</p> : null;
 }
 
 export function ChangePlanForm({
@@ -60,7 +60,7 @@ export function ChangePlanForm({
           </Select>
         </Field>
       </div>
-      <p className="text-xs text-slate-500">Takes effect now, at the plan&apos;s current price.</p>
+      <p className="text-xs text-ink-500">Takes effect now, at the plan&apos;s current price.</p>
       <ErrorText>{state.error}</ErrorText>
       <Done show={state.done} text="Plan changed." />
       <Submit label="Change plan" />

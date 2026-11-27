@@ -72,19 +72,19 @@ export function Pwa({ messages }: { messages: PwaMessages }) {
   return (
     <div className="space-y-2 px-5">
       {offline ? (
-        <p className="rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900">
+        <p className="rounded-xl bg-accent-50 px-4 py-2 text-sm text-accent-900">
           {messages["pwa.offline"]}
         </p>
       ) : null}
       {installEvent || iosTip ? (
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm">
           <p className="flex-1">
             {installEvent ? messages["pwa.installAndroid"] : messages["pwa.installIos"]}
           </p>
           {installEvent ? (
             <button
               type="button"
-              className="rounded-lg bg-brand-600 px-3 py-1.5 font-medium text-white"
+              className="rounded-2xl bg-brand-600 px-3 py-1.5 font-medium text-white"
               onClick={async () => {
                 await installEvent.prompt();
                 await installEvent.userChoice.catch(() => undefined);
@@ -96,7 +96,7 @@ export function Pwa({ messages }: { messages: PwaMessages }) {
           ) : null}
           <button
             type="button"
-            className="text-slate-500"
+            className="text-ink-500"
             onClick={dismiss}
             aria-label={messages["pwa.notNow"]}
           >

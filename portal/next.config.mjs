@@ -1,5 +1,13 @@
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Docker builds set NEXT_OUTPUT=standalone (see Dockerfile); local dev is unchanged.
+  ...(process.env.NEXT_OUTPUT === "standalone" && {
+    output: "standalone",
+    // The monorepo root, so the shared workspace packages are traced into the build.
+    outputFileTracingRoot: fileURLToPath(new URL("..", import.meta.url)),
+  }),
   reactStrictMode: true,
   poweredByHeader: false,
   // Workspace packages ship as TypeScript source, so Next must compile them.

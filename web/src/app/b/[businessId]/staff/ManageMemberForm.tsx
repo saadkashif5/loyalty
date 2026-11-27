@@ -29,7 +29,7 @@ export function ManageMemberForm({
   );
 
   return (
-    <form action={formAction} className="space-y-3 border-t border-slate-100 pt-3">
+    <form action={formAction} className="space-y-3 border-t border-ink-100 pt-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Role">
           <Select name="role" defaultValue={member.role}>
@@ -38,7 +38,7 @@ export function ManageMemberForm({
           </Select>
         </Field>
         {member.status === "INVITED" ? (
-          <p className="self-end text-sm text-slate-500">Waiting for them to accept.</p>
+          <p className="self-end text-sm text-ink-500">Waiting for them to accept.</p>
         ) : (
           <Field label="Access">
             <Select name="status" defaultValue={member.status}>
@@ -50,7 +50,7 @@ export function ManageMemberForm({
       </div>
       {branches.length > 1 ? (
         <fieldset>
-          <legend className="mb-1 text-sm font-medium text-slate-700">
+          <legend className="mb-1 text-sm font-medium text-ink-700">
             Works at (none ticked = every branch)
           </legend>
           <div className="flex flex-wrap gap-x-4 gap-y-1">

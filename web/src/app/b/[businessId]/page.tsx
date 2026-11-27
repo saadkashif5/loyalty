@@ -68,10 +68,10 @@ export default async function OverviewPage({
         />
       </div>
 
-      <h2 className="mb-3 mt-8 text-sm font-semibold text-slate-700">Stamps, last 14 days</h2>
+      <h2 className="mb-3 mt-8 text-sm font-semibold text-ink-700">Stamps, last 14 days</h2>
       <Card>
         {stamps.length === 0 ? (
-          <p className="text-sm text-slate-500">No stamps recorded yet.</p>
+          <p className="text-sm text-ink-500">No stamps recorded yet.</p>
         ) : (
           <ol className="flex h-40 items-end gap-1">
             {stamps.map((day) => (
@@ -81,7 +81,7 @@ export default async function OverviewPage({
                   style={{ height: `${(day.count / peak) * 100}%` }}
                   title={`${day.date}: ${day.count}`}
                 />
-                <span className="text-[10px] text-slate-400">{day.date.slice(5)}</span>
+                <span className="text-[10px] text-ink-400">{day.date.slice(5)}</span>
               </li>
             ))}
           </ol>
@@ -115,7 +115,7 @@ function StaffHome({ businessId }: { businessId: string }) {
           <Link key={link.href} href={`/b/${businessId}${link.href}`}>
             <Card className="h-full transition hover:border-brand-500">
               <p className="font-medium">{link.title}</p>
-              <p className="mt-1 text-sm text-slate-500">{link.text}</p>
+              <p className="mt-1 text-sm text-ink-500">{link.text}</p>
             </Card>
           </Link>
         ))}

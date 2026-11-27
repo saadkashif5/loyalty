@@ -27,13 +27,13 @@ export function ReportProblemForm({
     {},
   );
 
-  if (state.saved) return <p className="text-sm text-emerald-700">Report sent.</p>;
+  if (state.saved) return <p className="text-sm text-mint-700">Report sent.</p>;
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-sm text-slate-500 hover:text-slate-900"
+        className="text-sm text-ink-500 hover:text-ink-900"
       >
         Report a problem
       </button>
@@ -41,7 +41,7 @@ export function ReportProblemForm({
   }
 
   return (
-    <form action={formAction} className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+    <form action={formAction} className="mt-3 space-y-3 border-t border-ink-100 pt-3">
       <Field label="What happened?">
         <Select name="reason" defaultValue="NOT_WORKING">
           <option value="NOT_WORKING">It is not working</option>
@@ -52,7 +52,7 @@ export function ReportProblemForm({
       <Field label="Details (optional)">
         <Input name="note" maxLength={500} />
       </Field>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         A lost stamper is switched off at once so nobody else can use it.
       </p>
       <ErrorText>{state.error}</ErrorText>

@@ -44,7 +44,7 @@ export function StatusForm({ businessId, status }: { businessId: string; status:
           placeholder={suspending ? "e.g. unpaid invoice" : ""}
         />
       </Field>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         {suspending
           ? "Suspending stops every stamper at this business immediately. It is recorded in the audit log."
           : "Restoring re-activates its suspended stampers."}
@@ -79,7 +79,7 @@ export function InvitationActions({
       </div>
       {state.inviteUrl ? (
         <div className="space-y-1">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-500">
             New link, emailed to the owner (the previous one no longer works):
           </p>
           <CopyLink url={state.inviteUrl} />
@@ -103,14 +103,14 @@ export function AssignDeviceForm({
 
   if (branches.length === 0) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-500">
         The owner must create a branch before a stamper can be assigned.
       </p>
     );
   }
   if (devices.length === 0) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-500">
         No unassigned stampers. Create some on the Stampers page.
       </p>
     );

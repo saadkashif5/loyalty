@@ -43,9 +43,9 @@ export default async function RewardsPage({ params }: { params: Promise<{ busine
                   <div>
                     <p className="font-medium">{reward.name}</p>
                     {reward.description ? (
-                      <p className="mt-1 text-sm text-slate-500">{reward.description}</p>
+                      <p className="mt-1 text-sm text-ink-500">{reward.description}</p>
                     ) : null}
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-ink-600">
                       {reward.type} · unlocks at {reward.requiredStamps} stamps
                     </p>
                   </div>

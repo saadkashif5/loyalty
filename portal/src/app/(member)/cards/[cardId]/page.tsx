@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
 import { apiFetch } from "@/lib/api";
-import { Card, Notice, StampDots, formatDate } from "@/components/ui";
+import { Card, Notice, StampCardFace, formatDate } from "@/components/ui";
 import { CounterCodePanel } from "@/components/CounterCodePanel";
 import { getT, type MessageKey } from "@/lib/i18n";
 
@@ -72,49 +72,59 @@ export default async function CardPage({
         </Notice>
       ) : null}
 
-      <Card className="space-y-4">
-        <div>
-          <p className="text-lg font-semibold">{card.businessId?.name}</p>
-          <p className="text-sm text-slate-500">{card.programId?.name}</p>
-        </div>
-        {card.programId ? (
-          <>
-            <StampDots count={card.stampCount} required={card.programId.requiredStamps} />
-            <p className="text-sm text-slate-600">
-              {t("card.stamps", { n: card.stampCount, m: card.programId.requiredStamps })}
-            </p>
-            {card.stampsExpireAt ? (
-              <p className="text-xs text-slate-500">
-                {t("card.expiry", {
-                  days: card.stampExpiryDays ?? "",
-                  date: formatDate(card.stampsExpireAt),
-                })}
+      {card.programId ? (
+        <StampCardFace
+          shop={card.businessId?.name ?? ""}
+          program={card.programId.name}
+          count={card.stampCount}
+          required={card.programId.requiredStamps}
+          footer={
+            <>
+              <p className="text-sm text-ink-200">
+                {t("card.stamps", { n: card.stampCount, m: card.programId.requiredStamps })}
               </p>
-            ) : null}
-            {card.stampCount === 0 && card.lastExpiry?.stamps ? (
-              <p className="text-xs text-amber-700">
-                {t("card.expired", {
-                  n: card.lastExpiry.stamps,
-                  date: formatDate(card.lastExpiry.at),
-                })}
-              </p>
-            ) : null}
-          </>
-        ) : null}
-      </Card>
+              {card.stampsExpireAt ? (
+                <p className="mt-1 text-xs text-ink-300">
+                  {t("card.expiry", {
+                    days: card.stampExpiryDays ?? "",
+                    date: formatDate(card.stampsExpireAt),
+                  })}
+                </p>
+              ) : null}
+              {card.stampCount === 0 && card.lastExpiry?.stamps ? (
+                <p className="mt-1 text-xs text-accent-300">
+                  {t("card.expired", {
+                    n: card.lastExpiry.stamps,
+                    date: formatDate(card.lastExpiry.at),
+                  })}
+                </p>
+              ) : null}
+            </>
+          }
+        />
+      ) : (
+        <Card>
+          <p className="font-display text-lg font-bold">{card.businessId?.name}</p>
+        </Card>
+      )}
 
       {card.status === "ACTIVE" ? <CounterCodePanel cardId={card._id} /> : null}
 
       {rewards.map((reward) => (
-        <Card key={reward._id} className="space-y-3 border-brand-500 text-center">
-          <p className="text-sm font-medium uppercase tracking-wide text-brand-600">
+        <Card
+          key={reward._id}
+          className="space-y-3 border-mint-500/40 text-center ring-4 ring-mint-500/10"
+        >
+          <p className="mx-auto w-fit rounded-full bg-mint-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-mint-800">
             {t("card.yourReward")}
           </p>
-          <p className="text-lg font-semibold">{reward.rewardId?.name ?? "Reward"}</p>
+          <p className="font-display text-xl font-bold">{reward.rewardId?.name ?? "Reward"}</p>
           {/* A data URL generated on the server; next/image adds nothing here. */}
           <img src={reward.qr} alt="" width={160} height={160} className="mx-auto" />
-          <p className="font-mono text-2xl tracking-[0.3em]">{reward.redemptionCode}</p>
-          <p className="text-xs text-slate-500">
+          <p className="font-mono text-2xl font-semibold tracking-[0.3em] text-ink">
+            {reward.redemptionCode}
+          </p>
+          <p className="text-xs text-ink-500">
             {t("card.showCode")}
             {reward.expiresAt ? ` ${t("card.useBy", { date: formatDate(reward.expiresAt) })}` : ""}
           </p>
@@ -122,13 +132,13 @@ export default async function CardPage({
       ))}
 
       <Card>
-        <p className="mb-2 font-semibold">Recent stamps</p>
+        <p className="mb-2 font-display font-bold">Recent stamps</p>
         {recentStamps.length === 0 ? (
-          <p className="text-sm text-slate-500">No stamps yet.</p>
+          <p className="text-sm text-ink-500">No stamps yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {recentStamps.map((stamp) => (
-              <li key={stamp._id} className="py-2 text-slate-600">
+              <li key={stamp._id} className="py-2 text-ink-600">
                 {formatDate(stamp.createdAt)}
               </li>
             ))}
@@ -137,7 +147,7 @@ export default async function CardPage({
       </Card>
 
       {card.programId?.terms ? (
-        <p className="px-1 text-xs text-slate-500">{card.programId.terms}</p>
+        <p className="px-1 text-xs text-ink-500">{card.programId.terms}</p>
       ) : null}
     </>
   );

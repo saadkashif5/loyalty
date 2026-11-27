@@ -38,7 +38,7 @@ export function StaffCapForm({
           className="max-w-[8rem]"
         />
       </Field>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         Counts stamps added at the counter and by search. Reaching it raises an alert.
       </p>
       <Field label="Ask a manager to approve a staff member's counter stamps after this many a day (blank = never)">
@@ -52,7 +52,7 @@ export function StaffCapForm({
           className="max-w-[8rem]"
         />
       </Field>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         Waiting stamps appear under Approvals. Managers and owners are never held.
       </p>
       <ErrorText>{state.error}</ErrorText>

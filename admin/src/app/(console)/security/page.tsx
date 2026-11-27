@@ -47,7 +47,7 @@ export default async function SecurityPage() {
       <Card>
         <h2 className="mb-3 font-semibold">Two-step verification</h2>
         {mfa.enabled ? (
-          <p className="text-sm text-emerald-700">
+          <p className="text-sm text-mint-700">
             On. You will be asked for a code from your app each time you sign in.
           </p>
         ) : (
@@ -66,17 +66,17 @@ export default async function SecurityPage() {
             </form>
           ) : null}
         </div>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-ink-100">
           {sessions.map((session) => (
             <li key={session.id} className="flex items-center justify-between gap-4 py-3 text-sm">
               <div>
                 <p className="font-medium">
                   {describeDevice(session.userAgent)}
                   {session.current ? (
-                    <span className="ml-2 text-xs font-normal text-emerald-700">This device</span>
+                    <span className="ml-2 text-xs font-normal text-mint-700">This device</span>
                   ) : null}
                 </p>
-                <p className="text-slate-500">
+                <p className="text-ink-500">
                   Signed in{" "}
                   {new Date(session.createdAt).toLocaleString("en-PK", {
                     timeZone: "Asia/Karachi",

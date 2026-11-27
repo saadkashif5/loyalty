@@ -26,17 +26,19 @@ export default async function RewardsPage() {
 
   return (
     <>
-      <h1 className="text-lg font-semibold">{t("rewards.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+        {t("rewards.title")}
+      </h1>
 
       {ready.length === 0 ? (
-        <Card className="text-center text-sm text-slate-600">{t("rewards.none")}</Card>
+        <Card className="text-center text-sm text-ink-600">{t("rewards.none")}</Card>
       ) : (
         ready.map((r) => (
           <Link key={r._id} href={`/cards/${r.loyaltyCardId}`} className="block">
             <Card className="flex items-center justify-between gap-4 border-brand-500">
               <div>
                 <p className="font-semibold">{r.rewardId?.name ?? "Reward"}</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-ink-500">
                   {r.businessId?.name}
                   {r.expiresAt ? ` · use by ${formatDate(r.expiresAt)}` : ""}
                 </p>
@@ -50,13 +52,13 @@ export default async function RewardsPage() {
       {used.length > 0 ? (
         <Card>
           <p className="mb-2 font-semibold">{t("rewards.used")}</p>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {used.map((r) => (
               <li key={r._id} className="flex justify-between gap-4 py-2">
                 <span>
                   {r.rewardId?.name} · {r.businessId?.name}
                 </span>
-                <span className="text-slate-500">{formatDate(r.redeemedAt ?? r.createdAt)}</span>
+                <span className="text-ink-500">{formatDate(r.redeemedAt ?? r.createdAt)}</span>
               </li>
             ))}
           </ul>

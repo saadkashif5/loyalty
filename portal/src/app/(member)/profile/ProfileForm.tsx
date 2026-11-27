@@ -35,11 +35,11 @@ export function ProfileForm({ name, phone }: { name: string; phone?: string | nu
             defaultValue={phone ? `0${phone.slice(3)}` : ""}
           />
         </Field>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-500">
           Only needed if you want shops to send you offers on WhatsApp. Leave it blank to remove it.
         </p>
         <ErrorText>{state.error}</ErrorText>
-        {state.saved ? <p className="text-sm text-emerald-700">Saved.</p> : null}
+        {state.saved ? <p className="text-sm text-mint-700">Saved.</p> : null}
         <Submit />
       </form>
     </Card>

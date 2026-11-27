@@ -20,10 +20,12 @@ export default async function NotificationsPage() {
 
   return (
     <>
-      <h1 className="text-lg font-semibold">{t("notifications.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+        {t("notifications.title")}
+      </h1>
       {unread ? <MarkAllRead /> : null}
       {items.length === 0 ? (
-        <Card className="text-center text-sm text-slate-500">{t("notifications.empty")}</Card>
+        <Card className="text-center text-sm text-ink-500">{t("notifications.empty")}</Card>
       ) : (
         <ul className="space-y-2">
           {items.map((n) => {
@@ -43,8 +45,8 @@ export default async function NotificationsPage() {
                     />
                   )}
                 </div>
-                <p className="mt-1 text-sm text-slate-600">{n.body}</p>
-                <p className="mt-1 text-xs text-slate-400">{formatDate(n.createdAt)}</p>
+                <p className="mt-1 text-sm text-ink-600">{n.body}</p>
+                <p className="mt-1 text-xs text-ink-400">{formatDate(n.createdAt)}</p>
               </Card>
             );
             return (

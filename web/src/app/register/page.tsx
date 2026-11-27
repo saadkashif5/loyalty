@@ -28,7 +28,7 @@ export default function RegisterPage() {
       headline="Bring your regulars back."
       blurb="Run your stamp cards, stampers and rewards from one place."
       footer={
-        <p className="text-slate-500">
+        <p className="text-ink-500">
           Already have an account?{" "}
           <Link href="/login" className="font-medium text-brand-600 hover:underline">
             Sign in

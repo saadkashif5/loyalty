@@ -35,8 +35,8 @@ const TITLES: Record<string, string> = {
 
 const SEVERITY: Record<string, string> = {
   HIGH: "bg-red-50 text-red-700",
-  MEDIUM: "bg-amber-50 text-amber-700",
-  LOW: "bg-slate-100 text-slate-600",
+  MEDIUM: "bg-accent-50 text-accent-700",
+  LOW: "bg-ink-100 text-ink-600",
 };
 
 export default async function AlertsPage({
@@ -75,8 +75,8 @@ export default async function AlertsPage({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">{TITLES[flag.type] ?? flag.type}</p>
-                  <p className="text-sm text-slate-600">{flag.message}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="text-sm text-ink-600">{flag.message}</p>
+                  <p className="mt-1 text-xs text-ink-500">
                     {flag.deviceId ? `Stamper ${flag.deviceId.deviceIdentifier} · ` : ""}
                     {flag.staffUserId ? `${flag.staffUserId.name} · ` : ""}
                     {flag.occurrences > 1 ? `${flag.occurrences} times · ` : ""}

@@ -16,10 +16,7 @@ export default async function EditProgramPage({
 
   return (
     <div className="max-w-3xl">
-      <Link
-        href={`/b/${businessId}/programs`}
-        className="text-sm text-slate-500 hover:text-slate-900"
-      >
+      <Link href={`/b/${businessId}/programs`} className="text-sm text-ink-500 hover:text-ink-900">
         ← Programs
       </Link>
       <PageHeader title={`Edit ${program.name}`} />

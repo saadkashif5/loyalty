@@ -21,7 +21,7 @@ export function ForgotPasswordForm() {
     return (
       <Card className="space-y-2 text-sm">
         <p className="font-medium">Check your email</p>
-        <p className="text-slate-600">
+        <p className="text-ink-600">
           If an account uses that address, a link is on its way. It works once, for 30 minutes.
           Nothing arrived? Check spam, or try again in a minute.
         </p>

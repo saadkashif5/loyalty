@@ -32,16 +32,18 @@ export default async function TeamPage() {
           <tr key={member.id}>
             <Td>
               <p className="font-medium">{member.name}</p>
-              <p className="text-xs text-slate-500">{member.email}</p>
+              <p className="text-xs text-ink-500">{member.email}</p>
             </Td>
             <Td>
               <StatusBadge status={member.status} />
             </Td>
-            <Td>{member.mfaEnabled ? "On" : <span className="text-amber-700">Not set up</span>}</Td>
+            <Td>
+              {member.mfaEnabled ? "On" : <span className="text-accent-700">Not set up</span>}
+            </Td>
             <Td>{formatDate(member.createdAt)}</Td>
             <Td>
               {member.id === me.id ? (
-                <span className="text-sm text-slate-500">{member.platformRole} (you)</span>
+                <span className="text-sm text-ink-500">{member.platformRole} (you)</span>
               ) : (
                 <ChangeRoleForm userId={member.id} role={member.platformRole} />
               )}

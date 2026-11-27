@@ -9,7 +9,9 @@
     ".": "./src/index.ts",
     "./logo": "./src/Logo.tsx",
     "./auth-shell": "./src/AuthShell.tsx",
-    "./tailwind": "./tailwind.preset.ts"
+    "./byline": "./src/Byline.tsx",
+    "./tailwind": "./tailwind.preset.ts",
+    "./styles": "./src/styles.ts"
   },
   "peerDependencies": {
     "react": ">=19"

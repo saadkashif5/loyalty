@@ -13,10 +13,7 @@ export default async function EditBranchPage({
 
   return (
     <div className="max-w-3xl">
-      <Link
-        href={`/b/${businessId}/branches`}
-        className="text-sm text-slate-500 hover:text-slate-900"
-      >
+      <Link href={`/b/${businessId}/branches`} className="text-sm text-ink-500 hover:text-ink-900">
         ← Branches
       </Link>
       <PageHeader title={`Edit ${branch.name}`} />

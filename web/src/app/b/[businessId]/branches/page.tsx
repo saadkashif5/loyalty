@@ -33,7 +33,7 @@ export default async function BranchesPage({
                   <div>
                     <p className="font-medium">{branch.name}</p>
                     {branch.address ? (
-                      <p className="mt-1 text-sm text-slate-500">{branch.address}</p>
+                      <p className="mt-1 text-sm text-ink-500">{branch.address}</p>
                     ) : null}
                   </div>
                   <div className="flex flex-col items-end gap-2">

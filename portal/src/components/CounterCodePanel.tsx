@@ -29,7 +29,7 @@ export function CounterCodePanel({ cardId }: { cardId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-xl border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700"
+        className="w-full rounded-xl border border-ink-300 bg-white py-3 text-sm font-medium text-ink-700"
       >
         Phone can&apos;t tap? Show a code at the counter
       </button>
@@ -38,17 +38,17 @@ export function CounterCodePanel({ cardId }: { cardId: string }) {
 
   return (
     <Card className="space-y-3 text-center">
-      <p className="text-sm font-medium text-slate-700">Show this to the staff</p>
+      <p className="text-sm font-medium text-ink-700">Show this to the staff</p>
       {state.qrDataUrl ? (
         // A data URL made on the server; next/image adds nothing here.
         <img src={state.qrDataUrl} alt="" width={220} height={220} className="mx-auto" />
       ) : (
-        <div className="mx-auto h-[220px] w-[220px] animate-pulse rounded-lg bg-slate-100" />
+        <div className="mx-auto h-[220px] w-[220px] animate-pulse rounded-2xl bg-ink-100" />
       )}
       <p className="font-mono text-3xl tracking-[0.3em]">{state.code ?? "········"}</p>
-      <p className="text-xs text-slate-500">The code changes every few minutes and works once.</p>
+      <p className="text-xs text-ink-500">The code changes every few minutes and works once.</p>
       <ErrorText>{state.error}</ErrorText>
-      <Button type="button" onClick={() => setOpen(false)} className="bg-slate-600">
+      <Button type="button" onClick={() => setOpen(false)} className="bg-ink-600">
         Done
       </Button>
     </Card>

@@ -52,3 +52,7 @@ storage/
 
 # Load test data (contains access tokens)
 loadtests/.data/
+
+# Production secrets on the server (see docs/deploy-hetzner.md)
+deploy/*.env
+!deploy/*.env.example

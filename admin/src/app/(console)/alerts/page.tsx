@@ -18,8 +18,8 @@ interface Flag {
 
 const SEVERITY: Record<string, string> = {
   HIGH: "bg-red-50 text-red-700",
-  MEDIUM: "bg-amber-50 text-amber-700",
-  LOW: "bg-slate-100 text-slate-600",
+  MEDIUM: "bg-accent-50 text-accent-700",
+  LOW: "bg-ink-100 text-ink-600",
 };
 
 /** Suspicious stamping across every business, so the team can spot patterns owners miss. */
@@ -68,7 +68,7 @@ export default async function AlertsPage({
               </Td>
               <Td>
                 <p>{flag.message}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-500">
                   {flag.type}
                   {flag.deviceId ? ` · ${flag.deviceId.deviceIdentifier}` : ""}
                   {flag.staffUserId ? ` · ${flag.staffUserId.name}` : ""}

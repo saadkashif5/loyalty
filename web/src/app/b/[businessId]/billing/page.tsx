@@ -134,7 +134,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
     return (
       <>
         <PageHeader title="Billing" />
-        <Card className="text-sm text-slate-600">
+        <Card className="text-sm text-ink-600">
           Your business is not on a paid plan. Contact {BRAND.name} if you have questions.
         </Card>
       </>
@@ -161,14 +161,14 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-lg font-semibold">{sub.plan.name} plan</p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-ink-600">
               {pkr(annual ? sub.plan.priceAnnualPkr : sub.plan.priceMonthlyPkr)} per{" "}
               {annual ? "year" : "month"}, plus tax
             </p>
           </div>
           <div className="text-right">
             <StatusBadge status={sub.status} />
-            <p className="mt-1 text-xs text-slate-500">{STATUS_TEXT[sub.status]}</p>
+            <p className="mt-1 text-xs text-ink-500">{STATUS_TEXT[sub.status]}</p>
           </div>
         </div>
         {dueBy ? (
@@ -180,14 +180,14 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
           </p>
         ) : null}
         {sub.status === "SUSPENDED" ? (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
             Stamping is paused because payment has not arrived. Customers can still redeem rewards
             they already earned. Pay to switch everything back on straight away.
           </p>
         ) : null}
 
         {sub.scheduledChange ? (
-          <div className="space-y-2 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">
+          <div className="space-y-2 rounded-xl bg-ink-50 px-3 py-2 text-sm text-ink-800">
             <p>
               You move to the {sub.scheduledChange.plan.name} plan (
               {sub.scheduledChange.billingCycle === "ANNUAL" ? "yearly" : "monthly"}) on{" "}
@@ -203,9 +203,9 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
             const used = billing.usage[key];
             const full = limit !== null && used >= limit;
             return (
-              <div key={key} className="rounded-md bg-slate-50 px-3 py-2">
-                <p className="text-xs text-slate-500">{label}</p>
-                <p className={`font-medium tabular-nums ${full ? "text-amber-700" : ""}`}>
+              <div key={key} className="rounded-xl bg-ink-50 px-3 py-2">
+                <p className="text-xs text-ink-500">{label}</p>
+                <p className={`font-medium tabular-nums ${full ? "text-accent-700" : ""}`}>
                   {used} / {limit ?? "unlimited"}
                 </p>
               </div>
@@ -231,7 +231,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
             {formatDate(open.dueDate)}.
           </p>
         ) : (
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-600">
             {billing.nextPaymentPkr
               ? `Your next payment is ${pkr(billing.nextPaymentPkr)} plus tax. `
               : ""}
@@ -242,7 +242,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
         {sub.pendingCharges.length > 0 ? (
           <div className="text-sm">
             <p className="font-medium">On your next invoice</p>
-            <ul className="text-slate-600">
+            <ul className="text-ink-600">
               {sub.pendingCharges.map((charge) => (
                 <li key={charge._id}>
                   {charge.description}: {pkr(charge.amountPkr)}
@@ -256,14 +256,14 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
 
         {open ? (
           pendingProof ? (
-            <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            <p className="rounded-xl bg-ink-50 px-3 py-2 text-sm text-ink-800">
               We received your receipt for {pkr(pendingProof.amountPkr)} on{" "}
               {formatDate(pendingProof.createdAt)} and are checking it.
             </p>
           ) : (
-            <div className="border-t border-slate-100 pt-4">
+            <div className="border-t border-ink-100 pt-4">
               <h3 className="mb-1 text-sm font-semibold">Already paid? Send us the receipt</h3>
-              <p className="mb-3 text-xs text-slate-500">
+              <p className="mb-3 text-xs text-ink-500">
                 A screenshot from your banking app is fine. We match it to our bank statement.
               </p>
               <UploadReceiptForm
@@ -279,7 +279,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
       {billing.proofs.length > 0 ? (
         <Card>
           <h2 className="mb-2 font-semibold">Receipts you sent</h2>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {billing.proofs.map((proof) => (
               <li key={proof._id} className="space-y-1 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -300,7 +300,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
       <Card className="space-y-3">
         <h2 className="font-semibold">Promotion code</h2>
         {billing.subscription?.coupon ? (
-          <p className="text-sm text-emerald-800">
+          <p className="text-sm text-mint-800">
             {billing.subscription.coupon.code}:{" "}
             {billing.subscription.coupon.percentOff
               ? `${billing.subscription.coupon.percentOff}% off`
@@ -312,7 +312,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
           <CouponEntry businessId={businessId} />
         )}
         {billing.subscription?.creditBalancePkr ? (
-          <p className="text-sm text-emerald-800">
+          <p className="text-sm text-mint-800">
             You have {pkr(billing.subscription.creditBalancePkr)} of credit. It comes off your next
             invoice.
           </p>
@@ -322,14 +322,14 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
       {billing.creditNotes?.length ? (
         <Card>
           <h2 className="mb-2 font-semibold">Credit notes</h2>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {billing.creditNotes.map((n) => (
               <li key={n._id} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
                   <span className="font-mono">{n.number}</span> on {n.invoiceNumber} ·{" "}
                   {pkr(n.amountPkr)} {n.outcome === "REFUND" ? "refunded" : "credited"}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-ink-500">
                   {n.reason} · {formatDate(n.createdAt)}
                 </span>
               </li>
@@ -341,7 +341,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
       {billing.invoices.length > 0 ? (
         <Card>
           <h2 className="mb-2 font-semibold">Invoices</h2>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {billing.invoices.map((inv) => (
               <li key={inv._id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                 <span className="flex items-center gap-2">
@@ -355,7 +355,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
                   </a>
                   <StatusBadge status={inv.status} />
                 </span>
-                <span className="text-slate-500">
+                <span className="text-ink-500">
                   {pkr(inv.totalPkr)} · {formatDate(inv.periodStart)} – {formatDate(inv.periodEnd)}
                 </span>
               </li>
@@ -383,7 +383,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
                   ? `${pkr(plan.priceAnnualPkr)} / year`
                   : `${pkr(plan.priceMonthlyPkr)} / month`}
               </p>
-              <ul className="space-y-0.5 text-xs text-slate-600">
+              <ul className="space-y-0.5 text-xs text-ink-600">
                 {LIMITS.map(([key, label]) => (
                   <li key={key}>
                     {label}: {plan.limits[key] ?? "unlimited"}
@@ -407,7 +407,7 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
         </div>
         {billing.planChanges[`${sub.plan.code}:${annual ? "MONTHLY" : "ANNUAL"}`] ? (
           <div className="mt-3 space-y-1">
-            <p className="text-xs text-slate-500">Annual billing is the price of 10 months.</p>
+            <p className="text-xs text-ink-500">Annual billing is the price of 10 months.</p>
             <ChangePlanButton
               businessId={businessId}
               planCode={sub.plan.code}
@@ -422,14 +422,14 @@ export default async function BillingPage({ params }: { params: Promise<{ busine
       {billing.payments.length > 0 ? (
         <Card>
           <h2 className="mb-2 font-semibold">Payments</h2>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {billing.payments.map((p) => (
               <li key={p._id} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
                   {pkr(p.amountPkr)} · {p.method.replace("_", " ").toLowerCase()}
                   {p.reference ? ` · ${p.reference}` : ""}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-ink-500">
                   covers {formatDate(p.periodStart)} – {formatDate(p.periodEnd)}
                 </span>
               </li>
@@ -450,7 +450,7 @@ function PaymentDetails({
 }) {
   if (details.bankAccounts.length === 0 && !details.raastId) {
     return (
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-600">
         Contact the {BRAND.name} team
         {details.phone ? ` on ${details.phone}` : details.email ? ` at ${details.email}` : ""} for
         payment details.
@@ -461,28 +461,28 @@ function PaymentDetails({
     <div className="space-y-3 text-sm">
       <div className="grid gap-3 sm:grid-cols-2">
         {details.bankAccounts.map((account) => (
-          <div key={account.accountNumber} className="rounded-md bg-slate-50 px-3 py-2">
+          <div key={account.accountNumber} className="rounded-xl bg-ink-50 px-3 py-2">
             <p className="font-medium">{account.bankName}</p>
-            <p className="text-slate-600">{account.accountTitle}</p>
+            <p className="text-ink-600">{account.accountTitle}</p>
             <p className="font-mono text-xs">{account.accountNumber}</p>
             {account.iban ? <p className="font-mono text-xs">{account.iban}</p> : null}
           </div>
         ))}
         {details.raastId ? (
-          <div className="rounded-md bg-slate-50 px-3 py-2">
+          <div className="rounded-xl bg-ink-50 px-3 py-2">
             <p className="font-medium">Raast</p>
             <p className="font-mono text-xs">{details.raastId}</p>
           </div>
         ) : null}
       </div>
       {reference ? (
-        <p className="text-slate-600">
+        <p className="text-ink-600">
           Write <span className="font-mono">{reference}</span> in the transfer description so we can
           match your payment.
         </p>
       ) : null}
       {details.instructions ? (
-        <p className="whitespace-pre-line text-slate-600">{details.instructions}</p>
+        <p className="whitespace-pre-line text-ink-600">{details.instructions}</p>
       ) : null}
     </div>
   );

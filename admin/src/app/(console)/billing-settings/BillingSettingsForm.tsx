@@ -96,7 +96,7 @@ export function BillingSettingsForm({
               />
             </Field>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-500">
             Provincial sales tax on services varies by province. Confirm the rate with your tax
             adviser. Changes apply to invoices issued from now on.
           </p>
@@ -138,11 +138,11 @@ export function BillingSettingsForm({
       </fieldset>
 
       <ErrorText>{state.error}</ErrorText>
-      {state.done ? <p className="text-sm text-emerald-700">Saved.</p> : null}
+      {state.done ? <p className="text-sm text-mint-700">Saved.</p> : null}
       {canEdit ? (
         <Submit />
       ) : (
-        <p className="text-sm text-slate-500">Only Finance and Super Admins can edit.</p>
+        <p className="text-sm text-ink-500">Only Finance and Super Admins can edit.</p>
       )}
     </form>
   );

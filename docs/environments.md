@@ -13,12 +13,43 @@ in staging can never reach production data.
 | Sentry | Off | Its own project | Its own project |
 | Demo data | `npm run seed:demo` | Never | Never |
 
+## Domains
+
+Production runs under `stamply.taptapsell.pk`. "by TapTapSell" on every app
+links to the company site, `https://taptapsell.pk`. The hosts are also listed in
+`PRODUCTION_HOSTS` in `packages/brand/src/index.ts`.
+
+| Host | App | Set on that app | Set on the API |
+|---|---|---|---|
+| `stamply.taptapsell.pk` | Customer portal, home page, `/business` pages (`portal/`) | `API_BASE_URL` | — |
+| `business.stamply.taptapsell.pk` | Business dashboard (`web/`) | `API_BASE_URL` | `DASHBOARD_URL` |
+| `admin.stamply.taptapsell.pk` | Platform console (`admin/`) | `API_BASE_URL` | `ADMIN_URL` |
+| `api.stamply.taptapsell.pk` | REST API (`api/`) | — | — |
+
+- DNS: one record per host above, or a wildcard `*.stamply.taptapsell.pk` plus
+  `stamply.taptapsell.pk`. The TLS certificate must cover both (a wildcard
+  certificate does not cover the bare `stamply.taptapsell.pk`).
+- `API_BASE_URL` on the three front-end servers is `https://api.stamply.taptapsell.pk/api/v1`,
+  or the API's private address when they run on the same network.
+- On the API: `CORS_ORIGINS=https://stamply.taptapsell.pk,https://business.stamply.taptapsell.pk,https://admin.stamply.taptapsell.pk`.
+  The web apps call the API from their servers, so CORS only matters for
+  browser calls; the API still requires a value in production.
+- `EMAIL_FROM=Stamply <no-reply@stamply.taptapsell.pk>` needs SPF and DKIM for
+  `stamply.taptapsell.pk` set up with the SMTP provider.
+- Each app sets its own host-only cookies, so a session on one host is never
+  sent to another.
+- **The portal host is permanent once stamper tags ship**: it is written onto
+  every tag (see [stamper-provisioning.md](stamper-provisioning.md)). Moving the
+  other three hosts later only needs new environment values.
+
 ## What the API refuses to start without
 
 In `staging` and `production` the API exits at start-up if:
 
 - `REDIS_URL` is missing,
 - `CORS_ORIGINS` is empty,
+- `DASHBOARD_URL` or `ADMIN_URL` is not a public `https://` address (they go
+  into emails and printed stamper labels),
 - email is not configured to really send (`EMAIL_TRANSPORT=smtp` with `SMTP_URL`;
   development prints emails, including sign-in codes, to the console),
 - `INTERNAL_API_SECRET` is missing (32+ characters; the same value must be set

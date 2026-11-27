@@ -29,7 +29,7 @@ export function LoginForm({ next }: { next: string }) {
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="mfaToken" value={state.mfaToken} />
           <input type="hidden" name="next" value={next} />
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-600">
             {useRecovery
               ? "Enter one of the recovery codes you saved when you set up two-step verification."
               : `Open your authenticator app and enter the 6-digit code for ${BRAND.name}.`}
@@ -56,7 +56,7 @@ export function LoginForm({ next }: { next: string }) {
           <button
             type="button"
             onClick={() => setUseRecovery(!useRecovery)}
-            className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+            className="w-full text-center text-sm text-ink-500 hover:text-ink-900"
           >
             {useRecovery
               ? "Use a code from my app instead"
@@ -82,7 +82,7 @@ export function LoginForm({ next }: { next: string }) {
         <button
           type="button"
           onClick={() => setWithCode(true)}
-          className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+          className="w-full text-center text-sm text-ink-500 hover:text-ink-900"
         >
           No password? Email me a code instead
         </button>
@@ -100,7 +100,7 @@ function CodeLogin({ next, onBack }: { next: string; onBack: () => void }) {
     <Card>
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="next" value={next} />
-        {state.notice ? <p className="text-sm text-slate-600">{state.notice}</p> : null}
+        {state.notice ? <p className="text-sm text-ink-600">{state.notice}</p> : null}
 
         {state.step === "email" ? (
           <Field label="Email">
@@ -140,7 +140,7 @@ function CodeLogin({ next, onBack }: { next: string; onBack: () => void }) {
             name="intent"
             value="resend"
             formNoValidate
-            className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+            className="w-full text-center text-sm text-ink-500 hover:text-ink-900"
           >
             Send a new code
           </button>
@@ -148,7 +148,7 @@ function CodeLogin({ next, onBack }: { next: string; onBack: () => void }) {
         <button
           type="button"
           onClick={onBack}
-          className="w-full text-center text-sm text-slate-500 hover:text-slate-900"
+          className="w-full text-center text-sm text-ink-500 hover:text-ink-900"
         >
           Use my password instead
         </button>

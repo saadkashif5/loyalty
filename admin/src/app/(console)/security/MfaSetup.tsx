@@ -22,12 +22,12 @@ export function MfaSetup() {
   if (state.recoveryCodes) {
     return (
       <div className="space-y-4">
-        <p className="text-sm font-medium text-emerald-700">Two-step verification is on.</p>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm font-medium text-mint-700">Two-step verification is on.</p>
+        <p className="text-sm text-ink-600">
           Save these recovery codes somewhere safe. Each one signs you in once if you lose your
           phone. They will not be shown again.
         </p>
-        <ul className="grid grid-cols-2 gap-2 rounded-md bg-slate-50 p-4 font-mono text-sm">
+        <ul className="grid grid-cols-2 gap-2 rounded-xl bg-ink-50 p-4 font-mono text-sm">
           {state.recoveryCodes.map((code) => (
             <li key={code}>{code}</li>
           ))}
@@ -42,7 +42,7 @@ export function MfaSetup() {
   if (state.secret && state.qrDataUrl) {
     return (
       <form action={formAction} className="space-y-4">
-        <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-600">
           <li>Install an authenticator app (Google Authenticator or Microsoft Authenticator).</li>
           <li>Scan this code with the app, or type the key below.</li>
           <li>Enter the 6-digit code the app shows.</li>
@@ -54,7 +54,7 @@ export function MfaSetup() {
           width={220}
           height={220}
         />
-        <p className="break-all rounded-md bg-slate-50 p-3 font-mono text-xs text-slate-700">
+        <p className="break-all rounded-xl bg-ink-50 p-3 font-mono text-xs text-ink-700">
           {state.secret}
         </p>
         <Field label="Code from the app">
@@ -75,7 +75,7 @@ export function MfaSetup() {
 
   return (
     <form action={formAction} className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-600">
         Each time you sign in, you will enter a code from an app on your phone as well as your
         password. Everyone on the {BRAND.name} team must use it.
       </p>

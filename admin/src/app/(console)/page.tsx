@@ -27,7 +27,7 @@ export default async function OverviewPage() {
     <>
       <PageHeader title="Overview" description="The whole platform at a glance." />
 
-      <h2 className="mb-3 text-sm font-semibold text-slate-700">Needs attention</h2>
+      <h2 className="mb-3 text-sm font-semibold text-ink-700">Needs attention</h2>
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="New leads" value={newLeads.meta.total} href="/leads?status=NEW" />
         <Stat
@@ -47,7 +47,7 @@ export default async function OverviewPage() {
         />
       </div>
 
-      <h2 className="mb-3 text-sm font-semibold text-slate-700">Platform</h2>
+      <h2 className="mb-3 text-sm font-semibold text-ink-700">Platform</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Active businesses" value={overview.activeBusinesses} />
         <Stat label="All businesses" value={overview.businesses} />

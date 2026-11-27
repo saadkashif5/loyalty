@@ -33,7 +33,7 @@ export default async function ApprovalsPage({
               <Card className="flex flex-wrap items-center justify-between gap-4">
                 <div className="text-sm">
                   <p className="font-medium">{r.customerId?.name ?? "Customer"}</p>
-                  <p className="text-slate-500">
+                  <p className="text-ink-500">
                     Added by {r.requestedBy?.name ?? "staff"}
                     {r.branchId ? ` at ${r.branchId.name}` : ""} · {formatDate(r.createdAt)}
                   </p>

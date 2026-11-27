@@ -57,10 +57,7 @@ export default async function CustomerPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href={`/b/${businessId}/customers`}
-        className="text-sm text-slate-500 hover:text-slate-900"
-      >
+      <Link href={`/b/${businessId}/customers`} className="text-sm text-ink-500 hover:text-ink-900">
         ← Customers
       </Link>
       <PageHeader
@@ -78,7 +75,7 @@ export default async function CustomerPage({
             <p className="mt-2 text-2xl font-semibold tabular-nums">
               {card.stampCount} / {card.program?.requiredStamps}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-500">
               Joined {formatDate(card.joinedAt)} · last stamp {formatDate(card.lastStampAt)}
             </p>
             {canStamp && card.status === "ACTIVE" ? (
@@ -92,16 +89,16 @@ export default async function CustomerPage({
         <Card>
           <h2 className="mb-3 font-semibold">Recent stamps</h2>
           {detail.stamps.length === 0 ? (
-            <p className="text-sm text-slate-500">None yet.</p>
+            <p className="text-sm text-ink-500">None yet.</p>
           ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="divide-y divide-ink-100 text-sm">
               {detail.stamps.map((stamp) => (
                 <li key={stamp._id} className="flex justify-between gap-4 py-2">
                   <span>
                     {SOURCE_LABEL[stamp.source] ?? stamp.source}
                     {stamp.branchId ? ` · ${stamp.branchId.name}` : ""}
                   </span>
-                  <span className="text-slate-500">{formatDate(stamp.createdAt)}</span>
+                  <span className="text-ink-500">{formatDate(stamp.createdAt)}</span>
                 </li>
               ))}
             </ul>
@@ -111,13 +108,13 @@ export default async function CustomerPage({
         <Card>
           <h2 className="mb-3 font-semibold">Rewards</h2>
           {detail.redemptions.length === 0 ? (
-            <p className="text-sm text-slate-500">None yet.</p>
+            <p className="text-sm text-ink-500">None yet.</p>
           ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="divide-y divide-ink-100 text-sm">
               {detail.redemptions.map((r) => (
                 <li key={r._id} className="flex items-center justify-between gap-4 py-2">
                   <span>{r.rewardId?.name ?? "Reward"}</span>
-                  <span className="flex items-center gap-2 text-slate-500">
+                  <span className="flex items-center gap-2 text-ink-500">
                     {formatDate(r.redeemedAt ?? r.createdAt)}
                     <StatusBadge status={r.status} />
                   </span>

@@ -49,7 +49,7 @@ export function CouponForm() {
         </Field>
       </div>
       <ErrorText>{state.error}</ErrorText>
-      {state.done ? <p className="text-sm text-emerald-700">Created.</p> : null}
+      {state.done ? <p className="text-sm text-mint-700">Created.</p> : null}
       <Submit />
     </form>
   );

@@ -29,7 +29,7 @@ export function AddTeamMemberForm() {
   return (
     <Card className="space-y-3">
       <h2 className="font-semibold">Add someone</h2>
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-500">
         They need a {BRAND.name} account first. They must set up two-step verification before they
         can use the console.
       </p>

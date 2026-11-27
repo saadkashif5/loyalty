@@ -74,12 +74,12 @@ export function QrScanner({ onScan }: { onScan: (value: string) => void }) {
             ref={videoRef}
             muted
             playsInline
-            className="aspect-square w-full rounded-lg bg-black object-cover"
+            className="aspect-square w-full rounded-2xl bg-black object-cover"
           />
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="w-full text-sm text-slate-500"
+            className="w-full text-sm text-ink-500"
           >
             Cancel
           </button>
@@ -91,7 +91,7 @@ export function QrScanner({ onScan }: { onScan: (value: string) => void }) {
             setError(null);
             setOpen(true);
           }}
-          className="w-full rounded-md border border-slate-300 bg-white py-3 text-sm font-medium hover:bg-slate-50"
+          className="w-full rounded-xl border border-ink-300 bg-white py-3 text-sm font-medium hover:bg-ink-50"
         >
           📷 Scan with camera
         </button>

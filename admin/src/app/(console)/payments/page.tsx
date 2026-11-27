@@ -68,19 +68,19 @@ export default async function PaymentsPage({
                       "—"
                     )}
                   </p>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-ink-600">
                     Invoice {proof.invoiceId?.number} for {formatPkr(proof.invoiceId?.totalPkr)} ·
                     claims {formatPkr(proof.amountPkr)} by{" "}
                     {proof.method.replace("_", " ").toLowerCase()}
                     {proof.reference ? ` · ref ${proof.reference}` : ""}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-500">
                     Uploaded by {proof.uploadedBy?.name} ({proof.uploadedBy?.email}) ·{" "}
                     {formatDate(proof.createdAt)}
                   </p>
                   {proof.note ? <p className="mt-1 text-sm">“{proof.note}”</p> : null}
                   {mismatch ? (
-                    <p className="mt-1 text-sm text-amber-700">
+                    <p className="mt-1 text-sm text-accent-700">
                       The amount claimed is less than the invoice; approval will be refused.
                     </p>
                   ) : null}

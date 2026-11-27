@@ -1,6 +1,13 @@
 import PDFDocument from "pdfkit";
+import { COLORS, PALETTE } from "@taptapsell/brand";
 import type { InvoiceDocument } from "@/models";
 import { getPaymentDetails } from "./settings.service";
+
+// Brand colours (packages/brand), so invoices match the product.
+const INK = PALETTE.midnightInk;
+const MUTED = COLORS.ink[600];
+const FAINT = PALETTE.steam;
+const RULE = COLORS.ink[100];
 
 const pkr = (n: number) => `PKR ${n.toLocaleString("en-PK")}`;
 const day = (d: Date | null | undefined) =>
@@ -23,9 +30,12 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
   const { seller, buyer } = invoice;
   const right = 545;
 
+  // A Stamp Orange band across the top of the page.
+  doc.rect(0, 0, doc.page.width, 6).fill(PALETTE.stampOrange);
+
   // Seller
-  doc.fontSize(16).font("Helvetica-Bold").text(seller.name, 50, 50);
-  doc.fontSize(9).font("Helvetica").fillColor("#475569");
+  doc.fillColor(INK).fontSize(16).font("Helvetica-Bold").text(seller.name, 50, 50);
+  doc.fontSize(9).font("Helvetica").fillColor(MUTED);
   [
     seller.address,
     seller.ntn && `NTN: ${seller.ntn}`,
@@ -38,11 +48,11 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
 
   // Title block
   doc
-    .fillColor("#0f172a")
+    .fillColor(INK)
     .fontSize(20)
     .font("Helvetica-Bold")
     .text("INVOICE", 350, 50, { width: 195, align: "right" });
-  doc.fontSize(9).font("Helvetica").fillColor("#475569");
+  doc.fontSize(9).font("Helvetica").fillColor(MUTED);
   doc.text(`No. ${invoice.number}`, 350, 76, { width: 195, align: "right" });
   doc.text(`Issued: ${day(invoice.issuedAt)}`, { width: 195, align: "right" });
   doc.text(`Due: ${day(invoice.dueDate)}`, { width: 195, align: "right" });
@@ -50,7 +60,7 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
     doc
       .moveDown(0.3)
       .font("Helvetica-Bold")
-      .fillColor(invoice.status === "PAID" ? "#047857" : "#b91c1c");
+      .fillColor(invoice.status === "PAID" ? COLORS.mint[700] : "#b91c1c");
     doc.text(invoice.status === "PAID" ? `PAID ${day(invoice.paidAt)}` : "VOID", {
       width: 195,
       align: "right",
@@ -58,16 +68,16 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
   }
 
   // Buyer
-  doc.fillColor("#0f172a").fontSize(10).font("Helvetica-Bold").text("Bill to", 50, 150);
+  doc.fillColor(INK).fontSize(10).font("Helvetica-Bold").text("Bill to", 50, 150);
   doc.font("Helvetica").fontSize(10).text(buyer.name);
-  doc.fontSize(9).fillColor("#475569");
+  doc.fontSize(9).fillColor(MUTED);
   [buyer.address, buyer.ntn && `NTN: ${buyer.ntn}`, buyer.email, buyer.phone]
     .filter(Boolean)
     .forEach((line) => doc.text(line as string));
 
   // Lines
   let y = 230;
-  doc.fillColor("#0f172a").font("Helvetica-Bold").fontSize(9);
+  doc.fillColor(INK).font("Helvetica-Bold").fontSize(9);
   doc.text("Description", 50, y).text("Qty", 360, y, { width: 40, align: "right" });
   doc
     .text("Unit", 400, y, { width: 70, align: "right" })
@@ -75,7 +85,7 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
   doc
     .moveTo(50, y + 14)
     .lineTo(right, y + 14)
-    .strokeColor("#e2e8f0")
+    .strokeColor(RULE)
     .stroke();
   y += 22;
   doc.font("Helvetica").fontSize(9);
@@ -104,15 +114,15 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
   total(`${invoice.taxLabel} (${invoice.taxRatePercent}%)`, pkr(invoice.taxPkr));
   if (invoice.creditAppliedPkr)
     total("Credit from earlier credit notes", `- ${pkr(invoice.creditAppliedPkr)}`);
-  doc.moveTo(330, y).lineTo(right, y).strokeColor("#e2e8f0").stroke();
+  doc.moveTo(330, y).lineTo(right, y).strokeColor(RULE).stroke();
   y += 6;
   total("Total", pkr(invoice.totalPkr), true);
 
   // How to pay
   if (invoice.status === "ISSUED") {
     y += 20;
-    doc.fillColor("#0f172a").font("Helvetica-Bold").fontSize(10).text("How to pay", 50, y);
-    doc.font("Helvetica").fontSize(9).fillColor("#475569");
+    doc.fillColor(INK).font("Helvetica-Bold").fontSize(10).text("How to pay", 50, y);
+    doc.font("Helvetica").fontSize(9).fillColor(MUTED);
     for (const account of payment.bankAccounts) {
       doc.text(
         `${account.bankName} — ${account.accountTitle}, account ${account.accountNumber}${account.iban ? `, IBAN ${account.iban}` : ""}`,
@@ -127,7 +137,7 @@ export async function renderInvoicePdf(invoice: InvoiceDocument): Promise<Buffer
 
   doc
     .fontSize(8)
-    .fillColor("#94a3b8")
+    .fillColor(FAINT)
     .text(
       `Service period: ${day(invoice.periodStart)} to ${day(invoice.periodEnd)}. Amounts in Pakistani rupees.`,
       50,

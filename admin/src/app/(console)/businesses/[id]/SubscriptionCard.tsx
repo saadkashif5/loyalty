@@ -27,7 +27,7 @@ export function SubscriptionCard({
   const sub = billing.subscription;
   if (!sub) {
     return (
-      <Card className="text-sm text-slate-500">
+      <Card className="text-sm text-ink-500">
         No subscription (created before billing). This business has no plan limits.
       </Card>
     );
@@ -40,11 +40,11 @@ export function SubscriptionCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold">Subscription</h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-600">
             {sub.plan.name} (v{sub.plan.version}) · {formatPkr(price)} /
             {sub.billingCycle === "ANNUAL" ? "year" : "month"}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-500">
             {sub.status === "TRIALING"
               ? sub.trialEndsAt
                 ? `Trial ends ${formatDate(sub.trialEndsAt)}`
@@ -61,14 +61,14 @@ export function SubscriptionCard({
       </div>
 
       {sub.scheduledChange ? (
-        <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">
+        <p className="rounded-xl bg-ink-50 px-3 py-2 text-sm text-ink-800">
           Moves to {sub.scheduledChange.plan.name} ({sub.scheduledChange.billingCycle.toLowerCase()}
           ) on {formatDate(sub.scheduledChange.effectiveAt)}. A plan change here cancels this.
         </p>
       ) : null}
 
       {sub.coupon || sub.creditBalancePkr ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-mint-50 px-3 py-2 text-sm text-mint-900">
           {sub.coupon ? (
             <span>
               Coupon <strong>{sub.coupon.code}</strong>: {couponLabel(sub.coupon)}, for{" "}
@@ -88,8 +88,8 @@ export function SubscriptionCard({
 
       <div className="grid gap-2 text-sm sm:grid-cols-5">
         {LIMIT_LABELS.map(([key, label]) => (
-          <div key={key} className="rounded-md bg-slate-50 px-3 py-2">
-            <p className="text-xs text-slate-500">{label}</p>
+          <div key={key} className="rounded-xl bg-ink-50 px-3 py-2">
+            <p className="text-xs text-ink-500">{label}</p>
             <p className="font-medium tabular-nums">
               {billing.usage[key]} / {sub.plan.limits[key] ?? "∞"}
             </p>
@@ -98,7 +98,7 @@ export function SubscriptionCard({
       </div>
 
       {canManage ? (
-        <div className="grid gap-6 border-t border-slate-100 pt-4 lg:grid-cols-2">
+        <div className="grid gap-6 border-t border-ink-100 pt-4 lg:grid-cols-2">
           <div className="space-y-6">
             <ChangePlanForm
               businessId={businessId}
@@ -124,10 +124,10 @@ export function SubscriptionCard({
       ) : null}
 
       {canManage || sub.pendingCharges.length > 0 ? (
-        <div className="space-y-3 border-t border-slate-100 pt-4">
+        <div className="space-y-3 border-t border-ink-100 pt-4">
           <h3 className="text-sm font-semibold">Charges for the next invoice</h3>
           {sub.pendingCharges.length > 0 ? (
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="divide-y divide-ink-100 text-sm">
               {sub.pendingCharges.map((charge) => (
                 <li
                   key={charge._id}
@@ -149,7 +149,7 @@ export function SubscriptionCard({
         </div>
       ) : null}
 
-      <div className="border-t border-slate-100 pt-4">
+      <div className="border-t border-ink-100 pt-4">
         <div className="mb-2 flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">Invoices</h3>
           {canManage && !billing.openInvoice ? (
@@ -159,11 +159,11 @@ export function SubscriptionCard({
           ) : null}
         </div>
         {billing.invoices.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink-500">
             None yet. The next one is issued automatically a week before the trial or period ends.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {billing.invoices.map((inv) => (
               <li key={inv._id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                 <span className="flex items-center gap-2">
@@ -176,7 +176,7 @@ export function SubscriptionCard({
                     {inv.number}
                   </a>
                   <StatusBadge status={inv.status === "ISSUED" ? "PENDING" : inv.status} />
-                  <span className="text-slate-500">
+                  <span className="text-ink-500">
                     {formatPkr(inv.totalPkr)} · due {formatDate(inv.dueDate)}
                   </span>
                 </span>
@@ -189,7 +189,7 @@ export function SubscriptionCard({
                 ) : canManage && inv.status === "ISSUED" ? (
                   <VoidInvoiceForm businessId={businessId} invoiceId={inv._id} />
                 ) : inv.voidReason ? (
-                  <span className="text-xs text-slate-500">Void: {inv.voidReason}</span>
+                  <span className="text-xs text-ink-500">Void: {inv.voidReason}</span>
                 ) : null}
               </li>
             ))}
@@ -198,9 +198,9 @@ export function SubscriptionCard({
       </div>
 
       {billing.creditNotes?.length ? (
-        <div className="border-t border-slate-100 pt-4">
+        <div className="border-t border-ink-100 pt-4">
           <h3 className="mb-2 text-sm font-semibold">Credit notes</h3>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {billing.creditNotes.map((n) => (
               <li key={n._id} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
@@ -208,7 +208,7 @@ export function SubscriptionCard({
                   {formatPkr(n.amountPkr)} ·{" "}
                   {n.outcome === "REFUND" ? "refunded" : "kept as credit"}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-ink-500">
                   {n.reason} · {formatDate(n.createdAt)}
                 </span>
               </li>
@@ -218,16 +218,16 @@ export function SubscriptionCard({
       ) : null}
 
       {billing.payments.length > 0 ? (
-        <div className="border-t border-slate-100 pt-4">
+        <div className="border-t border-ink-100 pt-4">
           <h3 className="mb-2 text-sm font-semibold">Payments</h3>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {billing.payments.map((p) => (
               <li key={p._id} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
                   {formatPkr(p.amountPkr)} · {p.method.replace("_", " ").toLowerCase()}
                   {p.reference ? ` · ${p.reference}` : ""}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-ink-500">
                   {formatDate(p.periodStart)} → {formatDate(p.periodEnd)}
                 </span>
               </li>

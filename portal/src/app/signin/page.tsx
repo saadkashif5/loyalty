@@ -19,7 +19,7 @@ export default async function SignInPage({
       headline={t("home.whyTitle")}
       blurb={t("home.heroTitle")}
       footer={
-        <Link href="/" className="text-slate-500 hover:text-slate-900">
+        <Link href="/" className="text-ink-500 hover:text-ink-900">
           {t("signin.back")}
         </Link>
       }

@@ -19,7 +19,7 @@ export default async function ResetPasswordPage({
       {token ? (
         <ResetPasswordForm token={token} />
       ) : (
-        <p className="text-center text-sm text-slate-600">
+        <p className="text-center text-sm text-ink-600">
           This link is incomplete.{" "}
           <Link href="/forgot-password" className="font-medium text-brand-600 hover:underline">
             Ask for a new one

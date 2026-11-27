@@ -1,7 +1,8 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/server.ts", "src/worker.ts"],
+  // seedAdmin is built so the first admin can be created inside the production image.
+  entry: ["src/server.ts", "src/worker.ts", "src/scripts/seedAdmin.ts"],
   format: ["cjs"],
   platform: "node",
   target: "node20",

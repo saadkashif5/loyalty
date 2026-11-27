@@ -1,0 +1,115 @@
+# Production stack for one server. Images are built by .github/workflows/deploy.yml
+# and pulled here; see docs/deploy-hetzner.md.
+#
+# Files next to this one on the server:
+#   .env           IMAGE_PREFIX, TAG, DOMAIN, ACME_EMAIL     (from .env.example)
+#   api.env        API and worker settings                  (from api.env.example)
+#   frontend.env   web, admin and portal settings           (from frontend.env.example)
+#   Caddyfile
+
+name: stamply
+
+x-app: &app
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  caddy:
+    <<: *app
+    image: caddy:2.10-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [api, web, admin, portal]
+
+  api:
+    <<: *app
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX in .env}/api:${TAG:-latest}
+    env_file: api.env
+    environment:
+      PORT: "4000"
+      REDIS_URL: redis://redis:6379
+      STORAGE_DIR: /app/api/storage
+    volumes:
+      - storage:/app/api/storage
+    depends_on:
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Sends queued email (invitations etc.), builds exports and runs the hourly jobs.
+  worker:
+    <<: *app
+    image: ${IMAGE_PREFIX}/api:${TAG:-latest}
+    command: ["node", "dist/worker.js"]
+    env_file: api.env
+    environment:
+      REDIS_URL: redis://redis:6379
+      STORAGE_DIR: /app/api/storage
+    volumes:
+      - storage:/app/api/storage
+    depends_on:
+      redis: { condition: service_healthy }
+
+  # The three front ends call the API over the private Docker network.
+  web:
+    <<: *app
+    image: ${IMAGE_PREFIX}/web:${TAG:-latest}
+    env_file: frontend.env
+    environment:
+      API_BASE_URL: http://api:4000/api/v1
+    depends_on: [api]
+
+  admin:
+    <<: *app
+    image: ${IMAGE_PREFIX}/admin:${TAG:-latest}
+    env_file: frontend.env
+    environment:
+      API_BASE_URL: http://api:4000/api/v1
+    depends_on: [api]
+
+  portal:
+    <<: *app
+    image: ${IMAGE_PREFIX}/portal:${TAG:-latest}
+    env_file: frontend.env
+    environment:
+      API_BASE_URL: http://api:4000/api/v1
+    depends_on: [api]
+
+  redis:
+    <<: *app
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  caddy-data:
+  caddy-config:
+  storage:
+  redis-data:

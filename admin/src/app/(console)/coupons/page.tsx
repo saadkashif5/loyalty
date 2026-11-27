@@ -54,7 +54,7 @@ export default async function CouponsPage() {
               <Td>
                 <span className="font-mono font-medium">{c.code}</span>
                 {c.description ? (
-                  <span className="block text-xs text-slate-500">{c.description}</span>
+                  <span className="block text-xs text-ink-500">{c.description}</span>
                 ) : null}
               </Td>
               <Td>

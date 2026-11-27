@@ -103,11 +103,11 @@ export default async function AuditPage({
           placeholder="Business ID"
           className="max-w-[14rem] font-mono"
         />
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-ink-500">
           From
           <Input name="from" type="date" defaultValue={from} className="block" />
         </label>
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-ink-500">
           To
           <Input name="to" type="date" defaultValue={to} className="block" />
         </label>
@@ -126,10 +126,10 @@ export default async function AuditPage({
               <Td className="text-xs">
                 {entry.resourceType}
                 {entry.resourceId ? (
-                  <span className="block font-mono text-slate-400">{entry.resourceId}</span>
+                  <span className="block font-mono text-ink-400">{entry.resourceId}</span>
                 ) : null}
               </Td>
-              <Td className="max-w-xs break-words font-mono text-xs text-slate-500">
+              <Td className="max-w-xs break-words font-mono text-xs text-ink-500">
                 {entry.metadata && Object.keys(entry.metadata).length > 0
                   ? JSON.stringify(entry.metadata)
                   : ""}

@@ -51,8 +51,8 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
 function Invalid() {
   return (
-    <div className="space-y-2 text-sm text-slate-600">
-      <p className="font-medium text-slate-900">This invitation link does not work</p>
+    <div className="space-y-2 text-sm text-ink-600">
+      <p className="font-medium text-ink-900">This invitation link does not work</p>
       <p>
         It may have expired, been replaced by a newer link, or already been used. Ask the{" "}
         {BRAND.name}
@@ -69,7 +69,7 @@ async function InviteBody({ token, invitation }: { token: string; invitation: In
   const intro = (
     <div className="mb-5 space-y-1">
       <p className="text-lg font-semibold">{invitation.business.name}</p>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-600">
         You have been invited to manage this business on {BRAND.name} as its owner (
         {invitation.email}
         ).
@@ -92,7 +92,7 @@ async function InviteBody({ token, invitation }: { token: string; invitation: In
     return (
       <>
         {intro}
-        <p className="mb-4 text-sm text-slate-600">
+        <p className="mb-4 text-sm text-ink-600">
           You are signed in as {email}. Sign out, then open this link again.
         </p>
         <form action={logoutAction}>
@@ -109,12 +109,12 @@ async function InviteBody({ token, invitation }: { token: string; invitation: In
     return (
       <>
         {intro}
-        <p className="mb-4 text-sm text-slate-600">
+        <p className="mb-4 text-sm text-ink-600">
           You already have a {BRAND.name} account with this email. Sign in to accept.
         </p>
         <Link
           href={`/login?next=${encodeURIComponent(invitePath)}`}
-          className="block rounded-md bg-brand-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-brand-700"
+          className="block rounded-xl bg-brand-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-brand-700"
         >
           Sign in to accept
         </Link>

@@ -54,7 +54,7 @@ export default async function CustomersPage({
         title="Customers"
         description="Everyone with a loyalty card here. Phone numbers are partly hidden to protect customers' privacy."
       />
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-ink-600">
         {consents.whatsapp} customer{consents.whatsapp === 1 ? " has" : "s have"} agreed to hear
         from you on WhatsApp. Customers choose this in their {BRAND.name} profile.
       </p>
@@ -73,7 +73,7 @@ export default async function CustomersPage({
                 Download {formatDate(e.createdAt)} ({e.rows})
               </a>
             ) : (
-              <span key={e._id} className="text-slate-500">
+              <span key={e._id} className="text-ink-500">
                 {e.status === "FAILED" ? "Export failed" : "Preparing… refresh in a moment"}
               </span>
             ),
@@ -102,7 +102,7 @@ export default async function CustomersPage({
               <Card className="flex flex-wrap items-center justify-between gap-4 py-3 transition hover:border-brand-500">
                 <div>
                   <p className="font-medium">{row.customer?.name ?? "Deleted account"}</p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-ink-500">
                     {row.customer?.phone ?? row.customer?.email ?? "—"}
                   </p>
                 </div>
@@ -110,7 +110,7 @@ export default async function CustomersPage({
                   <p className="font-medium tabular-nums">
                     {row.stampCount} / {row.program?.requiredStamps ?? "?"} stamps
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-500">
                     {row.program?.name} · last stamp {formatDate(row.lastStampAt)}
                   </p>
                 </div>

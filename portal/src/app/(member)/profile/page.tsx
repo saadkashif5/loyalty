@@ -21,21 +21,23 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <h1 className="text-lg font-semibold">{t("profile.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+        {t("profile.title")}
+      </h1>
       <LanguageSwitch />
-      <p className="text-sm text-slate-500">{me.email}</p>
+      <p className="text-sm text-ink-500">{me.email}</p>
       <ProfileForm name={me.name} phone={me.phone} />
 
       {consents.length > 0 ? (
         <Card className="space-y-3">
           <div>
             <h2 className="font-semibold">{t("profile.whatsapp")}</h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-500">
               {t("profile.whatsappHelp")}
               {me.phone ? "" : t("profile.addNumberFirst")}
             </p>
           </div>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-ink-100">
             {consents.map((c) => (
               <li key={c.businessId} className="flex items-center justify-between gap-3 py-2">
                 <span className="text-sm">{c.business}</span>
@@ -45,9 +47,7 @@ export default async function ProfilePage() {
                     disabled={!c.whatsapp && !me.phone}
                     aria-pressed={c.whatsapp}
                     className={`rounded-full px-3 py-1 text-sm font-medium disabled:opacity-40 ${
-                      c.whatsapp
-                        ? "bg-emerald-600 text-white"
-                        : "border border-slate-300 text-slate-700"
+                      c.whatsapp ? "bg-mint-600 text-white" : "border border-ink-300 text-ink-700"
                     }`}
                   >
                     {c.whatsapp ? t("profile.allowed") : t("profile.allow")}
@@ -61,12 +61,12 @@ export default async function ProfilePage() {
 
       <a
         href="/files/my-data"
-        className="block w-full rounded-xl border border-slate-300 bg-white py-3 text-center font-medium text-slate-700"
+        className="block w-full rounded-xl border border-ink-300 bg-white py-3 text-center font-medium text-ink-700"
       >
         {t("profile.download")}
       </a>
       <form action={signOutAction}>
-        <button className="w-full rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-700">
+        <button className="w-full rounded-xl border border-ink-300 bg-white py-3 font-medium text-ink-700">
           {t("profile.signOut")}
         </button>
       </form>

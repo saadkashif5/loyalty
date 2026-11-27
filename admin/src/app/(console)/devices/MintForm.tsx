@@ -45,7 +45,7 @@ export function MintForm() {
 
       {state.devices ? (
         <div className="space-y-2">
-          <p className="text-sm text-amber-700">
+          <p className="text-sm text-accent-700">
             Write each identifier onto its tag (see docs/stamper-provisioning.md) and print these
             labels to pack with them. <strong>Activation codes are shown only now.</strong>
           </p>

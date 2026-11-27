@@ -70,7 +70,7 @@ export function PlanForm({ plan }: { plan?: Plan }) {
         ))}
       </div>
       <fieldset className="space-y-1 text-sm">
-        <legend className="mb-1 font-medium text-slate-700">Features in this plan</legend>
+        <legend className="mb-1 font-medium text-ink-700">Features in this plan</legend>
         {(
           Object.entries(PLAN_FEATURE_LABELS) as Array<[keyof typeof PLAN_FEATURE_LABELS, string]>
         ).map(([key, label]) => (
@@ -97,13 +97,13 @@ export function PlanForm({ plan }: { plan?: Plan }) {
         ) : null}
       </div>
       {plan ? (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-500">
           Saving creates version {plan.version + 1}. Businesses already on this plan keep their
           current price and limits.
         </p>
       ) : null}
       <ErrorText>{state.error}</ErrorText>
-      {state.done ? <p className="text-sm text-emerald-700">Saved.</p> : null}
+      {state.done ? <p className="text-sm text-mint-700">Saved.</p> : null}
       <Submit label={plan ? "Save plan" : "Create plan"} />
     </form>
   );
