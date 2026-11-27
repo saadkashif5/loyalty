@@ -1,12 +1,12 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { UI, statusClass, statusLabel } from "@taptapsell/brand/styles";
+
+// The admin console's building blocks. The look comes from packages/brand/src/styles.ts,
+// shared with the business dashboard and the customer portal.
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-lg border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`${UI.card} ${className}`}>{children}</div>;
 }
 
 export function PageHeader({
@@ -19,10 +19,10 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+        <h1 className={UI.pageTitle}>{title}</h1>
+        {description ? <p className={UI.pageDescription}>{description}</p> : null}
       </div>
       {action}
     </div>
@@ -31,47 +31,43 @@ export function PageHeader({
 
 export function Stat({ label, value, href }: { label: string; value: ReactNode; href?: string }) {
   const body = (
-    <Card className={href ? "transition hover:border-brand-500" : ""}>
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
+    <Card
+      className={href ? "h-full transition hover:-translate-y-0.5 hover:border-brand-500/40" : ""}
+    >
+      <p className={UI.statLabel}>
+        <span aria-hidden className={UI.statDot} />
+        {label}
+      </p>
+      <p className={UI.statValue}>{value}</p>
     </Card>
   );
-  return href ? <Link href={href}>{body}</Link> : body;
+  return href ? (
+    <Link
+      href={href}
+      className="block rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/30"
+    >
+      {body}
+    </Link>
+  ) : (
+    body
+  );
 }
 
-const BUTTON =
-  "inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition disabled:opacity-60";
-
 export function Button({ className = "", ...props }: ComponentProps<"button">) {
-  return (
-    <button
-      {...props}
-      className={`${BUTTON} bg-brand-500 text-white hover:bg-brand-600 ${className}`}
-    />
-  );
+  return <button {...props} className={`${UI.buttonBase} ${UI.buttonPrimary} ${className}`} />;
 }
 
 export function SecondaryButton({ className = "", ...props }: ComponentProps<"button">) {
-  return (
-    <button
-      {...props}
-      className={`${BUTTON} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 ${className}`}
-    />
-  );
+  return <button {...props} className={`${UI.buttonBase} ${UI.buttonSecondary} ${className}`} />;
 }
 
 export function DangerButton({ className = "", ...props }: ComponentProps<"button">) {
-  return (
-    <button
-      {...props}
-      className={`${BUTTON} border border-red-200 bg-white text-red-700 hover:bg-red-50 ${className}`}
-    />
-  );
+  return <button {...props} className={`${UI.buttonBase} ${UI.buttonDanger} ${className}`} />;
 }
 
 export function LinkButton({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className={`${BUTTON} bg-brand-500 text-white hover:bg-brand-600`}>
+    <Link href={href} className={`${UI.buttonBase} ${UI.buttonPrimary}`}>
       {children}
     </Link>
   );
@@ -80,93 +76,57 @@ export function LinkButton({ href, children }: { href: string; children: ReactNo
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+      <span className={UI.label}>{label}</span>
       {children}
     </label>
   );
 }
 
-const CONTROL =
-  "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500";
-
 export function Input({ className = "", ...props }: ComponentProps<"input">) {
-  return <input {...props} className={`${CONTROL} ${className}`} />;
+  return <input {...props} className={`${UI.control} ${className}`} />;
 }
 
 export function Select({ className = "", ...props }: ComponentProps<"select">) {
-  return <select {...props} className={`${CONTROL} ${className}`} />;
+  return <select {...props} className={`${UI.control} ${className}`} />;
 }
 
 export function Textarea({ className = "", ...props }: ComponentProps<"textarea">) {
-  return <textarea {...props} className={`${CONTROL} ${className}`} />;
+  return <textarea {...props} className={`${UI.control} ${className}`} />;
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
-  return children ? <p className="text-sm text-red-600">{children}</p> : null;
+  return children ? <p className={UI.errorText}>{children}</p> : null;
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return <Card className="text-center text-sm text-slate-500">{children}</Card>;
+  return <Card className={UI.emptyState}>{children}</Card>;
 }
 
 export function Table({ head, children }: { head: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+    <div className={UI.tableWrap}>
+      <table className={UI.table}>
+        <thead className={UI.tableHead}>
           <tr>
             {head.map((h) => (
-              <th key={h} className="px-4 py-2 font-medium">
+              <th key={h} className={UI.tableHeadCell}>
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">{children}</tbody>
+        <tbody className={UI.tableBody}>{children}</tbody>
       </table>
     </div>
   );
 }
 
 export function Td({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <td className={`px-4 py-2 align-top ${className}`}>{children}</td>;
+  return <td className={`${UI.tableCell} ${className}`}>{children}</td>;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: "bg-emerald-50 text-emerald-700",
-  ACCEPTED: "bg-emerald-50 text-emerald-700",
-  CONVERTED: "bg-emerald-50 text-emerald-700",
-  PENDING: "bg-amber-50 text-amber-700",
-  INVITED: "bg-amber-50 text-amber-700",
-  NEW: "bg-sky-50 text-sky-700",
-  CONTACTED: "bg-sky-50 text-sky-700",
-  ASSIGNED: "bg-sky-50 text-sky-700",
-  UNASSIGNED: "bg-slate-100 text-slate-600",
-  SUSPENDED: "bg-red-50 text-red-700",
-  REVOKED: "bg-red-50 text-red-700",
-  REJECTED: "bg-red-50 text-red-700",
-  EXPIRED: "bg-slate-100 text-slate-600",
-  OPEN: "bg-amber-50 text-amber-700",
-  DISMISSED: "bg-slate-100 text-slate-600",
-  CONFIRMED: "bg-red-50 text-red-700",
-  TRIALING: "bg-sky-50 text-sky-700",
-  PAST_DUE: "bg-amber-50 text-amber-700",
-  CANCELLED: "bg-slate-100 text-slate-600",
-  HIDDEN: "bg-slate-100 text-slate-600",
-  PAID: "bg-emerald-50 text-emerald-700",
-  VOID: "bg-slate-100 text-slate-600",
-  APPROVED: "bg-emerald-50 text-emerald-700",
-  REPLACED: "bg-slate-100 text-slate-600",
-  DISABLED: "bg-slate-100 text-slate-600",
-};
-
 export function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600";
-  return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${style}`}>
-      {status}
-    </span>
-  );
+  return <span className={statusClass(status)}>{statusLabel(status)}</span>;
 }
 
 export function formatDate(value: string | Date | null | undefined): string {
@@ -202,13 +162,21 @@ export function Pagination({
   };
 
   return (
-    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+    <div className={UI.pager}>
       <span>
         Page {page} of {pages} · {total} total
       </span>
-      <div className="flex gap-3">
-        {page > 1 ? <Link href={href(page - 1)}>← Previous</Link> : null}
-        {page < pages ? <Link href={href(page + 1)}>Next →</Link> : null}
+      <div className="flex gap-2">
+        {page > 1 ? (
+          <Link href={href(page - 1)} className={UI.pagerLink}>
+            ← Previous
+          </Link>
+        ) : null}
+        {page < pages ? (
+          <Link href={href(page + 1)} className={UI.pagerLink}>
+            Next →
+          </Link>
+        ) : null}
       </div>
     </div>
   );
@@ -243,9 +211,21 @@ export function CursorPagination({
   };
 
   return (
-    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
-      {isFirstPage ? <span /> : <Link href={href()}>← Back to newest</Link>}
-      {nextCursor ? <Link href={href(nextCursor)}>Older →</Link> : <span>End of list</span>}
+    <div className={UI.pager}>
+      {isFirstPage ? (
+        <span />
+      ) : (
+        <Link href={href()} className={UI.pagerLink}>
+          ← Back to newest
+        </Link>
+      )}
+      {nextCursor ? (
+        <Link href={href(nextCursor)} className={UI.pagerLink}>
+          Older →
+        </Link>
+      ) : (
+        <span>End of list</span>
+      )}
     </div>
   );
 }

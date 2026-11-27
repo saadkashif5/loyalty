@@ -41,14 +41,14 @@ export function SetupChecklist({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="font-semibold">Finish setting up</h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink-500">
             {done} of {SETUP_STEPS.length} done. Customers can collect stamps once the required
             steps are complete.
           </p>
         </div>
         <Link
           href={`/b/${businessId}/setup`}
-          className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          className="rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
         >
           Continue setup
         </Link>
@@ -59,13 +59,13 @@ export function SetupChecklist({
             <span
               className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${
                 status.steps[step.key]
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "border border-slate-300 text-slate-400"
+                  ? "bg-mint-100 text-mint-700"
+                  : "border border-ink-300 text-ink-400"
               }`}
             >
               {status.steps[step.key] ? "✓" : ""}
             </span>
-            <span className={status.steps[step.key] ? "text-slate-500 line-through" : ""}>
+            <span className={status.steps[step.key] ? "text-ink-500 line-through" : ""}>
               {step.label}
               {step.optional ? " (optional)" : ""}
             </span>

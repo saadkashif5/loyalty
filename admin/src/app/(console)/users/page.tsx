@@ -68,7 +68,7 @@ export default async function UsersPage({
                     </span>
                   ) : null}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-500">
                   {user.email}
                   {user.phone ? ` · ${user.phone}` : ""}
                 </p>

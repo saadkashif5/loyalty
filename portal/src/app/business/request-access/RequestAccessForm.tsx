@@ -34,7 +34,7 @@ export function RequestAccessForm({ plan }: { plan?: string }) {
 
   if (state.sent) {
     return (
-      <div className="rounded-2xl bg-emerald-50 p-6 text-emerald-900">
+      <div className="rounded-2xl bg-mint-50 p-6 text-mint-900">
         <p className="text-lg font-semibold">Thank you!</p>
         <p className="mt-1">We have your details and will call you soon to set things up.</p>
       </div>
@@ -61,7 +61,7 @@ export function RequestAccessForm({ plan }: { plan?: string }) {
           <select
             name="category"
             defaultValue="CAFE"
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3"
+            className="w-full rounded-xl border border-ink-300 bg-white px-3 py-3"
           >
             {CATEGORIES.map(([value, label]) => (
               <option key={value} value={value}>
@@ -91,7 +91,7 @@ export function RequestAccessForm({ plan }: { plan?: string }) {
           name="message"
           rows={3}
           maxLength={1000}
-          className="w-full rounded-xl border border-slate-300 px-3 py-3"
+          className="w-full rounded-xl border border-ink-300 px-3 py-3"
         />
       </Field>
       <ErrorText>{state.error}</ErrorText>

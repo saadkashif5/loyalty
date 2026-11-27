@@ -29,7 +29,7 @@ export function CouponEntry({ businessId }: { businessId: string }) {
         <Submit />
       </div>
       <ErrorText>{state.error}</ErrorText>
-      {state.saved ? <p className="text-sm text-emerald-700">Code applied.</p> : null}
+      {state.saved ? <p className="text-sm text-mint-700">Code applied.</p> : null}
     </form>
   );
 }

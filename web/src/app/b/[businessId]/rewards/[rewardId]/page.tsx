@@ -21,10 +21,7 @@ export default async function EditRewardPage({
 
   return (
     <div className="max-w-3xl">
-      <Link
-        href={`/b/${businessId}/rewards`}
-        className="text-sm text-slate-500 hover:text-slate-900"
-      >
+      <Link href={`/b/${businessId}/rewards`} className="text-sm text-ink-500 hover:text-ink-900">
         ← Rewards
       </Link>
       <PageHeader title={`Edit ${reward.name}`} />

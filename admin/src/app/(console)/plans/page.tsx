@@ -22,9 +22,9 @@ export default async function PlansPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">
-                {plan.name} <span className="font-mono text-xs text-slate-400">{plan.code}</span>
+                {plan.name} <span className="font-mono text-xs text-ink-400">{plan.code}</span>
               </p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-500">
                 {formatPkr(plan.priceMonthlyPkr)}/month · {formatPkr(plan.priceAnnualPkr)}/year ·
                 version {plan.version}
               </p>
@@ -42,7 +42,7 @@ export default async function PlansPage() {
               </div>
             </details>
           ) : (
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-ink-600">
               {LIMIT_LABELS.map(([key, label]) => `${label}: ${plan.limits[key] ?? "∞"}`).join(
                 " · ",
               )}

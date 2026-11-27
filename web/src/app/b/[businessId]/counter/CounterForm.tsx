@@ -63,8 +63,8 @@ function CounterRound({
   if (stampState.pending) {
     return (
       <Card className="space-y-3 text-center">
-        <p className="text-lg font-semibold text-amber-700">Sent for approval</p>
-        <p className="text-sm text-slate-600">
+        <p className="text-lg font-semibold text-accent-700">Sent for approval</p>
+        <p className="text-sm text-ink-600">
           You have added a lot of stamps today, so a manager needs to approve this one. The customer
           gets the stamp as soon as they do.
         </p>
@@ -79,12 +79,12 @@ function CounterRound({
     const { stampCount, requiredStamps, rewards } = stampState.done;
     return (
       <Card className="space-y-3 text-center">
-        <p className="text-lg font-semibold text-emerald-700">Stamp added</p>
-        <p className="text-sm text-slate-600">
+        <p className="text-lg font-semibold text-mint-700">Stamp added</p>
+        <p className="text-sm text-ink-600">
           {stampCount} of {requiredStamps} stamps
         </p>
         {rewards.length > 0 ? (
-          <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <p className="rounded-xl bg-mint-50 px-3 py-2 text-sm text-mint-800">
             Reward unlocked: {rewards.join(", ")}. It is now on the customer&apos;s card.
           </p>
         ) : null}
@@ -101,7 +101,7 @@ function CounterRound({
       <Card className="space-y-4">
         <div>
           <p className="text-lg font-semibold">{customer.name}</p>
-          <p className="text-sm text-slate-500">{customer.phone ?? customer.email}</p>
+          <p className="text-sm text-ink-500">{customer.phone ?? customer.email}</p>
         </div>
         <p className="text-sm">
           {card.program}: <strong>{card.stampCount}</strong> of {card.requiredStamps} stamps
@@ -124,7 +124,7 @@ function CounterRound({
           <ErrorText>{stampState.error}</ErrorText>
           <Submit label="Add stamp" pendingLabel="Adding…" />
         </form>
-        <button type="button" onClick={onNext} className="w-full text-sm text-slate-500">
+        <button type="button" onClick={onNext} className="w-full text-sm text-ink-500">
           Not this customer
         </button>
       </Card>
@@ -133,7 +133,7 @@ function CounterRound({
 
   return (
     <Card className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-600">
         Ask the customer to open their card and tap “Show at counter”.
       </p>
       <QrScanner onScan={onScan} />

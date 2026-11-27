@@ -27,7 +27,7 @@ export function CreateProgramForm({
 
   return (
     <Card className="h-fit">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700">New program</h2>
+      <h2 className="mb-4 text-sm font-semibold text-ink-700">New program</h2>
       <form action={formAction} className="space-y-4">
         <Field label="Name">
           <Input name="name" required placeholder="Coffee Rewards" />
@@ -61,7 +61,7 @@ export function CreateProgramForm({
             placeholder="Never"
           />
         </Field>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-500">
           The cooldown and daily limit stop one purchase turning into several stamps. Customers are
           warned a week before their stamps expire.
         </p>

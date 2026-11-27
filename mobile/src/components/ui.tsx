@@ -14,16 +14,30 @@ import {
 // Keep the two in step when the brand changes.
 export const BRAND_NAME = "Stamply";
 
+// The "Fresh Ink" board. Buttons use Ember (brand), not Stamp Orange: white
+// text on Stamp Orange is too faint at button sizes.
 export const colors = {
-  brand: "#5b2ed6",
-  brandDark: "#4a23b0",
-  text: "#0f172a",
-  muted: "#64748b",
-  border: "#e2e8f0",
-  surface: "#ffffff",
-  background: "#f8fafc",
-  danger: "#dc2626",
-  success: "#047857",
+  /** Ember: solid buttons, active tabs, links. */
+  brand: "#D63A0A",
+  /** Pressed buttons. */
+  brandDark: "#B02E08",
+  /** Stamp Orange: stamps, the logo, accents. */
+  stamp: "#FF5A1F",
+  /** Midnight Ink: text and dark surfaces. */
+  text: "#151A33",
+  /** Steam, a shade darker for small text. */
+  muted: "#656C87",
+  border: "#E6E8EF",
+  surface: "#FFFFFF",
+  /** Crema. */
+  background: "#FFF6EA",
+  danger: "#DC2626",
+  /** Mint Reward, darkened for text. */
+  success: "#178A6C",
+  /** Mint Reward. */
+  reward: "#2ED3A6",
+  /** Honey. */
+  highlight: "#FFC24B",
 };
 
 export function Screen({ children }: { children: React.ReactNode }) {
@@ -129,31 +143,31 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background, padding: 16 },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
+    padding: 18,
     marginBottom: 12,
   },
-  title: { fontSize: 20, fontWeight: "600", color: colors.text, marginBottom: 4 },
+  title: { fontSize: 24, fontWeight: "800", color: colors.text, marginBottom: 4, letterSpacing: -0.3 },
   muted: { fontSize: 14, color: colors.muted },
   error: { fontSize: 14, color: colors.danger, marginTop: 8 },
   button: {
     backgroundColor: colors.brand,
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 999,
+    paddingVertical: 15,
     alignItems: "center",
     marginTop: 12,
   },
   buttonGhost: { backgroundColor: "transparent" },
   buttonPressed: { opacity: 0.75 },
-  buttonLabel: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  buttonLabel: { color: "#fff", fontSize: 16, fontWeight: "700" },
   buttonLabelGhost: { color: colors.brand },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderRadius: 14,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
     backgroundColor: colors.surface,
@@ -178,5 +192,5 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
   },
-  stampDotFilled: { backgroundColor: colors.brand, borderColor: colors.brand },
+  stampDotFilled: { backgroundColor: colors.stamp, borderColor: colors.stamp },
 });

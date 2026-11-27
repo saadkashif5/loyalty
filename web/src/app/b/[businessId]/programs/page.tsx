@@ -41,9 +41,9 @@ export default async function ProgramsPage({
                   <div>
                     <p className="font-medium">{program.name}</p>
                     {program.description ? (
-                      <p className="mt-1 text-sm text-slate-500">{program.description}</p>
+                      <p className="mt-1 text-sm text-ink-500">{program.description}</p>
                     ) : null}
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-ink-600">
                       {program.requiredStamps} stamps to unlock a reward
                       {program.settings?.minMinutesBetweenStamps
                         ? ` · ${program.settings.minMinutesBetweenStamps} min between stamps`

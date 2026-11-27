@@ -63,7 +63,7 @@ export default async function DevicesPage({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="font-mono text-sm font-medium">{device.deviceIdentifier}</p>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-ink-500">
                       {device.deviceType}
                       {device.branchId ? ` · ${device.branchId.name}` : " · unassigned"}
                     </p>
@@ -80,7 +80,7 @@ export default async function DevicesPage({
                   </div>
                 </div>
                 {device.status === "ASSIGNED" && device.shipment?.shippedAt ? (
-                  <p className="mt-2 text-sm text-slate-600">
+                  <p className="mt-2 text-sm text-ink-600">
                     On its way: shipped {formatDate(device.shipment.shippedAt)}
                     {device.shipment.courier ? ` with ${device.shipment.courier}` : ""}
                     {device.shipment.trackingNumber
@@ -90,7 +90,7 @@ export default async function DevicesPage({
                   </p>
                 ) : null}
                 {device.lastProblem?.reason ? (
-                  <p className="mt-2 text-sm text-amber-700">
+                  <p className="mt-2 text-sm text-accent-700">
                     {PROBLEM_LABEL[device.lastProblem.reason]} {formatDate(device.lastProblem.at)}
                     {device.lastProblem.note ? ` — ${device.lastProblem.note}` : ""}
                   </p>

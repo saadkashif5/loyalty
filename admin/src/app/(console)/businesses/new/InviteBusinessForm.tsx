@@ -50,8 +50,8 @@ export function InviteBusinessForm({
   if (state.inviteUrl && state.businessId) {
     return (
       <Card className="space-y-4">
-        <p className="font-medium text-emerald-700">Business created and owner invited.</p>
-        <p className="text-sm text-slate-600">
+        <p className="font-medium text-mint-700">Business created and owner invited.</p>
+        <p className="text-sm text-ink-600">
           We emailed the owner this link. It works once and expires in 7 days. If it does not
           arrive, copy it and send it on WhatsApp.
         </p>

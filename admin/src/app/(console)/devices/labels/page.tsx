@@ -35,7 +35,7 @@ export default async function LabelsPage({
 
   return (
     <div className="space-y-4">
-      <Link href={backHref} className="print-hidden text-sm text-slate-500 hover:text-slate-900">
+      <Link href={backHref} className="print-hidden text-sm text-ink-500 hover:text-ink-900">
         ← Back
       </Link>
       <PageHeader

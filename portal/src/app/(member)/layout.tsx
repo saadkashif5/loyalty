@@ -2,12 +2,14 @@ import Link from "next/link";
 import { Logo } from "@taptapsell/brand/logo";
 import { apiFetch } from "@/lib/api";
 import { Pwa } from "@/components/Pwa";
+import { NavLink } from "@/components/NavLink";
+import { BellIcon, CardsIcon, GiftIcon, UserIcon } from "@/components/landing/icons";
 import { getT, pick } from "@/lib/i18n";
 
 const TABS = [
-  { href: "/cards", label: "nav.cards", icon: "🎟️" },
-  { href: "/rewards", label: "nav.rewards", icon: "🎁" },
-  { href: "/profile", label: "nav.me", icon: "👤" },
+  { href: "/cards", label: "nav.cards", Icon: CardsIcon },
+  { href: "/rewards", label: "nav.rewards", Icon: GiftIcon },
+  { href: "/profile", label: "nav.me", Icon: UserIcon },
 ] as const;
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
@@ -17,19 +19,19 @@ export default async function MemberLayout({ children }: { children: React.React
   }));
 
   return (
-    <div className="mx-auto min-h-screen max-w-md pb-24">
-      <header className="flex items-center justify-between px-5 pb-2 pt-5">
+    <div className="mx-auto min-h-screen max-w-md pb-28">
+      <header className="sticky top-0 z-30 flex items-center justify-between bg-crema/85 px-5 pb-3 pt-5 backdrop-blur-md">
         <Link href="/cards" aria-label="Cards">
           <Logo size="sm" />
         </Link>
         <Link
           href="/notifications"
-          className="relative rounded-full p-2 text-xl"
+          className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-sm ring-1 ring-ink/5 transition hover:ring-ink/15"
           aria-label={unread ? t("nav.notificationsNew", { n: unread }) : t("nav.notifications")}
         >
-          <span aria-hidden>🔔</span>
+          <BellIcon className="h-5 w-5" />
           {unread ? (
-            <span className="absolute right-0 top-0 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-semibold text-white">
+            <span className="absolute -end-1 -top-1 min-w-5 rounded-full bg-brand-500 px-1.5 py-0.5 text-center text-[11px] font-bold leading-none text-white ring-2 ring-crema">
               {unread > 9 ? "9+" : unread}
             </span>
           ) : null}
@@ -44,22 +46,22 @@ export default async function MemberLayout({ children }: { children: React.React
           "pwa.notNow",
         ])}
       />
-      <main className="space-y-4 px-5">{children}</main>
+      <main className="space-y-4 px-5 pt-2">{children}</main>
 
-      {/* Thumb-reachable navigation on phones. */}
-      <nav className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-md">
-          {TABS.map((tab) => (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs text-slate-600"
+      {/* Thumb-reachable navigation on phones: a floating Midnight Ink bar. */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex max-w-md gap-1 rounded-full bg-ink p-1.5 shadow-[0_20px_40px_-16px_rgb(var(--ink-900)/0.6)]">
+          {TABS.map(({ href, label, Icon }) => (
+            <NavLink
+              key={href}
+              href={href}
+              className="flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition"
+              activeClassName="bg-brand-500 text-ink"
+              inactiveClassName="text-ink-200 hover:text-crema"
             >
-              <span className="text-lg" aria-hidden>
-                {tab.icon}
-              </span>
-              {t(tab.label)}
-            </Link>
+              <Icon className="h-5 w-5" />
+              {t(label)}
+            </NavLink>
           ))}
         </div>
       </nav>

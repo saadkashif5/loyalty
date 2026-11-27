@@ -58,22 +58,22 @@ export default async function SetupPage({
             <li key={s.key}>
               <Link
                 href={`/b/${businessId}/setup?step=${s.key}`}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${
                   s.key === current ? "bg-white font-medium shadow-sm" : "hover:bg-white"
                 }`}
               >
                 <span
                   className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
                     status.steps[s.key]
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "border border-slate-300 text-slate-500"
+                      ? "bg-mint-100 text-mint-700"
+                      : "border border-ink-300 text-ink-500"
                   }`}
                 >
                   {status.steps[s.key] ? "✓" : i + 1}
                 </span>
                 <span>
                   {s.label}
-                  <span className="block text-xs font-normal text-slate-500">{s.hint}</span>
+                  <span className="block text-xs font-normal text-ink-500">{s.hint}</span>
                 </span>
               </Link>
             </li>
@@ -83,8 +83,8 @@ export default async function SetupPage({
         <div className="space-y-4">
           {current === null ? (
             <Card className="space-y-2">
-              <p className="font-semibold text-emerald-700">You are ready.</p>
-              <p className="text-sm text-slate-600">
+              <p className="font-semibold text-mint-700">You are ready.</p>
+              <p className="text-sm text-ink-600">
                 Put the stamper on your counter. Customers tap it with their phone to join and
                 collect stamps.
               </p>
@@ -108,7 +108,7 @@ export default async function SetupPage({
 
           {current === "program" ? (
             <>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-ink-600">
                 A program sets how many stamps fill a card — for example 6 stamps for a free chai.
               </p>
               <CreateProgramForm businessId={businessId} />
@@ -117,7 +117,7 @@ export default async function SetupPage({
 
           {current === "reward" ? (
             programs.length === 0 ? (
-              <Card className="text-sm text-slate-600">Create a loyalty program first.</Card>
+              <Card className="text-sm text-ink-600">Create a loyalty program first.</Card>
             ) : (
               <CreateRewardForm businessId={businessId} programs={programs} />
             )
@@ -125,12 +125,12 @@ export default async function SetupPage({
 
           {current === "stamper" ? (
             <>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-ink-600">
                 Your stamper comes from {BRAND.name} with a stamper ID and an activation code. Not
                 received it yet? You can finish the other steps and come back.
               </p>
               {branches.length === 0 ? (
-                <Card className="text-sm text-slate-600">Add a branch first.</Card>
+                <Card className="text-sm text-ink-600">Add a branch first.</Card>
               ) : (
                 <ActivateDeviceForm businessId={businessId} branches={branches} />
               )}
@@ -139,7 +139,7 @@ export default async function SetupPage({
 
           {current === "staff" ? (
             <>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-ink-600">
                 Optional. The person needs a {BRAND.name} account first; they accept the invitation
                 when they next sign in.
               </p>
@@ -148,12 +148,12 @@ export default async function SetupPage({
           ) : null}
 
           {current !== null && status.steps[current] ? (
-            <p className="text-sm text-emerald-700">This step is done.</p>
+            <p className="text-sm text-mint-700">This step is done.</p>
           ) : null}
           {current !== null ? (
             <Link
               href={next ? `/b/${businessId}/setup?step=${next.key}` : `/b/${businessId}`}
-              className="inline-block text-sm text-slate-500 hover:text-slate-900"
+              className="inline-block text-sm text-ink-500 hover:text-ink-900"
             >
               {next ? `Skip to: ${next.label} →` : "Finish later →"}
             </Link>

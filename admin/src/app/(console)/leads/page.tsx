@@ -83,11 +83,11 @@ export default async function LeadsPage({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold">{lead.businessName}</p>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-ink-600">
                     {lead.contactName} · {lead.phone}
                     {lead.email ? ` · ${lead.email}` : ""}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-500">
                     {lead.category} · {lead.city}
                     {lead.branches ? ` · ${lead.branches} branches` : ""} ·{" "}
                     {formatDate(lead.createdAt)}
@@ -96,14 +96,14 @@ export default async function LeadsPage({
                 <StatusBadge status={lead.status} />
               </div>
 
-              {lead.message ? <p className="text-sm text-slate-700">“{lead.message}”</p> : null}
+              {lead.message ? <p className="text-sm text-ink-700">“{lead.message}”</p> : null}
 
               {lead.notes.length > 0 ? (
-                <ul className="space-y-1 border-l-2 border-slate-200 pl-3 text-sm">
+                <ul className="space-y-1 border-l-2 border-ink-200 pl-3 text-sm">
                   {lead.notes.map((note) => (
                     <li key={note._id}>
                       {note.text}{" "}
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-ink-400">
                         — {note.by?.name ?? "someone"}, {formatDate(note.at)}
                       </span>
                     </li>
@@ -112,7 +112,7 @@ export default async function LeadsPage({
               ) : null}
 
               {canManage ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-3">
                   <LeadUpdateForm leadId={lead._id} status={lead.status} />
                   {lead.status === "CONVERTED" && lead.businessId ? (
                     <Link

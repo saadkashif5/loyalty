@@ -20,7 +20,7 @@ export function CreateBranchForm({ businessId }: { businessId: string }) {
 
   return (
     <Card className="h-fit">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700">New branch</h2>
+      <h2 className="mb-4 text-sm font-semibold text-ink-700">New branch</h2>
       <form action={formAction} className="space-y-4">
         <Field label="Name">
           <Input name="name" required placeholder="Gulberg Branch" />

@@ -19,11 +19,11 @@ export default async function LoginPage({
       footer={
         <>
           <p>
-            <Link href="/forgot-password" className="text-slate-500 hover:text-slate-900">
+            <Link href="/forgot-password" className="text-ink-500 hover:text-ink-900">
               Forgot your password?
             </Link>
           </p>
-          <p className="text-slate-500">
+          <p className="text-ink-500">
             Staff member without an account?{" "}
             <Link href="/register" className="font-medium text-brand-600 hover:underline">
               Create one
@@ -33,7 +33,7 @@ export default async function LoginPage({
       }
     >
       {reset ? (
-        <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-center text-sm text-emerald-800">
+        <p className="mb-4 rounded-xl bg-mint-50 px-3 py-2 text-center text-sm text-mint-800">
           Password changed. Sign in with your new password.
         </p>
       ) : null}

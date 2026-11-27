@@ -79,19 +79,19 @@ export function WebNfcTap({ messages }: { messages: NfcMessages }) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 text-center text-sm">
+    <div className="rounded-xl border border-ink-200 bg-white p-4 text-center text-sm">
       {state === "listening" ? (
         <p className="font-medium text-brand-600">{messages["nfc.listening"]}</p>
       ) : (
         <button
           type="button"
           onClick={listen}
-          className="w-full rounded-lg bg-brand-600 py-2.5 font-medium text-white"
+          className="w-full rounded-2xl bg-brand-600 py-2.5 font-medium text-white"
         >
           {messages["nfc.button"]}
         </button>
       )}
-      {message ? <p className="mt-2 text-slate-600">{message}</p> : null}
+      {message ? <p className="mt-2 text-ink-600">{message}</p> : null}
     </div>
   );
 }

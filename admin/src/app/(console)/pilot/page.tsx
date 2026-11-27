@@ -57,8 +57,8 @@ export default async function PilotPage({
               <Link
                 key={d}
                 href={`/pilot?days=${d}`}
-                className={`rounded-md px-3 py-1.5 ${
-                  d === days ? "bg-slate-900 text-white" : "border border-slate-300 bg-white"
+                className={`rounded-xl px-3 py-1.5 ${
+                  d === days ? "bg-ink-900 text-white" : "border border-ink-300 bg-white"
                 }`}
               >
                 {d} days
@@ -87,7 +87,7 @@ export default async function PilotPage({
         <Stat label="New cards" value={totals.newCards} />
         <Stat label="Cards stamped in this period" value={totals.activeCards} />
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         A tap fails when the stamper link cannot be read, was used before, or came from a different
         chip. Counting started with this release, so earlier days show no taps.
       </p>

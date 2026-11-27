@@ -78,12 +78,12 @@ export function AuthShell({
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-1 text-center text-sm text-slate-500 lg:text-start">{subtitle}</p>
+            <p className="mt-1 text-center text-sm text-ink-500 lg:text-start">{subtitle}</p>
           ) : null}
           <div className="mt-6">{children}</div>
           {footer ? <div className="mt-6 space-y-2 text-center text-sm">{footer}</div> : null}
-          <p className="mt-10 text-center text-xs text-slate-400 lg:hidden">
-            <Byline linkClassName="underline-offset-2 hover:text-slate-600 hover:underline" />
+          <p className="mt-10 text-center text-xs text-ink-400 lg:hidden">
+            <Byline linkClassName="underline-offset-2 hover:text-ink-600 hover:underline" />
           </p>
         </div>
       </main>

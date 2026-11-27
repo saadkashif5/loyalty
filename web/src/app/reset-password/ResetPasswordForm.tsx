@@ -42,7 +42,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           </Link>
         ) : null}
         <Submit />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-500">
           You will be signed out on every device, and asked to sign in again.
         </p>
       </form>

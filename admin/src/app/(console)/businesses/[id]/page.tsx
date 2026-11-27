@@ -92,7 +92,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6">
-      <Link href="/businesses" className="text-sm text-slate-500 hover:text-slate-900">
+      <Link href="/businesses" className="text-sm text-ink-500 hover:text-ink-900">
         ← Businesses
       </Link>
       <PageHeader
@@ -114,7 +114,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
           <p>Email: {business.contact?.email ?? "—"}</p>
           <p>Address: {business.contact?.address ?? "—"}</p>
           <p>City: {business.contact?.city ?? "—"}</p>
-          {business.description ? <p className="text-slate-500">{business.description}</p> : null}
+          {business.description ? <p className="text-ink-500">{business.description}</p> : null}
         </Card>
 
         {canManage && business.status !== "PENDING" ? (
@@ -129,11 +129,11 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
         <h2 className="font-semibold">Support notes</h2>
         <AddNoteForm businessId={business._id} />
         {notes.length > 0 ? (
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {notes.map((n) => (
               <li key={n._id} className="py-2">
                 <p className="whitespace-pre-wrap">{n.body}</p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-ink-400">
                   {n.authorId?.name ?? "Someone"} · {formatDate(n.createdAt)}
                 </p>
               </li>
@@ -180,14 +180,14 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
       <section>
         <h2 className="mb-3 font-semibold">Owner invitations</h2>
         {detail.invitations.length === 0 ? (
-          <p className="text-sm text-slate-500">None.</p>
+          <p className="text-sm text-ink-500">None.</p>
         ) : (
           <Table head={["Invited", "Status", "Expires", "Sent", canManage ? "Actions" : ""]}>
             {detail.invitations.map((inv) => (
               <tr key={inv.id}>
                 <Td>
                   <p className="font-medium">{inv.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-500">
                     {inv.email}
                     {inv.phone ? ` · ${inv.phone}` : ""}
                   </p>
@@ -215,14 +215,14 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
       <section>
         <h2 className="mb-3 font-semibold">People</h2>
         {detail.members.length === 0 ? (
-          <p className="text-sm text-slate-500">Nobody yet — the owner has not accepted.</p>
+          <p className="text-sm text-ink-500">Nobody yet — the owner has not accepted.</p>
         ) : (
           <Table head={["Name", "Role", "Status"]}>
             {detail.members.map((m) => (
               <tr key={m._id}>
                 <Td>
                   <p className="font-medium">{m.userId?.name ?? "Deleted user"}</p>
-                  <p className="text-xs text-slate-500">{m.userId?.email}</p>
+                  <p className="text-xs text-ink-500">{m.userId?.email}</p>
                 </Td>
                 <Td>{m.role}</Td>
                 <Td>
@@ -237,7 +237,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
       <section>
         <h2 className="mb-3 font-semibold">Branches</h2>
         {detail.branches.length === 0 ? (
-          <p className="text-sm text-slate-500">No branches yet.</p>
+          <p className="text-sm text-ink-500">No branches yet.</p>
         ) : (
           <Table head={["Branch", "Address", "Status"]}>
             {detail.branches.map((b) => (
@@ -279,7 +279,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
                     <>
                       Shipped {formatDate(d.shipment.shippedAt)}
                       {d.shipment.courier ? (
-                        <span className="block text-slate-500">
+                        <span className="block text-ink-500">
                           {d.shipment.courier}
                           {d.shipment.trackingNumber ? ` · ${d.shipment.trackingNumber}` : ""}
                         </span>
@@ -297,7 +297,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
                     {canAssign && d.status !== "REVOKED" && d.status !== "REPLACED" ? (
                       <ResetTagForm deviceId={d._id} businessId={business._id} tagUid={d.tagUid} />
                     ) : d.tagUid ? (
-                      <span className="font-mono text-xs text-slate-500">{d.tagUid}</span>
+                      <span className="font-mono text-xs text-ink-500">{d.tagUid}</span>
                     ) : null}
                   </div>
                 </Td>
@@ -306,7 +306,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
             ))}
           </Table>
         ) : (
-          <p className="text-sm text-slate-500">No stampers assigned yet.</p>
+          <p className="text-sm text-ink-500">No stampers assigned yet.</p>
         )}
         {canAssign && unassigned && business.status !== "SUSPENDED" ? (
           <Card>

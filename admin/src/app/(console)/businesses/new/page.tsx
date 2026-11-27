@@ -21,7 +21,7 @@ export default async function NewBusinessPage({
 
   return (
     <div className="max-w-3xl">
-      <Link href="/businesses" className="text-sm text-slate-500 hover:text-slate-900">
+      <Link href="/businesses" className="text-sm text-ink-500 hover:text-ink-900">
         ← Businesses
       </Link>
       <PageHeader

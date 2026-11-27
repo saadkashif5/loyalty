@@ -29,7 +29,7 @@ export function ActivateDeviceForm({
 
   if (branches.length === 0) {
     return (
-      <Card className="h-fit text-sm text-slate-500">
+      <Card className="h-fit text-sm text-ink-500">
         Create a branch first — every stamper belongs to one.
       </Card>
     );
@@ -37,7 +37,7 @@ export function ActivateDeviceForm({
 
   return (
     <Card className="h-fit">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700">Activate a stamper</h2>
+      <h2 className="mb-4 text-sm font-semibold text-ink-700">Activate a stamper</h2>
       <form action={formAction} className="space-y-4">
         <Field label="Stamper ID">
           <Input
@@ -61,7 +61,7 @@ export function ActivateDeviceForm({
           <select
             name="branchId"
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-ink-300 px-3 py-2 text-sm"
           >
             {branches.map((branch) => (
               <option key={branch._id} value={branch._id}>
@@ -70,7 +70,7 @@ export function ActivateDeviceForm({
             ))}
           </select>
         </Field>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-500">
           Both codes are printed on the card shipped with your stamper.
         </p>
         <ErrorText>{state.error}</ErrorText>

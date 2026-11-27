@@ -21,7 +21,7 @@ export function LabelSheet({ labels }: { labels: Label[] }) {
       <button
         type="button"
         onClick={() => window.print()}
-        className="print-hidden rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        className="print-hidden rounded-xl border border-ink-300 bg-white px-3 py-2 text-sm font-medium hover:bg-ink-50"
       >
         Print labels
       </button>
@@ -29,7 +29,7 @@ export function LabelSheet({ labels }: { labels: Label[] }) {
         {labels.map((label) => (
           <div
             key={label.deviceIdentifier}
-            className="flex break-inside-avoid items-center gap-3 rounded-lg border border-slate-300 bg-white p-3"
+            className="flex break-inside-avoid items-center gap-3 rounded-2xl border border-ink-300 bg-white p-3"
           >
             <img src={label.qrDataUrl} alt="" width={96} height={96} />
             <div className="min-w-0 text-xs">
@@ -41,12 +41,12 @@ export function LabelSheet({ labels }: { labels: Label[] }) {
                 </p>
               ) : null}
               {label.business ? (
-                <p className="mt-1 text-slate-500">
+                <p className="mt-1 text-ink-500">
                   {label.business}
                   {label.branch ? ` · ${label.branch}` : ""}
                 </p>
               ) : null}
-              <p className="mt-1 text-slate-500">Scan to activate</p>
+              <p className="mt-1 text-ink-500">Scan to activate</p>
             </div>
           </div>
         ))}

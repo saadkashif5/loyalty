@@ -37,7 +37,20 @@ const preset: Partial<Config> = {
       },
     },
   },
-  plugins: [plugin(({ addBase }) => addBase({ ":root": variables }))],
+  plugins: [
+    plugin(({ addBase }) =>
+      addBase({
+        ":root": variables,
+        // Headlines are Outfit everywhere; body text stays Inter.
+        "h1, h2, h3": {
+          fontFamily: `var(${FONTS.display.variable}, ${SYSTEM})`,
+          letterSpacing: "-0.015em",
+        },
+        "::selection": { backgroundColor: "rgb(var(--brand-500) / 0.25)", color: "inherit" },
+        ":focus-visible": { outlineColor: "rgb(var(--brand-500))" },
+      }),
+    ),
+  ],
 };
 
 export default preset;

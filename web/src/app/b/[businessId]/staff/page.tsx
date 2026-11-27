@@ -41,7 +41,7 @@ export default async function StaffPage({ params }: { params: Promise<{ business
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="font-medium">{member.userId?.name ?? "Pending user"}</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-ink-500">
                       {member.userId?.email} · {member.role.toLowerCase()} ·{" "}
                       {member.branchIds.length === 0
                         ? "all branches"

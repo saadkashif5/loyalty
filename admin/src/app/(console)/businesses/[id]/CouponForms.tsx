@@ -23,9 +23,9 @@ export function ApplyCouponForm({ businessId }: { businessId: string }) {
       <Field label="Apply a coupon">
         <Input name="code" required placeholder="LAUNCH50" className="uppercase" />
       </Field>
-      <p className="text-xs text-slate-500">An open invoice is reissued with the coupon.</p>
+      <p className="text-xs text-ink-500">An open invoice is reissued with the coupon.</p>
       <ErrorText>{state.error}</ErrorText>
-      {state.done ? <p className="text-sm text-emerald-700">Applied.</p> : null}
+      {state.done ? <p className="text-sm text-mint-700">Applied.</p> : null}
       <Submit label="Apply" />
     </form>
   );
@@ -42,7 +42,7 @@ export function CreditNoteForm({
   maxPkr: number;
 }) {
   const [state, action] = useActionState(creditNoteAction.bind(null, businessId, invoiceId), {});
-  if (state.done) return <span className="text-xs text-emerald-700">Credit note issued</span>;
+  if (state.done) return <span className="text-xs text-mint-700">Credit note issued</span>;
 
   return (
     <details>

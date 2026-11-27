@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
       headline="Platform console."
       blurb="Businesses, stampers, billing and support, in one place."
       footer={
-        <Link href="/login" className="text-slate-500 hover:text-slate-900">
+        <Link href="/login" className="text-ink-500 hover:text-ink-900">
           Back to sign in
         </Link>
       }

@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       dir={locale === "ur" ? "rtl" : "ltr"}
       className={`${display.variable} ${body.variable}`}
     >
-      <body className="min-h-screen bg-slate-50 font-sans">{children}</body>
+      <body className="min-h-screen bg-crema font-sans">{children}</body>
     </html>
   );
 }

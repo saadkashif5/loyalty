@@ -34,7 +34,7 @@ export default async function ActivatePage({
         </EmptyState>
       ) : (
         <ul className="space-y-3">
-          <p className="text-sm text-slate-500">Which business is this stamper for?</p>
+          <p className="text-sm text-ink-500">Which business is this stamper for?</p>
           {businesses.map((m) => (
             <li key={m.business!._id}>
               <Link href={target(m.business!._id)} className="block">

@@ -49,10 +49,10 @@ export function ChangePlanButton({
 
   if (quote.kind === "CURRENT") return null;
   if (quote.kind === "CONTACT_TEAM") {
-    return <p className="text-xs text-slate-500">Contact the team to upgrade an annual plan.</p>;
+    return <p className="text-xs text-ink-500">Contact the team to upgrade an annual plan.</p>;
   }
   if (quote.blockers.length > 0) {
-    return <p className="text-xs text-amber-700">{quote.blockers.join(" ")}</p>;
+    return <p className="text-xs text-accent-700">{quote.blockers.join(" ")}</p>;
   }
   if (!confirming) {
     return (
@@ -66,9 +66,9 @@ export function ChangePlanButton({
     <form action={action} className="space-y-2">
       <input type="hidden" name="planCode" value={planCode} />
       <input type="hidden" name="billingCycle" value={billingCycle} />
-      <p className="text-xs text-slate-600">{explain(quote)}</p>
+      <p className="text-xs text-ink-600">{explain(quote)}</p>
       {quote.warnings.map((warning) => (
-        <p key={warning} className="text-xs text-amber-700">
+        <p key={warning} className="text-xs text-accent-700">
           {warning}
         </p>
       ))}

@@ -78,7 +78,7 @@ export default async function DevicesPage({
                 <Td>
                   <StatusBadge status={d.status} />
                   {d.status === "ASSIGNED" && d.shipment?.shippedAt ? (
-                    <span className="block text-xs text-slate-500">
+                    <span className="block text-xs text-ink-500">
                       shipped {formatDate(d.shipment.shippedAt)}
                     </span>
                   ) : null}

@@ -59,7 +59,7 @@ export default async function BusinessesPage() {
 
       {invitations.length > 0 ? (
         <section className="mb-6 space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700">Invitations</h2>
+          <h2 className="text-sm font-semibold text-ink-700">Invitations</h2>
           {invitations.map((inv) => (
             <Card
               key={inv.business._id}
@@ -96,7 +96,7 @@ export default async function BusinessesPage() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-medium">{m.business!.name}</p>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-ink-500">
                         {m.business!.category} ·{" "}
                         {m.supportView ? "support view (read-only)" : `your role: ${m.role}`}
                       </p>

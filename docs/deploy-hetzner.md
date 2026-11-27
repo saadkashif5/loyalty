@@ -16,7 +16,7 @@ onto them. The server never builds anything.
 
 | What | Service | Cost (approx.) |
 |---|---|---|
-| Server | Hetzner CX22/CX23, 2 vCPU, 4 GB, x86 | ~€4–6/month |
+| Server | Hetzner CX23, 2 vCPU, 4 GB, x86 (prices rose June 2026) | ~€6/month with IPv4 |
 | Server backups | Hetzner Backups (daily, 7 kept) | +20% of the server |
 | Database | MongoDB Atlas M0 (free) to start | free |
 | Email | Brevo (300 emails/day free) | free |
@@ -101,8 +101,9 @@ chmod 700 /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authorized_keys
 fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
-# SSH: keys only, no root login
-printf 'PasswordAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/99-hardening.conf
+# SSH: keys only, no root login. The file name must sort before Ubuntu's
+# 50-cloud-init.conf: sshd keeps the first value it reads for each setting.
+printf 'PasswordAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/00-hardening.conf
 systemctl restart ssh
 
 mkdir -p /home/deploy/stamply && chown deploy:deploy /home/deploy/stamply

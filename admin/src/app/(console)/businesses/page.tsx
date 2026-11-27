@@ -113,7 +113,7 @@ export default async function BusinessesPage({
                 >
                   {b.name}
                 </Link>
-                <p className="text-xs text-slate-400">{b.slug}</p>
+                <p className="text-xs text-ink-400">{b.slug}</p>
               </Td>
               <Td>{b.category}</Td>
               <Td>
@@ -123,7 +123,7 @@ export default async function BusinessesPage({
                 {b.plan ? (
                   <>
                     {b.plan.name}
-                    <span className="block text-xs text-slate-400">
+                    <span className="block text-xs text-ink-400">
                       {b.plan.status.toLowerCase().replace("_", " ")}
                     </span>
                   </>

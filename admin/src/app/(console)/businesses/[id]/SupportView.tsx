@@ -41,7 +41,7 @@ export function SupportViewForm({
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-md bg-brand-500 px-3 py-2 font-medium text-white hover:bg-brand-600"
+              className="rounded-full bg-brand-600 px-3 py-2 font-medium text-white hover:bg-brand-700"
             >
               Open dashboard ↗
             </a>
@@ -65,7 +65,7 @@ export function SupportViewForm({
           placeholder="e.g. owner says stamps are missing"
         />
       </Field>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-500">
         Read-only, for 30 minutes. The reason and every page you open are recorded in the audit log,
         and every dashboard page you see is marked as a support view.
       </p>

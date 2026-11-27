@@ -92,13 +92,13 @@ export default async function FinancePage() {
       {data.mrrByPlan.length > 0 ? (
         <Card>
           <h2 className="mb-3 font-semibold">Revenue by plan</h2>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {data.mrrByPlan.map((row) => (
               <li key={row.plan} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
                   {row.plan} · {row.businesses} paying
                 </span>
-                <span className="text-slate-500">{formatPkr(row.mrrPkr)} / month</span>
+                <span className="text-ink-500">{formatPkr(row.mrrPkr)} / month</span>
               </li>
             ))}
           </ul>
@@ -108,13 +108,13 @@ export default async function FinancePage() {
       {data.mrrByCity.length > 0 ? (
         <Card>
           <h2 className="mb-3 font-semibold">Revenue by city</h2>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {data.mrrByCity.map((row) => (
               <li key={row.city} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
                   {row.city} · {row.businesses} paying
                 </span>
-                <span className="text-slate-500">{formatPkr(row.mrrPkr)} / month</span>
+                <span className="text-ink-500">{formatPkr(row.mrrPkr)} / month</span>
               </li>
             ))}
           </ul>
@@ -124,11 +124,11 @@ export default async function FinancePage() {
       <Card>
         <h2 className="mb-3 font-semibold">Export invoices for the accountant</h2>
         <ExportForm />
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-ink-500">
           Leave blank for this month so far. Files are kept for a week.
         </p>
         {exports.length > 0 ? (
-          <ul className="mt-3 divide-y divide-slate-100 text-sm">
+          <ul className="mt-3 divide-y divide-ink-100 text-sm">
             {exports.map((e) => (
               <li key={e._id} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
@@ -142,7 +142,7 @@ export default async function FinancePage() {
                     Download ({e.rows} rows)
                   </a>
                 ) : (
-                  <span className="text-slate-500">
+                  <span className="text-ink-500">
                     {e.status === "FAILED" ? "Failed" : "Preparing…"}
                   </span>
                 )}
@@ -206,16 +206,16 @@ export default async function FinancePage() {
       <Card>
         <h2 className="mb-3 font-semibold">Recent payments</h2>
         {data.recentPayments.length === 0 ? (
-          <p className="text-sm text-slate-500">None yet.</p>
+          <p className="text-sm text-ink-500">None yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink-100 text-sm">
             {data.recentPayments.map((p) => (
               <li key={p._id} className="flex flex-wrap justify-between gap-3 py-2">
                 <span>
                   {p.businessId?.name ?? "—"} · {p.method.replace("_", " ").toLowerCase()}
                   {p.reference ? ` · ${p.reference}` : ""}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-ink-500">
                   {formatPkr(p.amountPkr)} · {formatDate(p.createdAt)}
                 </span>
               </li>

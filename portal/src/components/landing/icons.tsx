@@ -148,6 +148,13 @@ export const ArrowIcon = ({ className = "h-4 w-4" }: IconProps) => (
   </Line>
 );
 
+export const UserIcon = (p: IconProps) => (
+  <Line {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M20 21a8 8 0 0 0-16 0" />
+  </Line>
+);
+
 export const CheckIcon = (p: IconProps) => (
   <Line {...p}>
     <path d="M20 6 9 17l-5-5" />

@@ -39,7 +39,7 @@ export function EmailSignIn({ next }: { next: string }) {
               placeholder="you@example.com"
             />
           </Field>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-500">
             We will email you a code. No password needed. New here? This creates your account.
           </p>
           <ErrorText>{state.error}</ErrorText>

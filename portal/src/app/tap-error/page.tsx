@@ -45,10 +45,10 @@ export default async function TapErrorPage({
         <p className="text-4xl" aria-hidden>
           📱
         </p>
-        <p className="text-lg font-semibold">{message.title}</p>
-        <p className="text-sm text-slate-600">{message.text}</p>
+        <p className="font-display text-xl font-bold">{message.title}</p>
+        <p className="text-sm text-ink-600">{message.text}</p>
       </Card>
-      <Link href="/cards" className="text-center text-sm text-slate-500">
+      <Link href="/cards" className="text-center text-sm text-ink-500">
         Go to my cards
       </Link>
     </main>

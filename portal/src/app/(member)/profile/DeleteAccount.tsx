@@ -45,7 +45,7 @@ export function DeleteAccount() {
           name="confirm"
           required
           autoComplete="off"
-          className="mt-1 w-full rounded-lg border border-red-300 bg-white px-3 py-2"
+          className="mt-1 w-full rounded-2xl border border-red-300 bg-white px-3 py-2"
         />
       </label>
       {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
